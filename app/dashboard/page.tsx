@@ -19,10 +19,12 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { eth, matic, isLoading } = useNativeBalances();
 
-  const { data: prices } = useQuery({
+  const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
     queryKey: ["cg-prices", "eth-matic"],
     queryFn: () => getSimplePrices(["ethereum", "matic-network"], "usd"),
     enabled: isConnected,
+    retry: 1,
+    staleTime: 30_000,
   });
 
   const ethAmount = eth ? Number(formatUnits(eth.value, eth.decimals)) : 0;
@@ -34,6 +36,7 @@ export default function DashboardPage() {
     ? maticAmount * prices["matic-network"].usd
     : 0;
   const totalUsd = ethUsd + maticUsd;
+  const isPortfolioLoading = isLoading || (isConnected && isPricesLoading);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -71,12 +74,24 @@ export default function DashboardPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${totalUsd.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {isLoading
-                    ? "Loading balances..."
-                    : "Updated with live prices"}
-                </p>
+                {/* Skeleton saat loading */}
+                {isPortfolioLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-7 w-36 bg-muted rounded mb-2" />
+                    <div className="h-3 w-48 bg-muted rounded" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {isPricesError ? "-" : `$${totalUsd.toFixed(2)}`}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {isPricesError
+                        ? "Prices unavailable"
+                        : "Updated with live prices"}
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -115,7 +130,9 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {prices
+                  {isPricesError
+                    ? "-"
+                    : prices
                     ? (
                         (ethUsd * (prices.ethereum.usd_24h_change ?? 0)) / 100 +
                         (maticUsd *
@@ -140,54 +157,62 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                        ETH
+                {isPortfolioLoading ? (
+                  <div className="space-y-4 animate-pulse">
+                    <div className="h-6 w-64 bg-muted rounded" />
+                    <div className="h-6 w-64 bg-muted rounded" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                          ETH
+                        </div>
+                        <div>
+                          <p className="font-medium">Ethereum</p>
+                          <p className="text-sm text-muted-foreground">
+                            {ethAmount.toFixed(6)} ETH
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Ethereum</p>
-                        <p className="text-sm text-muted-foreground">
-                          {ethAmount.toFixed(6)} ETH
+                      <div className="text-right">
+                        <p className="font-medium">
+                          {isPricesError ? "-" : `$${ethUsd.toFixed(2)}`}
+                        </p>
+                        <p
+                          className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {(prices?.ethereum?.usd_24h_change ?? 0).toFixed(2)}%
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">${ethUsd.toFixed(2)}</p>
-                      <p
-                        className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {(prices?.ethereum?.usd_24h_change ?? 0).toFixed(2)}%
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                        MATIC
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                          MATIC
+                        </div>
+                        <div>
+                          <p className="font-medium">Polygon</p>
+                          <p className="text-sm text-muted-foreground">
+                            {maticAmount.toFixed(6)} MATIC
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Polygon</p>
-                        <p className="text-sm text-muted-foreground">
-                          {maticAmount.toFixed(6)} MATIC
+                      <div className="text-right">
+                        <p className="font-medium">
+                          {isPricesError ? "-" : `$${maticUsd.toFixed(2)}`}
+                        </p>
+                        <p
+                          className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {(prices?.["matic-network"]?.usd_24h_change ?? 0).toFixed(2)}%
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">${maticUsd.toFixed(2)}</p>
-                      <p
-                        className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {(
-                          prices?.["matic-network"]?.usd_24h_change ?? 0
-                        ).toFixed(2)}
-                        %
-                      </p>
-                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
