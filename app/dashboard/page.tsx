@@ -24,7 +24,7 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercentSigned, formatCurrencyTiny } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -36,7 +36,7 @@ export default function DashboardPage() {
     queryFn: () => getSimplePrices(["ethereum", "matic-network"], "usd"),
     enabled: isConnected,
     retry: 1,
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 
   const ethAmount = eth ? Number(formatUnits(eth.value, eth.decimals)) : 0;
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                         <p
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {(prices?.ethereum?.usd_24h_change ?? 0).toFixed(2)}%
+                          {formatPercentSigned(prices?.ethereum?.usd_24h_change ?? 0)}
                         </p>
                       </div>
                     </div>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
                         <p
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {(prices?.["matic-network"]?.usd_24h_change ?? 0).toFixed(2)}%
+                          {formatPercentSigned(prices?.["matic-network"]?.usd_24h_change ?? 0)}
                         </p>
                       </div>
                     </div>
@@ -281,8 +281,8 @@ export default function DashboardPage() {
                         <TableCell>
                           {t.formatted ? formatNumber(Number(t.formatted), { maximumFractionDigits: 6 }) : "-"}
                         </TableCell>
-                        <TableCell>{t.priceUsd ? formatCurrency(t.priceUsd, { maximumFractionDigits: 4 }) : "-"}</TableCell>
-                        <TableCell>{t.valueUsd ? formatCurrency(t.valueUsd) : "-"}</TableCell>
+                        <TableCell>{t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}</TableCell>
+                        <TableCell>{t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
