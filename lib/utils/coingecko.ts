@@ -37,3 +37,38 @@ export async function getSimplePrices(
   const data = (await res.json()) as SimplePriceResponse;
   return data;
 }
+
+/**
+ * Fetch token prices by contract addresses for a given platform.
+ * Example platform ids: 'ethereum', 'polygon-pos', 'arbitrum-one'
+ *
+ * GET /api/v3/simple/token_price/{platform}?contract_addresses=...&vs_currencies=usd
+ */
+export type ContractPriceItem = {
+  usd: number;
+};
+
+export type ContractPriceResponse = Record<string, ContractPriceItem>;
+
+export async function getTokenPricesByAddress(
+  platformId: string,
+  addresses: string[],
+  vsCurrency: string = "usd",
+): Promise<ContractPriceResponse> {
+  if (addresses.length === 0) return {};
+  const base = `https://api.coingecko.com/api/v3/simple/token_price/${platformId}`;
+  const url = `${base}?contract_addresses=${encodeURIComponent(addresses.join(","))}&vs_currencies=${vsCurrency}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`CoinGecko token price failed: ${res.status}`);
+  }
+
+  const data = (await res.json()) as ContractPriceResponse;
+  return data;
+}

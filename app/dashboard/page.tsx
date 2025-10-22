@@ -14,10 +14,21 @@ import { useNativeBalances } from "@/lib/hooks/useNativeBalances";
 import { useQuery } from "@tanstack/react-query";
 import { getSimplePrices } from "@/lib/utils/coingecko";
 import { formatUnits } from "viem";
+import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from "@/components/ui/table";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { eth, matic, isLoading } = useNativeBalances();
+  const { tokens, isLoading: isTokensLoading, isError: isTokensError } = useTokenHoldings();
 
   const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
     queryKey: ["cg-prices", "eth-matic"],
@@ -35,8 +46,8 @@ export default function DashboardPage() {
   const maticUsd = prices?.["matic-network"]?.usd
     ? maticAmount * prices["matic-network"].usd
     : 0;
-  const totalUsd = ethUsd + maticUsd;
-  const isPortfolioLoading = isLoading || (isConnected && isPricesLoading);
+  const totalUsd = ethUsd + maticUsd + (tokens?.reduce((acc, t) => acc + (t.valueUsd ?? 0), 0) ?? 0);
+  const isPortfolioLoading = isLoading || (isConnected && isPricesLoading) || (isConnected && isTokensLoading);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -66,6 +77,7 @@ export default function DashboardPage() {
       {isConnected && (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            {/* Total Portfolio Value card unchanged except totalUsd now includes ERC-20 */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -103,10 +115,8 @@ export default function DashboardPage() {
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2</div>
-                <p className="text-xs text-muted-foreground">
-                  Mainnet + Polygon
-                </p>
+                <div className="text-2xl font-bold">{2 + (tokens?.length ?? 0)}</div>
+                <p className="text-xs text-muted-foreground">Mainnet + Polygon</p>
               </CardContent>
             </Card>
 
@@ -230,6 +240,56 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>ERC-20 Token Holdings</CardTitle>
+              <CardDescription>Your ERC-20 balances and USD values</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isTokensLoading ? (
+                <div className="space-y-2 animate-pulse">
+                  <div className="h-6 w-64 bg-muted rounded" />
+                  <div className="h-6 w-64 bg-muted rounded" />
+                </div>
+              ) : isTokensError ? (
+                <p className="text-destructive">Failed to load token holdings.</p>
+              ) : tokens.length === 0 ? (
+                <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Token</TableHead>
+                      <TableHead>Chain</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Price (USD)</TableHead>
+                      <TableHead>Value (USD)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tokens.map((t) => (
+                      <TableRow key={`${t.chain}-${t.contractAddress}`}>
+                        <TableCell>
+                          <div className="font-medium">{t.symbol ?? "?"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                          </div>
+                        </TableCell>
+                        <TableCell className="capitalize">{t.chain}</TableCell>
+                        <TableCell>
+                          {t.formatted ? Number(t.formatted).toFixed(6) : "-"}
+                        </TableCell>
+                        <TableCell>{t.priceUsd ? `$${t.priceUsd.toFixed(4)}` : "-"}</TableCell>
+                        <TableCell>{t.valueUsd ? `$${t.valueUsd.toFixed(2)}` : "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableCaption>Showing ERC-20 balances on Ethereum & Polygon</TableCaption>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="mt-6">
             <CardHeader>
