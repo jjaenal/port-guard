@@ -109,6 +109,7 @@ export function useTokenHoldings() {
     staleTime: 60_000,
     gcTime: 300_000, // keep cache for 5 minutes
     refetchOnWindowFocus: false,
+    refetchInterval: 60_000, // background refresh every 60s
     retry: 1,
     placeholderData: (prev) => prev ?? null,
     queryFn: async () => {
@@ -190,5 +191,6 @@ export function useTokenHoldings() {
     tokens: query.data?.tokens ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
+    isFetching: query.isFetching,
   };
 }
