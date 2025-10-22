@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardAction,
 } from "@/components/ui/card";
 import { Wallet, TrendingUp, Coins, DollarSign } from "lucide-react";
 import { useAccount } from "wagmi";
@@ -24,19 +25,19 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercentSigned, formatCurrencyTiny } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { eth, matic, isLoading } = useNativeBalances();
-  const { tokens, isLoading: isTokensLoading, isError: isTokensError } = useTokenHoldings();
+  const { tokens, isLoading: isTokensLoading, isError: isTokensError, isFetching: isTokensFetching } = useTokenHoldings();
 
   const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
     queryKey: ["cg-prices", "eth-matic"],
     queryFn: () => getSimplePrices(["ethereum", "matic-network"], "usd"),
     enabled: isConnected,
     retry: 1,
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 
   const ethAmount = eth ? Number(formatUnits(eth.value, eth.decimals)) : 0;
@@ -123,38 +124,51 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  DeFi Positions
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">ETH 24h Change</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">Coming soon</p>
+                {/* Skeleton saat loading */}
+                {isPricesLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-7 w-24 bg-muted rounded mb-2" />
+                    <div className="h-3 w-40 bg-muted rounded" />
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold">
+                    <span
+                      className={`$${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatPercentSigned(prices?.ethereum?.usd_24h_change ?? 0)}
+                    </span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">vs. previous day</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">24h P&L</CardTitle>
+                <CardTitle className="text-sm font-medium">MATIC 24h Change</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {isPricesError
-                    ? "-"
-                    : prices
-                    ? (
-                        (ethUsd * (prices.ethereum.usd_24h_change ?? 0)) / 100 +
-                        (maticUsd *
-                          (prices["matic-network"].usd_24h_change ?? 0)) /
-                          100
-                      ).toFixed(2)
-                    : "-"}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Approx. based on 24h change
-                </p>
+                {/* Skeleton saat loading */}
+                {isPricesLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-7 w-24 bg-muted rounded mb-2" />
+                    <div className="h-3 w-40 bg-muted rounded" />
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold">
+                    <span
+                      className={`$${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatPercentSigned(prices?.["matic-network"]?.usd_24h_change ?? 0)}
+                    </span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">vs. previous day</p>
               </CardContent>
             </Card>
           </div>
@@ -194,7 +208,7 @@ export default function DashboardPage() {
                         <p
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {(prices?.ethereum?.usd_24h_change ?? 0).toFixed(2)}%
+                          {formatPercentSigned(prices?.ethereum?.usd_24h_change ?? 0)}
                         </p>
                       </div>
                     </div>
@@ -218,7 +232,7 @@ export default function DashboardPage() {
                         <p
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {(prices?.["matic-network"]?.usd_24h_change ?? 0).toFixed(2)}%
+                          {formatPercentSigned(prices?.["matic-network"]?.usd_24h_change ?? 0)}
                         </p>
                       </div>
                     </div>
@@ -229,82 +243,73 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>DeFi Positions</CardTitle>
-                <CardDescription>
-                  Your active positions across DeFi protocols
-                </CardDescription>
+                <CardTitle>ERC-20 Token Holdings</CardTitle>
+                <CardDescription>Your ERC-20 balances and USD values</CardDescription>
+                <CardAction>
+                  {isTokensFetching && (
+                    <span className="text-xs text-muted-foreground">Refreshing…</span>
+                  )}
+                </CardAction>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 text-muted-foreground">
-                  <p>No active positions yet</p>
+                {isTokensLoading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-6 w-64 bg-muted rounded" />
+                    <div className="h-6 w-64 bg-muted rounded" />
+                  </div>
+                ) : isTokensError ? (
+                  <p className="text-destructive">Failed to load token holdings.</p>
+                ) : tokens.length === 0 ? (
+                  <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Token</TableHead>
+                        <TableHead>Chain</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead>Price (USD)</TableHead>
+                        <TableHead>Value (USD)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tokens.map((t) => (
+                        <TableRow key={`${t.chain}-${t.contractAddress}`}>
+                          <TableCell>
+                            <div className="font-medium">{t.symbol ?? "?"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                            </div>
+                          </TableCell>
+                          <TableCell className="capitalize">{t.chain}</TableCell>
+                          <TableCell>
+                            {t.formatted ? formatNumber(Number(t.formatted), { maximumFractionDigits: 6 }) : "-"}
+                          </TableCell>
+                          <TableCell>{t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}</TableCell>
+                          <TableCell>{t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <TableCaption>Showing ERC-20 balances on Ethereum & Polygon</TableCaption>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Portfolio Performance</CardTitle>
+                <CardDescription>Your portfolio value over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
+                  <p className="text-muted-foreground">
+                    Chart will be implemented here
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>ERC-20 Token Holdings</CardTitle>
-              <CardDescription>Your ERC-20 balances and USD values</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isTokensLoading ? (
-                <div className="space-y-2 animate-pulse">
-                  <div className="h-6 w-64 bg-muted rounded" />
-                  <div className="h-6 w-64 bg-muted rounded" />
-                </div>
-              ) : isTokensError ? (
-                <p className="text-destructive">Failed to load token holdings.</p>
-              ) : tokens.length === 0 ? (
-                <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Token</TableHead>
-                      <TableHead>Chain</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Price (USD)</TableHead>
-                      <TableHead>Value (USD)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tokens.map((t) => (
-                      <TableRow key={`${t.chain}-${t.contractAddress}`}>
-                        <TableCell>
-                          <div className="font-medium">{t.symbol ?? "?"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {t.name ?? t.contractAddress.slice(0, 6) + "..."}
-                          </div>
-                        </TableCell>
-                        <TableCell className="capitalize">{t.chain}</TableCell>
-                        <TableCell>
-                          {t.formatted ? formatNumber(Number(t.formatted), { maximumFractionDigits: 6 }) : "-"}
-                        </TableCell>
-                        <TableCell>{t.priceUsd ? formatCurrency(t.priceUsd, { maximumFractionDigits: 4 }) : "-"}</TableCell>
-                        <TableCell>{t.valueUsd ? formatCurrency(t.valueUsd) : "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableCaption>Showing ERC-20 balances on Ethereum & Polygon</TableCaption>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Portfolio Performance</CardTitle>
-              <CardDescription>Your portfolio value over time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
-                <p className="text-muted-foreground">
-                  Chart will be implemented here
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </>
       )}
     </div>
