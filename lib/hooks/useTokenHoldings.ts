@@ -107,7 +107,10 @@ export function useTokenHoldings() {
     queryKey: ["erc20-holdings", address],
     enabled: !!address && !!apiKey,
     staleTime: 60_000,
+    gcTime: 300_000, // keep cache for 5 minutes
+    refetchOnWindowFocus: false,
     retry: 1,
+    placeholderData: (prev) => prev ?? null,
     queryFn: async () => {
       if (!address || !apiKey) return null;
 
@@ -117,8 +120,9 @@ export function useTokenHoldings() {
         getBalances("polygon", address, apiKey),
       ]);
 
-      const ethContracts = ethBalances.map((b) => b.contractAddress.toLowerCase());
-      const polygonContracts = polygonBalances.map((b) => b.contractAddress.toLowerCase());
+      // Deduplicate contract addresses per chain
+      const ethContracts = Array.from(new Set(ethBalances.map((b) => b.contractAddress.toLowerCase())));
+      const polygonContracts = Array.from(new Set(polygonBalances.map((b) => b.contractAddress.toLowerCase())));
 
       const [ethMeta, polygonMeta] = await Promise.all([
         getMetadata("ethereum", ethContracts, apiKey),
