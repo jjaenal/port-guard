@@ -16,11 +16,11 @@
 ### Day 1-2: Project Setup
 
 - [x] Create GitHub repository (https://github.com/jjaenal/port-guard.git)
-- [ ] Initialize Next.js 14 project with TypeScript
+- [x] Initialize Next.js 14 project with TypeScript
   ```bash
   npx create-next-app@latest defi-dashboard --typescript --tailwind --app
   ```
-- [ ] Install core dependencies
+- [x] Install core dependencies
   ```bash
   npm install wagmi viem @tanstack/react-query
   npm install @rainbow-me/rainbowkit
@@ -28,13 +28,13 @@
   npm install recharts lucide-react
   npm install -D @types/node
   ```
-- [ ] Setup shadcn/ui
+- [x] Setup shadcn/ui
   ```bash
   npx shadcn-ui@latest init
   npx shadcn-ui@latest add button card input table
   ```
-- [ ] Configure Tailwind dark mode
-- [ ] Setup folder structure
+- [x] Configure Tailwind dark mode
+- [x] Setup folder structure
   ```
   /app
   /components
@@ -42,8 +42,8 @@
   /config
   /api
   ```
-- [ ] Create `.env.local` file
-- [ ] Setup ESLint + Prettier
+- [x] Create `.env.local` file
+- [x] Setup ESLint + Prettier
 
 ### Day 3-4: Database & Backend Setup
 
