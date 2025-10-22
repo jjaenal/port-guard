@@ -24,6 +24,7 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -95,7 +96,7 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     <div className="text-2xl font-bold">
-                      {isPricesError ? "-" : `$${totalUsd.toFixed(2)}`}
+                      {isPricesError ? "-" : formatCurrency(totalUsd)}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {isPricesError
@@ -182,7 +183,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="font-medium">Ethereum</p>
                           <p className="text-sm text-muted-foreground">
-                            {ethAmount.toFixed(6)} ETH
+                            {formatNumber(ethAmount, { maximumFractionDigits: 6 })} ETH
                           </p>
                         </div>
                       </div>
@@ -206,7 +207,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="font-medium">Polygon</p>
                           <p className="text-sm text-muted-foreground">
-                            {maticAmount.toFixed(6)} MATIC
+                            {formatNumber(maticAmount, { maximumFractionDigits: 6 })} MATIC
                           </p>
                         </div>
                       </div>
@@ -278,10 +279,10 @@ export default function DashboardPage() {
                         </TableCell>
                         <TableCell className="capitalize">{t.chain}</TableCell>
                         <TableCell>
-                          {t.formatted ? Number(t.formatted).toFixed(6) : "-"}
+                          {t.formatted ? formatNumber(Number(t.formatted), { maximumFractionDigits: 6 }) : "-"}
                         </TableCell>
-                        <TableCell>{t.priceUsd ? `$${t.priceUsd.toFixed(4)}` : "-"}</TableCell>
-                        <TableCell>{t.valueUsd ? `$${t.valueUsd.toFixed(2)}` : "-"}</TableCell>
+                        <TableCell>{t.priceUsd ? formatCurrency(t.priceUsd, { maximumFractionDigits: 4 }) : "-"}</TableCell>
+                        <TableCell>{t.valueUsd ? formatCurrency(t.valueUsd) : "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
