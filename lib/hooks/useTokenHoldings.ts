@@ -3,7 +3,7 @@
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { formatUnits } from "viem";
-import { getTokenPricesByAddress } from "@/lib/utils/coingecko";
+
 
 export type ChainKey = "ethereum" | "polygon";
 
@@ -130,10 +130,20 @@ export function useTokenHoldings() {
         getMetadata("polygon", polygonContracts, apiKey),
       ]);
 
-      // Prices by address per platform
+      // Prices by address per platform - use API proxy
       const [ethPrices, polygonPrices] = await Promise.all([
-        getTokenPricesByAddress(platformIdForChain("ethereum"), ethContracts),
-        getTokenPricesByAddress(platformIdForChain("polygon"), polygonContracts),
+        ethContracts.length > 0 
+          ? fetch(`/api/prices?platform=${platformIdForChain("ethereum")}&contracts=${ethContracts.join(",")}&vs=usd`)
+              .then(res => res.json())
+              .then(json => json.data || {})
+              .catch(() => ({}))
+          : {} as Record<string, { usd?: number }>,
+        polygonContracts.length > 0
+          ? fetch(`/api/prices?platform=${platformIdForChain("polygon")}&contracts=${polygonContracts.join(",")}&vs=usd`)
+              .then(res => res.json())
+              .then(json => json.data || {})
+              .catch(() => ({}))
+          : {} as Record<string, { usd?: number }>,
       ]);
 
       const tokens: TokenHolding[] = [];

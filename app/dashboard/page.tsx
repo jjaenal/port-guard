@@ -13,7 +13,7 @@ import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useNativeBalances } from "@/lib/hooks/useNativeBalances";
 import { useQuery } from "@tanstack/react-query";
-import { getSimplePrices } from "@/lib/utils/coingecko";
+
 import { formatUnits } from "viem";
 import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
 import {
@@ -33,8 +33,12 @@ export default function DashboardPage() {
   const { tokens, isLoading: isTokensLoading, isError: isTokensError, isFetching: isTokensFetching } = useTokenHoldings();
 
   const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
-    queryKey: ["cg-prices", "eth-matic"],
-    queryFn: () => getSimplePrices(["ethereum", "matic-network"], "usd"),
+    queryKey: ["api-prices", "eth-matic"],
+    queryFn: async () => {
+      const response = await fetch("/api/prices?ids=ethereum,matic-network&vs=usd");
+      const json = await response.json();
+      return json.data || {};
+    },
     enabled: isConnected,
     retry: 1,
     staleTime: 60_000,

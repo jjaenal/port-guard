@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model PortfolioSnapshot {
+  id          String   @id @default(cuid())
+  address     String
+  totalValue  Float
+  ethBalance  Float
+  maticBalance Float
+  tokenCount  Int
+  createdAt   DateTime @default(now())
+  
+  tokens      TokenSnapshot[]
+  
+  @@map("portfolio_snapshots")
+}
+
+model TokenSnapshot {
+  id          String   @id @default(cuid())
+  snapshotId  String
+  address     String
+  symbol      String
+  name        String
+  balance     String   // Store as string to preserve precision
+  decimals    Int
+  price       Float
+  value       Float
+  change24h   Float?
+  
+  snapshot    PortfolioSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  
+  @@map("token_snapshots")
+}
