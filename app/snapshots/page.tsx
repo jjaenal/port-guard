@@ -54,10 +54,17 @@ export default function SnapshotsPage() {
             ) : (
               <div className="space-y-2">
                 {snapshotHistory.data.map((snap) => (
-                  <div key={snap.id} className="flex items-center justify-between text-sm">
+                  <Link 
+                    href={`/snapshots/${snap.id}`} 
+                    key={snap.id} 
+                    className="flex items-center justify-between text-sm p-2 hover:bg-muted rounded-md transition-colors"
+                  >
                     <span className="text-muted-foreground">{new Date(snap.createdAt).toLocaleString()}</span>
-                    <span className="font-medium">{formatCurrency(snap.totalValue)}</span>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{formatCurrency(snap.totalValue)}</span>
+                      <span className="text-xs text-muted-foreground">({snap.tokenCount} tokens)</span>
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -75,7 +82,7 @@ export default function SnapshotsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
-                disabled={isLoading || (snapshotHistory && snapshotHistory.data.length < limit)}
+                disabled={isLoading || ((snapshotHistory?.data?.length ?? 0) < limit)}
               >
                 Next
               </Button>
