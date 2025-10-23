@@ -399,9 +399,22 @@ export default function DashboardPage() {
                       {tokens.map((t) => (
                         <TableRow key={`${t.chain}-${t.contractAddress}`}>
                           <TableCell>
-                            <div className="font-medium">{t.symbol ?? "?"}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-muted overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                                <img
+                                  src={`https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${t.chain}/assets/${t.contractAddress}/logo.png`}
+                                  alt={t.symbol ?? "token"}
+                                  className="w-6 h-6"
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                                <span className="uppercase">{(t.symbol ?? "?").slice(0, 2)}</span>
+                              </div>
+                              <div>
+                                <div className="font-medium">{t.symbol ?? "?"}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                                </div>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="capitalize">{t.chain}</TableCell>
