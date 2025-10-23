@@ -161,12 +161,12 @@
   - [ ] Number of tokens
   - [ ] Last updated timestamp
 - [ ] Build token holdings table
-  - [ ] Token name & symbol
-  - [ ] Balance
-  - [ ] USD value
-  - [ ] 24h price change
-  - [ ] Percentage of portfolio
-- [ ] Add sorting functionality (by value, change, name)
+  - [x] Token name & symbol
+  - [x] Balance
+  - [x] USD value
+  - [x] 24h price change
+  - [x] Percentage of portfolio
+- [x] Add sorting functionality (by value, change, name)
 - [ ] Implement search/filter
 - [x] Add loading skeletons
 - [ ] Create empty state
