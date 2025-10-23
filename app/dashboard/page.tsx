@@ -97,6 +97,7 @@ export default function DashboardPage() {
     usePortfolioSeries(
       ethAmount,
       maticAmount,
+      tokens,
       isConnected || !!overrideAddress,
     );
 
@@ -470,7 +471,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Portfolio Performance (7d)</CardTitle>
                 <CardDescription>
-                  Value based on ETH & MATIC balances
+                  Value based on ETH, MATIC & top ERC-20
                 </CardDescription>
               </CardHeader>
               <CardContent>

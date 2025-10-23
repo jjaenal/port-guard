@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { getMarketChart, type MarketChartPoint } from "@/lib/utils/coingecko";
+import {
+  getMarketChart,
+  getContractMarketChart,
+  type MarketChartPoint,
+} from "@/lib/utils/coingecko";
+import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 
 export type SeriesPoint = { t: number; v: number };
 export type PortfolioSeriesResult = {
@@ -9,27 +14,59 @@ export type PortfolioSeriesResult = {
   error?: unknown;
 };
 
+function platformIdForChain(chain: "ethereum" | "polygon"): string {
+  return chain === "polygon" ? "polygon-pos" : "ethereum";
+}
+
 /**
  * Menghitung seri nilai portofolio (USD) 7 hari terakhir
- * dengan mengalikan harga historis ETH dan MATIC dengan
- * jumlah saldo masing-masing.
- *
- * Catatan: Saat ini hanya ETH & MATIC. Dukungan ERC-20 historis
- * dapat ditambahkan menggunakan endpoint contract market chart.
+ * berdasarkan saldo ETH, MATIC, dan ERC-20 (top 10 by value).
  */
 export function usePortfolioSeries(
   ethAmount: number,
   maticAmount: number,
+  erc20Tokens: TokenHoldingDTO[],
   enabled: boolean,
 ): PortfolioSeriesResult {
+  const topTokens = (erc20Tokens ?? [])
+    .slice() // copy
+    .sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0))
+    .slice(0, 10);
+
   const query = useQuery({
-    queryKey: ["portfolio-series", { ethAmount, maticAmount }],
+    queryKey: [
+      "portfolio-series",
+      {
+        ethAmount,
+        maticAmount,
+        tokens: topTokens.map((t) => t.contractAddress),
+      },
+    ],
     queryFn: async () => {
       const [ethPrices, maticPrices]: [MarketChartPoint[], MarketChartPoint[]] =
         await Promise.all([
           getMarketChart("ethereum", "usd", 7, "hourly", 60_000),
           getMarketChart("matic-network", "usd", 7, "hourly", 60_000),
         ]);
+
+      // Ambil histori harga untuk token ERC-20 top
+      const tokenChartsEntries = await Promise.all(
+        topTokens.map(async (t) => {
+          const platform = platformIdForChain(t.chain);
+          const prices = await getContractMarketChart(
+            platform,
+            t.contractAddress,
+            "usd",
+            7,
+            "hourly",
+            60_000,
+          );
+          return [t.contractAddress, prices] as const;
+        }),
+      );
+      const tokenCharts = new Map<string, MarketChartPoint[]>(
+        tokenChartsEntries,
+      );
 
       // Normalisasi ke timestamp bersama, gunakan ETH sebagai referensi
       const ethMap = new Map<number, number>(ethPrices.map(([t, p]) => [t, p]));
@@ -41,7 +78,17 @@ export function usePortfolioSeries(
       const points: SeriesPoint[] = timestamps.map((t) => {
         const ethPrice = ethMap.get(t) ?? 0;
         const maticPrice = maticMap.get(t) ?? 0;
-        const valueUsd = ethAmount * ethPrice + maticAmount * maticPrice;
+        let valueUsd = ethAmount * ethPrice + maticAmount * maticPrice;
+
+        // Tambahkan nilai ERC-20
+        for (const tok of topTokens) {
+          const series = tokenCharts.get(tok.contractAddress) ?? [];
+          // Cari harga terdekat by exact timestamp (Coingecko hourly timestamps should align)
+          const priceAtT = series.find((pt) => pt[0] === t)?.[1] ?? 0;
+          const qty = tok.formatted ? Number(tok.formatted) : 0;
+          valueUsd += qty * priceAtT;
+        }
+
         return { t, v: valueUsd };
       });
 
