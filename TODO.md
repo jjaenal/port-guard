@@ -134,7 +134,7 @@
 - [x] Create token balance display component (TokenHoldingsTable)
 - [x] Add token logos (TrustWallet assets fallback)
 - [x] Implement balance caching (In-memory + Next.js API cache)
-- [ ] Test with multiple wallets
+- [x] Test with multiple wallets (via address override on dashboard)
 
 ### Day 11-14: Portfolio Dashboard UI
 
