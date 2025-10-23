@@ -29,6 +29,8 @@ import { Input } from "@/components/ui/input";
 import { useState, useCallback } from "react";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
+import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
+import { PortfolioChart } from "@/components/ui/portfolio-chart";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -90,6 +92,13 @@ export default function DashboardPage() {
     isLoading ||
     ((isConnected || !!overrideAddress) && isTokensLoading) ||
     (isConnected && isPricesLoading);
+
+  const { points: portfolioPoints, isLoading: isSeriesLoading } =
+    usePortfolioSeries(
+      ethAmount,
+      maticAmount,
+      isConnected || !!overrideAddress,
+    );
 
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -457,6 +466,28 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Portfolio Performance (7d)</CardTitle>
+                <CardDescription>
+                  Value based on ETH & MATIC balances
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isSeriesLoading ? (
+                  <div className="animate-pulse h-[200px] w-full bg-muted rounded" />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <PortfolioChart
+                      points={portfolioPoints}
+                      width={600}
+                      height={200}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Token Holdings</CardTitle>

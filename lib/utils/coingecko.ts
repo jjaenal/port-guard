@@ -24,6 +24,10 @@ const CONTRACT_CACHE = new Map<
   string,
   { expiresAt: number; data: ContractPriceResponse }
 >();
+const MARKET_CACHE = new Map<
+  string,
+  { expiresAt: number; data: MarketChartPoint[] }
+>();
 
 function normalizeIds(ids: string[]): string {
   return ids
@@ -114,4 +118,42 @@ export async function getTokenPricesByAddress(
     CONTRACT_CACHE.delete(firstKey);
   }
   return data;
+}
+
+export type MarketChartPoint = [number, number]; // [timestamp, price]
+
+export async function getMarketChart(
+  id: string,
+  vsCurrency: string = "usd",
+  days: number = 7,
+  interval: "hourly" | "daily" = "daily",
+  ttlMs: number = DEFAULT_TTL_MS,
+): Promise<MarketChartPoint[]> {
+  const key = `${id.toLowerCase()}|${vsCurrency.toLowerCase()}|${days}|${interval}`;
+  const cached = MARKET_CACHE.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
+  const base = `https://api.coingecko.com/api/v3/coins/${id}/market_chart`;
+  const url = `${base}?vs_currency=${vsCurrency}&days=${days}&interval=${interval}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`CoinGecko market chart failed: ${res.status}`);
+  }
+
+  const data = (await res.json()) as { prices: MarketChartPoint[] };
+  const prices = Array.isArray(data.prices) ? data.prices : [];
+  MARKET_CACHE.set(key, { expiresAt: Date.now() + ttlMs, data: prices });
+  if (MARKET_CACHE.size > 100) {
+    const firstKey = MARKET_CACHE.keys().next().value as string;
+    MARKET_CACHE.delete(firstKey);
+  }
+  return prices;
 }
