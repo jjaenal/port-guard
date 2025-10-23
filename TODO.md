@@ -160,7 +160,7 @@
   - [x] Show token-by-token changes
   - [ ] Number of tokens
   - [ ] Last updated timestamp
-- [ ] Build token holdings table
+- [x] Build token holdings table
   - [x] Token name & symbol
   - [x] Balance
   - [x] USD value
