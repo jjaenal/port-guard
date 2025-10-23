@@ -18,6 +18,7 @@ import { formatUnits } from "viem";
 import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
 import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState, useCallback } from "react";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
@@ -25,7 +26,8 @@ import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { eth, matic, isLoading } = useNativeBalances();
-  const { tokens, isLoading: isTokensLoading, isError: isTokensError, isFetching: isTokensFetching } = useTokenHoldings();
+  const [overrideAddress, setOverrideAddress] = useState<string>("");
+  const { tokens, isLoading: isTokensLoading, isError: isTokensError, isFetching: isTokensFetching } = useTokenHoldings(overrideAddress ? overrideAddress : undefined);
   const { data: latestSnapshot, isLoading: isSnapshotLoading, error: snapshotError } = useLatestSnapshot(address);
 
   const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
@@ -130,6 +132,21 @@ export default function DashboardPage() {
             ? `Wallet: ${address}`
             : "Welcome to your DeFi portfolio dashboard. Connect your wallet to get started."}
         </p>
+        {isConnected && (
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            <div>
+              <label className="text-sm text-muted-foreground">Test with another address (optional)</label>
+              <Input
+                placeholder="0x... wallet address"
+                value={overrideAddress}
+                onChange={(e) => setOverrideAddress(e.target.value.trim())}
+              />
+              {overrideAddress && (
+                <p className="text-xs text-muted-foreground mt-1">Testing address override: {overrideAddress}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {!isConnected && (
