@@ -132,7 +132,7 @@
 - [x] Get token prices from CoinGecko
 - [x] Calculate USD values
 - [ ] Create token balance display component
-- [ ] Add token logos (use Token Lists)
+- [x] Add token logos (TrustWallet assets fallback)
 - [ ] Implement balance caching (Redis)
 - [ ] Test with multiple wallets
 
