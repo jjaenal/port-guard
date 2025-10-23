@@ -9,6 +9,8 @@ import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { formatCurrency, formatPercentSigned } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
+import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
+import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
 
 export default function CompareSnapshotsPage() {
   const { address, isConnected } = useAccount();
@@ -19,14 +21,12 @@ export default function CompareSnapshotsPage() {
   const [selectedSnapshots, setSelectedSnapshots] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   
-  const { data: snapshot1, isLoading: isLoading1 } = useSnapshotDetail(
-    selectedSnapshots[0] || "",
-    !!selectedSnapshots[0]
+  const { data: snapshot1Data, isLoading: isLoading1 } = useSnapshotDetail(
+    selectedSnapshots[0]
   );
   
-  const { data: snapshot2, isLoading: isLoading2 } = useSnapshotDetail(
-    selectedSnapshots[1] || "",
-    !!selectedSnapshots[1]
+  const { data: snapshot2Data, isLoading: isLoading2 } = useSnapshotDetail(
+    selectedSnapshots[1]
   );
   
   const handleSelectSnapshot = (id: string) => {
@@ -55,7 +55,10 @@ export default function CompareSnapshotsPage() {
   
   // Calculate differences between snapshots
   const calculateDifference = () => {
-    if (!snapshot1 || !snapshot2) return null;
+    if (!snapshot1Data?.data || !snapshot2Data?.data) return null;
+    
+    const snapshot1 = snapshot1Data.data;
+    const snapshot2 = snapshot2Data.data;
     
     const valueDiff = snapshot2.totalValue - snapshot1.totalValue;
     const percentDiff = snapshot1.totalValue > 0 
@@ -63,10 +66,19 @@ export default function CompareSnapshotsPage() {
       : 0;
     
     // Compare tokens
-    const tokenMap = new Map();
+    const tokenMap = new Map<string, {
+      symbol: string;
+      name: string;
+      snapshot1Value: number;
+      snapshot1Balance: string;
+      snapshot2Value: number;
+      snapshot2Balance: string;
+      diff: number;
+      percentDiff: number;
+    }>();
     
     // Add all tokens from snapshot1
-    snapshot1.tokens.forEach(token => {
+    snapshot1.tokens.forEach((token: SnapshotToken) => {
       tokenMap.set(token.address, {
         symbol: token.symbol,
         name: token.name,
@@ -80,9 +92,9 @@ export default function CompareSnapshotsPage() {
     });
     
     // Update or add tokens from snapshot2
-    snapshot2.tokens.forEach(token => {
+    snapshot2.tokens.forEach((token: SnapshotToken) => {
       if (tokenMap.has(token.address)) {
-        const existing = tokenMap.get(token.address);
+        const existing = tokenMap.get(token.address)!;
         existing.snapshot2Value = token.value;
         existing.snapshot2Balance = token.balance;
         existing.diff = token.value - existing.snapshot1Value;
@@ -194,7 +206,7 @@ export default function CompareSnapshotsPage() {
                   <div className="h-6 w-64 bg-muted rounded" />
                   <div className="h-6 w-64 bg-muted rounded" />
                 </div>
-              ) : !snapshotHistory || snapshotHistory.length === 0 ? (
+              ) : !snapshotHistory || snapshotHistory.data.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No snapshots found</p>
                   <Link href="/dashboard" className="mt-4 inline-block">
@@ -203,7 +215,7 @@ export default function CompareSnapshotsPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {snapshotHistory.map((snapshot) => (
+                  {snapshotHistory.data.map((snapshot: SnapshotItem) => (
                     <div
                       key={snapshot.id}
                       className={`flex items-center justify-between p-3 rounded-md border ${
@@ -251,7 +263,7 @@ export default function CompareSnapshotsPage() {
                 <Button
                   variant="outline"
                   onClick={() => setPage(page + 1)}
-                  disabled={!snapshotHistory || snapshotHistory.length < limit}
+                  disabled={!snapshotHistory || snapshotHistory.data.length < limit}
                 >
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -272,7 +284,7 @@ export default function CompareSnapshotsPage() {
                 </div>
               </CardContent>
             </Card>
-          ) : !snapshot1 || !snapshot2 ? (
+          ) : !snapshot1Data?.data || !snapshot2Data?.data ? (
             <Card>
               <CardContent className="py-8 text-center">
                 <p className="text-muted-foreground">Error loading snapshots</p>
@@ -288,13 +300,13 @@ export default function CompareSnapshotsPage() {
                   <CardTitle>Portfolio Comparison</CardTitle>
                   <CardDescription>
                     Comparing snapshots from{" "}
-                    {new Date(snapshot1.createdAt).toLocaleDateString("en-US", {
+                    {new Date(snapshot1Data.data.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "short",
                       day: "numeric",
                     })}{" "}
                     to{" "}
-                    {new Date(snapshot2.createdAt).toLocaleDateString("en-US", {
+                    {new Date(snapshot2Data.data.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "short",
                       day: "numeric",
@@ -305,9 +317,9 @@ export default function CompareSnapshotsPage() {
                   <div className="grid md:grid-cols-3 gap-6">
                     <div className="space-y-1">
                       <div className="text-sm text-muted-foreground">Initial Value</div>
-                      <div className="text-2xl font-bold">{formatCurrency(snapshot1.totalValue)}</div>
+                      <div className="text-2xl font-bold">{formatCurrency(snapshot1Data.data.totalValue)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(snapshot1.createdAt).toLocaleDateString("en-US", {
+                        {new Date(snapshot1Data.data.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
@@ -319,9 +331,9 @@ export default function CompareSnapshotsPage() {
                     
                     <div className="space-y-1">
                       <div className="text-sm text-muted-foreground">Current Value</div>
-                      <div className="text-2xl font-bold">{formatCurrency(snapshot2.totalValue)}</div>
+                      <div className="text-2xl font-bold">{formatCurrency(snapshot2Data.data.totalValue)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(snapshot2.createdAt).toLocaleDateString("en-US", {
+                        {new Date(snapshot2Data.data.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
@@ -334,18 +346,18 @@ export default function CompareSnapshotsPage() {
                     <div className="space-y-1">
                       <div className="text-sm text-muted-foreground">Change</div>
                       <div className="flex items-center gap-2">
-                        <div className={`text-2xl font-bold ${comparison?.valueDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        <div className={`text-2xl font-bold ${comparison && comparison.valueDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
                           {formatCurrency(comparison?.valueDiff || 0)}
                         </div>
-                        {comparison?.valueDiff !== 0 && (
-                          comparison?.valueDiff > 0 ? (
+                        {comparison && comparison.valueDiff !== 0 && (
+                          comparison.valueDiff > 0 ? (
                             <TrendingUp className="h-5 w-5 text-green-600" />
                           ) : (
                             <TrendingDown className="h-5 w-5 text-red-600" />
                           )
                         )}
                       </div>
-                      <div className={`text-sm ${comparison?.percentDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      <div className={`text-sm ${comparison && comparison.percentDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
                         {formatPercentSigned(comparison?.percentDiff || 0)}
                       </div>
                     </div>
