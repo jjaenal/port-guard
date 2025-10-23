@@ -11,6 +11,7 @@ export type TokenHolding = {
   balance: bigint;
   formatted?: string;
   priceUsd?: number;
+  priceChange24h?: number; // 24h price change percentage
   valueUsd?: number;
 };
 
@@ -133,7 +134,7 @@ const metadataCache: Record<
 > = {};
 const pricesCache: Record<
   string,
-  { timestamp: number; data: Record<string, { usd?: number }> }
+  { timestamp: number; data: Record<string, { usd?: number; usd_24h_change?: number }> }
 > = {};
 
 // Cache TTL in milliseconds
@@ -213,7 +214,7 @@ export async function getTokenBalances(
 
   // Get prices (from cache if available)
   const pricesCacheKey = `${platformIdForChain(chain)}:${contracts.join(",")}`;
-  let prices: Record<string, { usd?: number }> = {};
+  let prices: Record<string, { usd?: number; usd_24h_change?: number }> = {};
   const cachedPrices = pricesCache[pricesCacheKey];
 
   if (contracts.length > 0) {
@@ -224,7 +225,7 @@ export async function getTokenBalances(
       console.log(`🌐 Fetching fresh prices for ${chain}`);
       try {
         prices = await fetch(
-          `/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd`,
+          `/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd&include_24hr_change=true`,
         )
           .then((res) => res.json())
           .then((json) => json.data || {});
@@ -248,6 +249,7 @@ export async function getTokenBalances(
     const balanceBig = BigInt(bal.tokenBalance);
     const formatted = formatUnits(balanceBig, decimals);
     const priceUsd = prices[addr]?.usd;
+    const priceChange24h = prices[addr]?.usd_24h_change;
     const valueUsd = priceUsd ? Number(formatted) * priceUsd : undefined;
     tokens.push({
       chain,
@@ -258,6 +260,7 @@ export async function getTokenBalances(
       balance: balanceBig,
       formatted,
       priceUsd,
+      priceChange24h,
       valueUsd,
     });
   }
