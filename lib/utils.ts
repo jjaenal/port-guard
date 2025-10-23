@@ -5,7 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number, options: Intl.NumberFormatOptions = {}) {
+export function formatCurrency(
+  value: number,
+  options: Intl.NumberFormatOptions = {},
+) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -15,7 +18,10 @@ export function formatCurrency(value: number, options: Intl.NumberFormatOptions 
   }).format(value);
 }
 
-export function formatNumber(value: number, options: Intl.NumberFormatOptions = {}) {
+export function formatNumber(
+  value: number,
+  options: Intl.NumberFormatOptions = {},
+) {
   return new Intl.NumberFormat("en-US", {
     notation: "compact",
     maximumFractionDigits: 2,
@@ -23,7 +29,10 @@ export function formatNumber(value: number, options: Intl.NumberFormatOptions = 
   }).format(value);
 }
 
-export function formatPercentSigned(value: number, options: Intl.NumberFormatOptions = {}) {
+export function formatPercentSigned(
+  value: number,
+  options: Intl.NumberFormatOptions = {},
+) {
   return new Intl.NumberFormat("en-US", {
     style: "percent",
     signDisplay: "always",

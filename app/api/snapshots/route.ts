@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!address) {
       return NextResponse.json(
         { error: "Address parameter is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (!snapshot) {
       return NextResponse.json(
         { error: "No snapshot found for this address" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       totalValue: snapshot.totalValue,
       createdAt: snapshot.createdAt,
       tokens: snapshot.tokens.map((token) => ({
+        chain: token.chain,
         address: token.address,
         symbol: token.symbol,
         name: token.name,
@@ -48,12 +49,13 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching snapshot:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 interface TokenInput {
+  chain?: "ethereum" | "polygon";
   address?: string;
   symbol?: string;
   name?: string;
@@ -73,19 +75,23 @@ export async function POST(request: NextRequest) {
     if (!address || !Array.isArray(tokens)) {
       return NextResponse.json(
         { error: "Address and tokens array are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Calculate total portfolio value
     const totalValue = (tokens as TokenInput[]).reduce(
       (sum: number, token: TokenInput) => sum + (token.value || 0),
-      0
+      0,
     );
 
     // Calculate additional fields for schema compatibility
-    const ethBalance = (tokens as TokenInput[]).find((t: TokenInput) => t.symbol === "ETH")?.value || 0;
-    const maticBalance = (tokens as TokenInput[]).find((t: TokenInput) => t.symbol === "MATIC")?.value || 0;
+    const ethBalance =
+      (tokens as TokenInput[]).find((t: TokenInput) => t.symbol === "ETH")
+        ?.value || 0;
+    const maticBalance =
+      (tokens as TokenInput[]).find((t: TokenInput) => t.symbol === "MATIC")
+        ?.value || 0;
     const tokenCount = tokens.length;
 
     // Create new snapshot with tokens
@@ -98,6 +104,13 @@ export async function POST(request: NextRequest) {
         tokenCount,
         tokens: {
           create: (tokens as TokenInput[]).map((token: TokenInput) => ({
+            chain:
+              token.chain ||
+              (token.symbol === "ETH"
+                ? "ethereum"
+                : token.symbol === "MATIC"
+                  ? "polygon"
+                  : "ethereum"),
             address: token.address || "",
             symbol: token.symbol || "",
             name: token.name || "",
@@ -123,7 +136,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating snapshot:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

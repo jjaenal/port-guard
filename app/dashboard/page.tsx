@@ -8,7 +8,14 @@ import {
   CardTitle,
   CardAction,
 } from "@/components/ui/card";
-import { Wallet, TrendingUp, Coins, DollarSign, Camera, Clock } from "lucide-react";
+import {
+  Wallet,
+  TrendingUp,
+  Coins,
+  DollarSign,
+  Camera,
+  Clock,
+} from "lucide-react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useNativeBalances } from "@/lib/hooks/useNativeBalances";
@@ -27,13 +34,38 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { eth, matic, isLoading } = useNativeBalances();
   const [overrideAddress, setOverrideAddress] = useState<string>("");
-  const { tokens, isLoading: isTokensLoading, isError: isTokensError, isFetching: isTokensFetching } = useTokenHoldings(overrideAddress ? overrideAddress : undefined);
-  const { data: latestSnapshot, isLoading: isSnapshotLoading, error: snapshotError } = useLatestSnapshot(address);
 
-  const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
+  // Debug logging
+  console.log("🔍 Dashboard - Wallet status:", {
+    address,
+    isConnected,
+    overrideAddress,
+    effectiveAddress: overrideAddress || address,
+  });
+
+  const {
+    tokens,
+    isLoading: isTokensLoading,
+    isError: isTokensError,
+    isFetching: isTokensFetching,
+    error: tokensError,
+  } = useTokenHoldings(overrideAddress ? overrideAddress : undefined);
+  const {
+    data: latestSnapshot,
+    isLoading: isSnapshotLoading,
+    error: snapshotError,
+  } = useLatestSnapshot(address);
+
+  const {
+    data: prices,
+    isLoading: isPricesLoading,
+    isError: isPricesError,
+  } = useQuery({
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
-      const response = await fetch("/api/prices?ids=ethereum,matic-network&vs=usd");
+      const response = await fetch(
+        "/api/prices?ids=ethereum,matic-network&vs=usd",
+      );
       const json = await response.json();
       return json.data || {};
     },
@@ -50,8 +82,14 @@ export default function DashboardPage() {
   const maticUsd = prices?.["matic-network"]?.usd
     ? maticAmount * prices["matic-network"].usd
     : 0;
-  const totalUsd = ethUsd + maticUsd + (tokens?.reduce((acc, t) => acc + (t.valueUsd ?? 0), 0) ?? 0);
-  const isPortfolioLoading = isLoading || (isConnected && isPricesLoading) || (isConnected && isTokensLoading);
+  const totalUsd =
+    ethUsd +
+    maticUsd +
+    (tokens?.reduce((acc, t) => acc + (t.valueUsd ?? 0), 0) ?? 0);
+  const isPortfolioLoading =
+    isLoading ||
+    ((isConnected || !!overrideAddress) && isTokensLoading) ||
+    (isConnected && isPricesLoading);
 
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -63,6 +101,7 @@ export default function DashboardPage() {
       setSaveMsg(null);
 
       const nativeTokens = [] as Array<{
+        chain: "ethereum" | "polygon";
         address: string;
         symbol: string;
         name: string;
@@ -74,6 +113,7 @@ export default function DashboardPage() {
 
       if (eth && prices?.ethereum?.usd) {
         nativeTokens.push({
+          chain: "ethereum",
           address: "native:eth",
           symbol: "ETH",
           name: "Ethereum",
@@ -86,6 +126,7 @@ export default function DashboardPage() {
 
       if (matic && prices?.["matic-network"]?.usd) {
         nativeTokens.push({
+          chain: "polygon",
           address: "native:matic",
           symbol: "MATIC",
           name: "Polygon",
@@ -97,6 +138,7 @@ export default function DashboardPage() {
       }
 
       const erc20Tokens = tokens.map((t) => ({
+        chain: t.chain,
         address: t.contractAddress,
         symbol: t.symbol ?? "",
         name: t.name ?? "",
@@ -121,7 +163,17 @@ export default function DashboardPage() {
     } finally {
       setSaving(false);
     }
-  }, [address, eth, matic, ethAmount, maticAmount, ethUsd, maticUsd, prices, tokens]);
+  }, [
+    address,
+    eth,
+    matic,
+    ethAmount,
+    maticAmount,
+    ethUsd,
+    maticUsd,
+    prices,
+    tokens,
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -135,14 +187,18 @@ export default function DashboardPage() {
         {isConnected && (
           <div className="mt-4 grid gap-2 md:grid-cols-2">
             <div>
-              <label className="text-sm text-muted-foreground">Test with another address (optional)</label>
+              <label className="text-sm text-muted-foreground">
+                Test with another address (optional)
+              </label>
               <Input
                 placeholder="0x... wallet address"
                 value={overrideAddress}
                 onChange={(e) => setOverrideAddress(e.target.value.trim())}
               />
               {overrideAddress && (
-                <p className="text-xs text-muted-foreground mt-1">Testing address override: {overrideAddress}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Testing address override: {overrideAddress}
+                </p>
               )}
             </div>
           </div>
@@ -159,11 +215,76 @@ export default function DashboardPage() {
               investments, and monitor your positions across multiple protocols.
             </p>
             <ConnectButton />
+
+            <div className="mt-8 w-full max-w-md">
+              <div className="text-center mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Or try with a demo address
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">
+                    Test Address
+                  </label>
+                  <Input
+                    placeholder="0x... wallet address"
+                    value={overrideAddress}
+                    onChange={(e) => setOverrideAddress(e.target.value.trim())}
+                  />
+                  {overrideAddress && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Testing with: {overrideAddress}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setOverrideAddress(
+                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                      )
+                    }
+                    className="text-xs"
+                  >
+                    Try Vitalik's Address
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setOverrideAddress(
+                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+                      )
+                    }
+                    className="text-xs"
+                  >
+                    Try Binance Hot Wallet
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setOverrideAddress(
+                        "0x28C6c06298d514Db089934071355E5743bf21d60",
+                      )
+                    }
+                    className="text-xs"
+                  >
+                    Try Binance 14
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {isConnected && (
+      {(isConnected || !!overrideAddress) && (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
             {/* Total Portfolio Value card unchanged except totalUsd now includes ERC-20 */}
@@ -204,14 +325,20 @@ export default function DashboardPage() {
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{2 + (tokens?.length ?? 0)}</div>
-                <p className="text-xs text-muted-foreground">Mainnet + Polygon</p>
+                <div className="text-2xl font-bold">
+                  {2 + (tokens?.length ?? 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Mainnet + Polygon
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">ETH 24h Change</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  ETH 24h Change
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -226,17 +353,23 @@ export default function DashboardPage() {
                     <span
                       className={`$${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
-                      {formatPercentSigned(prices?.ethereum?.usd_24h_change ?? 0)}
+                      {formatPercentSigned(
+                        prices?.ethereum?.usd_24h_change ?? 0,
+                      )}
                     </span>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">vs. previous day</p>
+                <p className="text-xs text-muted-foreground">
+                  vs. previous day
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">MATIC 24h Change</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  MATIC 24h Change
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -251,18 +384,24 @@ export default function DashboardPage() {
                     <span
                       className={`$${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
-                      {formatPercentSigned(prices?.["matic-network"]?.usd_24h_change ?? 0)}
+                      {formatPercentSigned(
+                        prices?.["matic-network"]?.usd_24h_change ?? 0,
+                      )}
                     </span>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">vs. previous day</p>
+                <p className="text-xs text-muted-foreground">
+                  vs. previous day
+                </p>
               </CardContent>
             </Card>
 
             {/* Latest Snapshot Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Latest Snapshot</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Latest Snapshot
+                </CardTitle>
                 <Camera className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -273,8 +412,12 @@ export default function DashboardPage() {
                   </div>
                 ) : snapshotError || !latestSnapshot ? (
                   <>
-                    <div className="text-2xl font-bold text-muted-foreground">-</div>
-                    <p className="text-xs text-muted-foreground">No snapshot yet</p>
+                    <div className="text-2xl font-bold text-muted-foreground">
+                      -
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      No snapshot yet
+                    </p>
                   </>
                 ) : (
                   <>
@@ -284,12 +427,15 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       <span>
-                        {new Date(latestSnapshot.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {new Date(latestSnapshot.createdAt).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
                       </span>
                     </div>
                   </>
@@ -299,10 +445,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="mb-6 flex items-center gap-3">
-            <Button onClick={handleSaveSnapshot} disabled={!isConnected || saving || isPortfolioLoading}>
+            <Button
+              onClick={handleSaveSnapshot}
+              disabled={!isConnected || saving || isPortfolioLoading}
+            >
               {saving ? "Saving…" : "Save Snapshot"}
             </Button>
-            {saveMsg && <span className="text-sm text-muted-foreground">{saveMsg}</span>}
+            {saveMsg && (
+              <span className="text-sm text-muted-foreground">{saveMsg}</span>
+            )}
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -329,7 +480,10 @@ export default function DashboardPage() {
                         <div>
                           <p className="font-medium">Ethereum</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatNumber(ethAmount, { maximumFractionDigits: 6 })} ETH
+                            {formatNumber(ethAmount, {
+                              maximumFractionDigits: 6,
+                            })}{" "}
+                            ETH
                           </p>
                         </div>
                       </div>
@@ -340,7 +494,9 @@ export default function DashboardPage() {
                         <p
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {formatPercentSigned(prices?.ethereum?.usd_24h_change ?? 0)}
+                          {formatPercentSigned(
+                            prices?.ethereum?.usd_24h_change ?? 0,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -353,7 +509,10 @@ export default function DashboardPage() {
                         <div>
                           <p className="font-medium">Polygon</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatNumber(maticAmount, { maximumFractionDigits: 6 })} MATIC
+                            {formatNumber(maticAmount, {
+                              maximumFractionDigits: 6,
+                            })}{" "}
+                            MATIC
                           </p>
                         </div>
                       </div>
@@ -364,7 +523,9 @@ export default function DashboardPage() {
                         <p
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {formatPercentSigned(prices?.["matic-network"]?.usd_24h_change ?? 0)}
+                          {formatPercentSigned(
+                            prices?.["matic-network"]?.usd_24h_change ?? 0,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -376,10 +537,14 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>ERC-20 Token Holdings</CardTitle>
-                <CardDescription>Your ERC-20 balances and USD values</CardDescription>
+                <CardDescription>
+                  Your ERC-20 balances and USD values
+                </CardDescription>
                 <CardAction>
                   {isTokensFetching && (
-                    <span className="text-xs text-muted-foreground">Refreshing…</span>
+                    <span className="text-xs text-muted-foreground">
+                      Refreshing…
+                    </span>
                   )}
                 </CardAction>
               </CardHeader>
@@ -390,9 +555,16 @@ export default function DashboardPage() {
                     <div className="h-6 w-64 bg-muted rounded" />
                   </div>
                 ) : isTokensError ? (
-                  <p className="text-destructive">Failed to load token holdings.</p>
+                  <p className="text-destructive">
+                    Failed to load token holdings
+                    {typeof tokensError?.message === "string"
+                      ? `: ${tokensError.message}`
+                      : "."}
+                  </p>
                 ) : tokens.length === 0 ? (
-                  <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
+                  <p className="text-muted-foreground">
+                    No ERC-20 tokens detected.
+                  </p>
                 ) : (
                   <TokenHoldingsTable tokens={tokens} />
                 )}
@@ -402,7 +574,9 @@ export default function DashboardPage() {
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Portfolio Performance</CardTitle>
-                <CardDescription>Your portfolio value over time</CardDescription>
+                <CardDescription>
+                  Your portfolio value over time
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-64 flex items-center justify-center bg-muted rounded-lg">

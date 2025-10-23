@@ -19,7 +19,7 @@ interface LatestSnapshot {
 
 /**
  * Hook to fetch the latest portfolio snapshot for a wallet address.
- * 
+ *
  * @param address - Ethereum wallet address
  * @returns Query result with latest snapshot data
  */
@@ -32,7 +32,7 @@ export function useLatestSnapshot(address: string | undefined) {
       }
 
       const response = await fetch(`/api/snapshots?address=${address}`);
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error("No snapshot found");

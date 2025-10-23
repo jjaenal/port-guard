@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Prisma schema for PortGuard snapshots
+// Dev uses SQLite; production may override via prisma.config.ts
 
 generator client {
   provider = "prisma-client-js"
@@ -11,33 +11,41 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+enum Chain {
+  ethereum
+  polygon
+}
+
 model PortfolioSnapshot {
-  id          String   @id @default(cuid())
-  address     String
-  totalValue  Float
-  ethBalance  Float
+  id           String   @id @default(cuid())
+  address      String
+  totalValue   Float
+  ethBalance   Float
   maticBalance Float
-  tokenCount  Int
-  createdAt   DateTime @default(now())
-  
-  tokens      TokenSnapshot[]
-  
+  tokenCount   Int
+  createdAt    DateTime @default(now())
+
+  tokens       TokenSnapshot[]
+
+  @@index([address, createdAt])
   @@map("portfolio_snapshots")
 }
 
 model TokenSnapshot {
-  id          String   @id @default(cuid())
-  snapshotId  String
-  address     String
-  symbol      String
-  name        String
-  balance     String   // Store as string to preserve precision
-  decimals    Int
-  price       Float
-  value       Float
-  change24h   Float?
-  
-  snapshot    PortfolioSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(cuid())
+  snapshotId String
+  chain      Chain
+  address    String
+  symbol     String
+  name       String
+  balance    String   // Store as string to preserve precision
+  decimals   Int
+  price      Float
+  value      Float
+  change24h  Float?
+
+  snapshot   PortfolioSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([snapshotId])
   @@map("token_snapshots")
 }

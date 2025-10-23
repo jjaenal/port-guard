@@ -16,14 +16,26 @@ export type SimplePriceItem = {
 export type SimplePriceResponse = Record<string, SimplePriceItem>;
 
 const DEFAULT_TTL_MS = 60_000;
-const SIMPLE_CACHE = new Map<string, { expiresAt: number; data: SimplePriceResponse }>();
-const CONTRACT_CACHE = new Map<string, { expiresAt: number; data: ContractPriceResponse }>();
+const SIMPLE_CACHE = new Map<
+  string,
+  { expiresAt: number; data: SimplePriceResponse }
+>();
+const CONTRACT_CACHE = new Map<
+  string,
+  { expiresAt: number; data: ContractPriceResponse }
+>();
 
 function normalizeIds(ids: string[]): string {
-  return ids.map((i) => i.toLowerCase()).sort().join(",");
+  return ids
+    .map((i) => i.toLowerCase())
+    .sort()
+    .join(",");
 }
 function normalizeAddresses(addrs: string[]): string {
-  return addrs.map((a) => a.toLowerCase()).sort().join(",");
+  return addrs
+    .map((a) => a.toLowerCase())
+    .sort()
+    .join(",");
 }
 
 export async function getSimplePrices(

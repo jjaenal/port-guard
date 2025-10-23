@@ -14,6 +14,11 @@ export type TokenHolding = {
   valueUsd?: number;
 };
 
+// DTO type for client-side serialization (BigInt -> string)
+export type TokenHoldingDTO = Omit<TokenHolding, "balance"> & {
+  balance: string;
+};
+
 type AlchemyBalanceItem = {
   contractAddress: string;
   tokenBalance: string; // hex or decimal string
@@ -56,7 +61,10 @@ function platformIdForChain(chain: ChainKey): string {
   }
 }
 
-async function rpcFetch<T>(url: string, body: { method: string; params?: unknown[] }): Promise<T> {
+async function rpcFetch<T>(
+  url: string,
+  body: { method: string; params?: unknown[] },
+): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -68,16 +76,26 @@ async function rpcFetch<T>(url: string, body: { method: string; params?: unknown
   return json.result as T;
 }
 
-async function getBalances(chain: ChainKey, address: string, apiKey: string): Promise<AlchemyBalanceItem[]> {
+async function getBalances(
+  chain: ChainKey,
+  address: string,
+  apiKey: string,
+): Promise<AlchemyBalanceItem[]> {
   const endpoint = ALCHEMY_ENDPOINTS[chain](apiKey);
   const result = await rpcFetch<AlchemyBalancesResponse>(endpoint, {
     method: "alchemy_getTokenBalances",
     params: [address],
   });
-  return result.tokenBalances.filter((b) => b.tokenBalance && b.tokenBalance !== "0");
+  return result.tokenBalances.filter(
+    (b) => b.tokenBalance && b.tokenBalance !== "0",
+  );
 }
 
-async function getMetadata(chain: ChainKey, contracts: string[], apiKey: string): Promise<Record<string, TokenMetadata>> {
+async function getMetadata(
+  chain: ChainKey,
+  contracts: string[],
+  apiKey: string,
+): Promise<Record<string, TokenMetadata>> {
   const endpoint = ALCHEMY_ENDPOINTS[chain](apiKey);
   const out: Record<string, TokenMetadata> = {};
   const batchSize = 10;
@@ -90,8 +108,8 @@ async function getMetadata(chain: ChainKey, contracts: string[], apiKey: string)
           params: [addr],
         })
           .then((r) => ({ addr, r }))
-          .catch(() => ({ addr, r: {} as TokenMetadata }))
-      )
+          .catch(() => ({ addr, r: {} as TokenMetadata })),
+      ),
     );
     for (const { addr, r } of results) {
       out[addr.toLowerCase()] = {
@@ -105,58 +123,120 @@ async function getMetadata(chain: ChainKey, contracts: string[], apiKey: string)
 }
 
 // Simple in-memory cache for token balances
-const balancesCache: Record<string, { timestamp: number; data: AlchemyBalanceItem[] }> = {};
-const metadataCache: Record<string, { timestamp: number; data: Record<string, TokenMetadata> }> = {};
-const pricesCache: Record<string, { timestamp: number; data: Record<string, { usd?: number }> }> = {};
+const balancesCache: Record<
+  string,
+  { timestamp: number; data: AlchemyBalanceItem[] }
+> = {};
+const metadataCache: Record<
+  string,
+  { timestamp: number; data: Record<string, TokenMetadata> }
+> = {};
+const pricesCache: Record<
+  string,
+  { timestamp: number; data: Record<string, { usd?: number }> }
+> = {};
 
 // Cache TTL in milliseconds
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export async function getTokenBalances(address: string, chainId: number): Promise<TokenHolding[]> {
-  const apiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
-  if (!apiKey) return [];
+export async function getTokenBalances(
+  address: string,
+  chainId: number,
+): Promise<TokenHolding[]> {
+  // Prefer server-only keys when available, fallback to public keys
+  const apiKey =
+    chainId === 1
+      ? process.env.ALCHEMY_API_KEY_ETHEREUM ||
+        process.env.NEXT_PUBLIC_ALCHEMY_API_KEY_ETHEREUM ||
+        process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ||
+        ""
+      : chainId === 137
+        ? process.env.ALCHEMY_API_KEY_POLYGON ||
+          process.env.NEXT_PUBLIC_ALCHEMY_API_KEY_POLYGON ||
+          process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ||
+          ""
+        : process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+
+  if (!apiKey) {
+    console.warn("⚠️ No Alchemy API key found for chain", chainId);
+    return [];
+  }
+
+  console.log(`🔍 Getting token balances for ${address} on chain ${chainId}`);
 
   const chain = chainKeyFromId(chainId);
   const now = Date.now();
   const cacheKey = `${chain}:${address.toLowerCase()}`;
-  
+
   // Get balances (from cache if available)
   let balances: AlchemyBalanceItem[];
   const cachedBalances = balancesCache[cacheKey];
   if (cachedBalances && now - cachedBalances.timestamp < CACHE_TTL) {
+    console.log(`📦 Using cached balances for ${chain}`);
     balances = cachedBalances.data;
   } else {
-    balances = await getBalances(chain, address, apiKey);
-    balancesCache[cacheKey] = { timestamp: now, data: balances };
+    console.log(`🌐 Fetching fresh balances from Alchemy for ${chain}`);
+    try {
+      balances = await getBalances(chain, address, apiKey);
+      balancesCache[cacheKey] = { timestamp: now, data: balances };
+      console.log(`✅ Got ${balances.length} token balances for ${chain}`);
+    } catch (error) {
+      console.error(`❌ Error fetching balances for ${chain}:`, error);
+      throw error;
+    }
   }
 
-  const contracts = Array.from(new Set(balances.map((b) => b.contractAddress.toLowerCase())));
-  
+  const contracts = Array.from(
+    new Set(balances.map((b) => b.contractAddress.toLowerCase())),
+  );
+
   // Get metadata (from cache if available)
-  const metaCacheKey = `${chain}:${contracts.join(',')}`;
+  const metaCacheKey = `${chain}:${contracts.join(",")}`;
   let meta: Record<string, TokenMetadata>;
   const cachedMeta = metadataCache[metaCacheKey];
   if (cachedMeta && now - cachedMeta.timestamp < CACHE_TTL) {
+    console.log(`📦 Using cached metadata for ${chain}`);
     meta = cachedMeta.data;
   } else {
-    meta = await getMetadata(chain, contracts, apiKey);
-    metadataCache[metaCacheKey] = { timestamp: now, data: meta };
+    console.log(`🌐 Fetching fresh metadata from Alchemy for ${chain}`);
+    try {
+      meta = await getMetadata(chain, contracts, apiKey);
+      metadataCache[metaCacheKey] = { timestamp: now, data: meta };
+      console.log(
+        `✅ Got metadata for ${Object.keys(meta).length} tokens on ${chain}`,
+      );
+    } catch (error) {
+      console.error(`❌ Error fetching metadata for ${chain}:`, error);
+      throw error;
+    }
   }
 
   // Get prices (from cache if available)
-  const pricesCacheKey = `${platformIdForChain(chain)}:${contracts.join(',')}`;
+  const pricesCacheKey = `${platformIdForChain(chain)}:${contracts.join(",")}`;
   let prices: Record<string, { usd?: number }> = {};
   const cachedPrices = pricesCache[pricesCacheKey];
-  
+
   if (contracts.length > 0) {
     if (cachedPrices && now - cachedPrices.timestamp < CACHE_TTL) {
+      console.log(`📦 Using cached prices for ${chain}`);
       prices = cachedPrices.data;
     } else {
-      prices = await fetch(`/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd`)
-        .then((res) => res.json())
-        .then((json) => json.data || {})
-        .catch(() => ({}));
-      pricesCache[pricesCacheKey] = { timestamp: now, data: prices };
+      console.log(`🌐 Fetching fresh prices for ${chain}`);
+      try {
+        prices = await fetch(
+          `/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd`,
+        )
+          .then((res) => res.json())
+          .then((json) => json.data || {});
+        pricesCache[pricesCacheKey] = { timestamp: now, data: prices };
+        console.log(
+          `✅ Got prices for ${Object.keys(prices).length} tokens on ${chain}`,
+        );
+      } catch (error) {
+        console.error(`❌ Error fetching prices for ${chain}:`, error);
+        // Don't throw here, continue without prices
+        prices = {};
+      }
     }
   }
 
@@ -184,5 +264,6 @@ export async function getTokenBalances(address: string, chainId: number): Promis
 
   // Sort by value desc
   tokens.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
+  console.log(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
   return tokens;
 }

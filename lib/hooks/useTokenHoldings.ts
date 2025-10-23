@@ -2,37 +2,56 @@
 
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
-import { getTokenBalances, type TokenHolding } from "@/lib/blockchain/balances";
+import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 
 export function useTokenHoldings(addressOverride?: string) {
   const { address } = useAccount();
-  const apiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
-
   const effectiveAddress = (addressOverride ?? address)?.toLowerCase();
 
-  const query = useQuery<{ tokens: TokenHolding[] } | null>({
+  const query = useQuery<{
+    tokens: TokenHoldingDTO[];
+    errors?: Record<string, string>;
+  } | null>({
     queryKey: ["erc20-holdings", effectiveAddress],
-    enabled: !!effectiveAddress && !!apiKey,
-    staleTime: 300_000, // 5 minutes - match server cache
-    gcTime: 600_000, // keep cache for 10 minutes
+    enabled: !!effectiveAddress, // only need an address; server endpoint uses server env keys
+    staleTime: 300_000,
+    gcTime: 600_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 300_000, // background refresh every 5 minutes
+    refetchInterval: 300_000,
     retry: 1,
     placeholderData: (prev) => prev ?? null,
     queryFn: async () => {
-      if (!effectiveAddress || !apiKey) return null;
+      if (!effectiveAddress) return null;
 
-      // Fetch ERC-20 balances and prices via util for Ethereum (1) and Polygon (137)
-      const [ethTokens, polygonTokens] = await Promise.all([
-        getTokenBalances(effectiveAddress, 1),
-        getTokenBalances(effectiveAddress, 137),
-      ]);
-
-      const tokens: TokenHolding[] = [...ethTokens, ...polygonTokens].sort(
-        (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0)
+      console.log(
+        "🔍 Fetching token holdings via server API for:",
+        effectiveAddress,
       );
 
-      return { tokens };
+      const res = await fetch(`/api/balances?address=${effectiveAddress}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Balances API error: ${res.status} ${text}`);
+      }
+      const json = await res.json();
+      const tokens: TokenHoldingDTO[] = json.tokens ?? [];
+      const errors: Record<string, string> | undefined = json.errors;
+
+      if (errors) {
+        if (errors.ethereum)
+          console.error("❌ ETH balances error:", errors.ethereum);
+        if (errors.polygon)
+          console.error("❌ Polygon balances error:", errors.polygon);
+      }
+
+      if (tokens.length === 0 && errors && errors.ethereum && errors.polygon) {
+        throw new Error(
+          `Both chains failed: ETH(${errors.ethereum}), POLYGON(${errors.polygon})`,
+        );
+      }
+
+      console.log("✅ Total tokens (server API):", tokens.length);
+      return { tokens, errors };
     },
   });
 
@@ -41,5 +60,6 @@ export function useTokenHoldings(addressOverride?: string) {
     isLoading: query.isLoading,
     isError: query.isError,
     isFetching: query.isFetching,
+    error: query.error,
   };
 }

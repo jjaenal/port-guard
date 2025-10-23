@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSimplePrices, getTokenPricesByAddress } from "@/lib/utils/coingecko";
+import {
+  getSimplePrices,
+  getTokenPricesByAddress,
+} from "@/lib/utils/coingecko";
 
 // Cache configuration - 5 minutes (300 seconds)
 export const revalidate = 300;
@@ -15,15 +18,25 @@ export async function GET(req: Request) {
 
   try {
     if (ids) {
-      const idList = ids.split(",").map((s) => s.trim()).filter(Boolean);
+      const idList = ids
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const data = await getSimplePrices(idList, vs);
       return NextResponse.json({ source: "coingecko:simple", data });
     }
 
     if (platform && contracts) {
-      const addrList = contracts.split(",").map((s) => s.trim()).filter(Boolean);
+      const addrList = contracts
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const data = await getTokenPricesByAddress(platform, addrList, vs);
-      return NextResponse.json({ source: "coingecko:contract", platform, data });
+      return NextResponse.json({
+        source: "coingecko:contract",
+        platform,
+        data,
+      });
     }
 
     return NextResponse.json(
