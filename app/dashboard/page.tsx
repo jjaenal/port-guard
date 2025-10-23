@@ -26,6 +26,8 @@ import {
   TableCaption,
 } from "@/components/ui/table";
 import { formatCurrency, formatNumber, formatPercentSigned, formatCurrencyTiny } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useState, useCallback } from "react";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -54,6 +56,76 @@ export default function DashboardPage() {
     : 0;
   const totalUsd = ethUsd + maticUsd + (tokens?.reduce((acc, t) => acc + (t.valueUsd ?? 0), 0) ?? 0);
   const isPortfolioLoading = isLoading || (isConnected && isPricesLoading) || (isConnected && isTokensLoading);
+
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  const handleSaveSnapshot = useCallback(async () => {
+    if (!address) return;
+    try {
+      setSaving(true);
+      setSaveMsg(null);
+
+      const nativeTokens = [] as Array<{
+        address: string;
+        symbol: string;
+        name: string;
+        balance: string;
+        decimals: number;
+        price: number;
+        value: number;
+      }>;
+
+      if (eth && prices?.ethereum?.usd) {
+        nativeTokens.push({
+          address: "native:eth",
+          symbol: "ETH",
+          name: "Ethereum",
+          balance: String(ethAmount),
+          decimals: eth.decimals,
+          price: prices.ethereum.usd,
+          value: ethUsd,
+        });
+      }
+
+      if (matic && prices?.["matic-network"]?.usd) {
+        nativeTokens.push({
+          address: "native:matic",
+          symbol: "MATIC",
+          name: "Polygon",
+          balance: String(maticAmount),
+          decimals: matic.decimals,
+          price: prices["matic-network"].usd,
+          value: maticUsd,
+        });
+      }
+
+      const erc20Tokens = tokens.map((t) => ({
+        address: t.contractAddress,
+        symbol: t.symbol ?? "",
+        name: t.name ?? "",
+        balance: t.formatted ?? "0",
+        decimals: t.decimals ?? 18,
+        price: t.priceUsd ?? 0,
+        value: t.valueUsd ?? 0,
+      }));
+
+      const payload = { address, tokens: [...nativeTokens, ...erc20Tokens] };
+      const res = await fetch("/api/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to save snapshot");
+      setSaveMsg("Snapshot saved ✓");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setSaveMsg(`Failed to save snapshot: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [address, eth, matic, ethAmount, maticAmount, ethUsd, maticUsd, prices, tokens]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -175,6 +247,13 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">vs. previous day</p>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="mb-6 flex items-center gap-3">
+            <Button onClick={handleSaveSnapshot} disabled={!isConnected || saving || isPortfolioLoading}>
+              {saving ? "Saving…" : "Save Snapshot"}
+            </Button>
+            {saveMsg && <span className="text-sm text-muted-foreground">{saveMsg}</span>}
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
