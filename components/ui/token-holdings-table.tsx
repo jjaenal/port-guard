@@ -46,6 +46,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     "all" | "ethereum" | "polygon"
   >("all");
   const [search, setSearch] = useState<string>("");
+  const [hideSmall, setHideSmall] = useState<boolean>(false);
 
   // Total value for portfolio percentage (use full tokens list, not filtered)
   const totalValue = (tokens ?? []).reduce((sum, t) => sum + (t.valueUsd ?? 0), 0);
@@ -57,6 +58,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       const sd = localStorage.getItem("tokenSortDir");
       const cf = localStorage.getItem("tokenChainFilter");
       const sq = localStorage.getItem("tokenSearchQuery");
+      const hs = localStorage.getItem("tokenHideSmall");
       if (
         sk === "valueUsd" ||
         sk === "balance" ||
@@ -69,6 +71,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       if (cf === "all" || cf === "ethereum" || cf === "polygon")
         setChainFilter(cf as any);
       if (typeof sq === "string") setSearch(sq);
+      if (hs === "true" || hs === "false") setHideSmall(hs === "true");
     } catch {}
   }, []);
 
@@ -79,6 +82,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenSortDir", sortDir);
       localStorage.setItem("tokenChainFilter", chainFilter);
       localStorage.setItem("tokenSearchQuery", search);
+      localStorage.setItem("tokenHideSmall", String(hideSmall));
     } catch {}
   }, [sortKey, sortDir, chainFilter, search]);
 
@@ -87,7 +91,8 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     const q = search.trim().toLowerCase();
     const text = `${t.symbol ?? ""} ${t.name ?? ""}`.toLowerCase();
     const searchOk = q ? text.includes(q) : true;
-    return chainOk && searchOk;
+    const smallOk = hideSmall ? ((t.valueUsd ?? Infinity) >= 1) : true;
+    return chainOk && searchOk && smallOk;
   });
 
   const sortedTokens = [...filtered].sort((a, b) => {
@@ -188,6 +193,14 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             onClick={() => setChainFilter("polygon")}
           >
             Polygon
+          </button>
+          <button
+            className={`px-2 py-1 rounded border text-xs ${hideSmall ? "bg-muted" : ""}`}
+            onClick={() => setHideSmall((v) => !v)}
+            aria-pressed={hideSmall}
+            aria-label="Toggle hide small balances"
+          >
+            Hide <$1
           </button>
         </div>
         <input
