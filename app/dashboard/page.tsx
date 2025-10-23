@@ -27,6 +27,7 @@ import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
@@ -644,6 +645,11 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Snapshot History</CardTitle>
                 <CardDescription>Last 5 snapshots for this wallet</CardDescription>
+                <CardAction>
+                  <Link href="/snapshots">
+                    <Button variant="outline" size="sm">View All</Button>
+                  </Link>
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {isHistoryLoading && (

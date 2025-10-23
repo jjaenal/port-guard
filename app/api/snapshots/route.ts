@@ -3,17 +3,40 @@ import { PrismaClient } from "@/lib/generated/prisma";
 
 const prisma = new PrismaClient();
 
-// GET /api/snapshots?address=0x...
+// GET /api/snapshots?address=0x...&limit=5
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const address = searchParams.get("address");
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? Math.max(1, Math.min(50, Number(limitParam))) : 1;
+    const offsetParam = searchParams.get("offset");
+    const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
 
     if (!address) {
       return NextResponse.json(
         { error: "Address parameter is required" },
         { status: 400 },
       );
+    }
+
+    if (limit > 1) {
+      // Return a list of recent snapshots for the address
+      const snapshots = await prisma.portfolioSnapshot.findMany({
+        where: { address: address.toLowerCase() },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          address: true,
+          totalValue: true,
+          createdAt: true,
+          tokenCount: true,
+        },
+      });
+
+      return NextResponse.json({ data: snapshots });
     }
 
     // Get latest snapshot for the address
