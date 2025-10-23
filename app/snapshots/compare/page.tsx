@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
 import { useAccount } from "wagmi";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +22,19 @@ export default function CompareSnapshotsPage() {
   
   const [selectedSnapshots, setSelectedSnapshots] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
+  const [copyMsg, setCopyMsg] = useState("");
+  const [tokenFilter, setTokenFilter] = useState<"all" | "up" | "down">("all");
+  const [tokenQuery, setTokenQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"abs" | "percent" | "symbol">("abs");
   
+  useEffect(() => {
+    const a = params.get("a");
+    const b = params.get("b");
+    if (a && b) {
+      setSelectedSnapshots([a, b]);
+      setCompareMode(true);
+    }
+  }, [params]);
   const { data: snapshot1Data, isLoading: isLoading1 } = useSnapshotDetail(
     selectedSnapshots[0]
   );
@@ -128,6 +142,30 @@ export default function CompareSnapshotsPage() {
   };
   
   const comparison = calculateDifference();
+  const displayTokens = useMemo(() => {
+    if (!comparison) return [] as Array<{
+      symbol: string; name: string; snapshot1Value: number; snapshot1Balance: string; snapshot2Value: number; snapshot2Balance: string; diff: number; percentDiff: number;
+    }>;
+    let arr = [...comparison.tokenComparisons];
+    if (tokenFilter !== "all") {
+      arr = arr.filter(t => (tokenFilter === "up" ? t.diff > 0 : t.diff < 0));
+    }
+    if (tokenQuery) {
+      const q = tokenQuery.toLowerCase();
+      arr = arr.filter(t => t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q));
+    }
+    switch (sortBy) {
+      case "percent":
+        arr.sort((a, b) => Math.abs(b.percentDiff) - Math.abs(a.percentDiff));
+        break;
+      case "symbol":
+        arr.sort((a, b) => a.symbol.localeCompare(b.symbol));
+        break;
+      default:
+        arr.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+    }
+    return arr;
+  }, [comparison, tokenFilter, tokenQuery, sortBy]);
   
   if (!isConnected) {
     return (
@@ -167,6 +205,22 @@ export default function CompareSnapshotsPage() {
             <Button variant="outline" onClick={resetSelection}>
               Reset
             </Button>
+          )}
+          {compareMode && selectedSnapshots.length === 2 && (
+            <>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const url = `${window.location.origin}/snapshots/compare?a=${selectedSnapshots[0]}&b=${selectedSnapshots[1]}`;
+                  await navigator.clipboard.writeText(url);
+                  setCopyMsg("Link copied");
+                  setTimeout(() => setCopyMsg(""), 2000);
+                }}
+              >
+                Copy Link
+              </Button>
+              {copyMsg && <span className="text-xs text-muted-foreground">{copyMsg}</span>}
+            </>
           )}
           <Link href="/snapshots">
             <Button variant="outline">All Snapshots</Button>
@@ -373,6 +427,21 @@ export default function CompareSnapshotsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant={tokenFilter === "all" ? "default" : "outline"} onClick={() => setTokenFilter("all")}>All</Button>
+                      <Button size="sm" variant={tokenFilter === "up" ? "default" : "outline"} onClick={() => setTokenFilter("up")}>Up</Button>
+                      <Button size="sm" variant={tokenFilter === "down" ? "default" : "outline"} onClick={() => setTokenFilter("down")}>Down</Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input value={tokenQuery} onChange={(e) => setTokenQuery(e.target.value)} placeholder="Search token..." className="w-48" />
+                      <select className="border rounded px-2 py-1 text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+                        <option value="abs">Sort: Diff</option>
+                        <option value="percent">Sort: Percent</option>
+                        <option value="symbol">Sort: Symbol</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
@@ -384,7 +453,7 @@ export default function CompareSnapshotsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {comparison?.tokenComparisons.map((token, i) => (
+                        {displayTokens.map((token, i) => (
                           <tr key={i} className="border-b">
                             <td className="py-2">
                               <div className="font-medium">{token.symbol}</div>
