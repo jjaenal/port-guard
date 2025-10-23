@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "wagmi";
@@ -13,8 +13,10 @@ import { ArrowLeft, ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
 import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
 import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
+import { PortfolioChart } from "@/components/ui/portfolio-chart";
+import type { SeriesPoint } from "@/lib/hooks/usePortfolioSeries";
 
-export default function CompareSnapshotsPage() {
+function CompareSnapshotsContent() {
   const { address, isConnected } = useAccount();
   const [page, setPage] = useState(0);
   const limit = 10;
@@ -26,10 +28,28 @@ export default function CompareSnapshotsPage() {
   const [tokenFilter, setTokenFilter] = useState<"all" | "up" | "down">("all");
   const [tokenQuery, setTokenQuery] = useState("");
   const [sortBy, setSortBy] = useState<"abs" | "percent" | "symbol">("abs");
+  const [highlightThreshold, setHighlightThreshold] = useState<number>(0);
+  const params = useSearchParams();
   
   useEffect(() => {
     const a = params.get("a");
     const b = params.get("b");
+    const s = params.get("s");
+
+    // Decode short link if provided (base64 JSON { a, b })
+    if (s && !a && !b) {
+      try {
+        const decoded = JSON.parse(atob(s));
+        const sa = decoded?.a as string | undefined;
+        const sb = decoded?.b as string | undefined;
+        if (sa && sb) {
+          setSelectedSnapshots([sa, sb]);
+          setCompareMode(true);
+          return;
+        }
+      } catch {}
+    }
+
     if (a && b) {
       setSelectedSnapshots([a, b]);
       setCompareMode(true);
@@ -142,6 +162,38 @@ export default function CompareSnapshotsPage() {
   };
   
   const comparison = calculateDifference();
+  const comparisonPoints: SeriesPoint[] = useMemo(() => {
+    if (!snapshot1Data?.data || !snapshot2Data?.data) return [];
+    return [
+      { t: new Date(snapshot1Data.data.createdAt).getTime(), v: snapshot1Data.data.totalValue },
+      { t: new Date(snapshot2Data.data.createdAt).getTime(), v: snapshot2Data.data.totalValue },
+    ];
+  }, [snapshot1Data?.data, snapshot2Data?.data]);
+  
+  const exportJSON = () => {
+    if (!comparison) return;
+    const blob = new Blob([JSON.stringify(displayTokens, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "token-changes.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  
+  const exportCSV = () => {
+    if (!comparison) return;
+    const header = ["symbol","name","snapshot1Value","snapshot1Balance","snapshot2Value","snapshot2Balance","diff","percentDiff"];
+    const rows = displayTokens.map((t) => [t.symbol, t.name, t.snapshot1Value, t.snapshot1Balance, t.snapshot2Value, t.snapshot2Balance, t.diff, t.percentDiff]);
+    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "token-changes.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const displayTokens = useMemo(() => {
     if (!comparison) return [] as Array<{
       symbol: string; name: string; snapshot1Value: number; snapshot1Balance: string; snapshot2Value: number; snapshot2Balance: string; diff: number; percentDiff: number;
@@ -218,6 +270,18 @@ export default function CompareSnapshotsPage() {
                 }}
               >
                 Copy Link
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const s = btoa(JSON.stringify({ a: selectedSnapshots[0], b: selectedSnapshots[1] }));
+                  const url = `${window.location.origin}/snapshots/compare?s=${s}`;
+                  await navigator.clipboard.writeText(url);
+                  setCopyMsg("Short link copied");
+                  setTimeout(() => setCopyMsg(""), 2000);
+                }}
+              >
+                Copy Short Link
               </Button>
               {copyMsg && <span className="text-xs text-muted-foreground">{copyMsg}</span>}
             </>
@@ -416,6 +480,9 @@ export default function CompareSnapshotsPage() {
                       </div>
                     </div>
                   </div>
+                  <div className="mt-4 overflow-x-auto">
+                    <PortfolioChart points={comparisonPoints} width={700} height={180} />
+                  </div>
                 </CardContent>
               </Card>
               
@@ -435,11 +502,14 @@ export default function CompareSnapshotsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Input value={tokenQuery} onChange={(e) => setTokenQuery(e.target.value)} placeholder="Search token..." className="w-48" />
+                      <Input type="number" value={highlightThreshold} onChange={(e) => setHighlightThreshold(Number(e.target.value) || 0)} placeholder="Highlight ≥ USD" className="w-40" />
                       <select className="border rounded px-2 py-1 text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
                         <option value="abs">Sort: Diff</option>
                         <option value="percent">Sort: Percent</option>
                         <option value="symbol">Sort: Symbol</option>
                       </select>
+                      <Button size="sm" variant="outline" onClick={exportCSV}>Export CSV</Button>
+                      <Button size="sm" variant="outline" onClick={exportJSON}>Export JSON</Button>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
@@ -454,7 +524,7 @@ export default function CompareSnapshotsPage() {
                       </thead>
                       <tbody>
                         {displayTokens.map((token, i) => (
-                          <tr key={i} className="border-b">
+                          <tr key={i} className={`border-b ${Math.abs(token.diff) >= highlightThreshold ? "bg-yellow-50" : ""}`}> 
                             <td className="py-2">
                               <div className="font-medium">{token.symbol}</div>
                               <div className="text-xs text-muted-foreground">{token.name}</div>
@@ -491,5 +561,13 @@ export default function CompareSnapshotsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CompareSnapshotsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <CompareSnapshotsContent />
+    </Suspense>
   );
 }
