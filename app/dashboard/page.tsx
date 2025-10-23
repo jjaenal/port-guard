@@ -8,7 +8,7 @@ import {
   CardTitle,
   CardAction,
 } from "@/components/ui/card";
-import { Wallet, TrendingUp, Coins, DollarSign } from "lucide-react";
+import { Wallet, TrendingUp, Coins, DollarSign, Camera, Clock } from "lucide-react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useNativeBalances } from "@/lib/hooks/useNativeBalances";
@@ -28,11 +28,13 @@ import {
 import { formatCurrency, formatNumber, formatPercentSigned, formatCurrencyTiny } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState, useCallback } from "react";
+import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { eth, matic, isLoading } = useNativeBalances();
   const { tokens, isLoading: isTokensLoading, isError: isTokensError, isFetching: isTokensFetching } = useTokenHoldings();
+  const { data: latestSnapshot, isLoading: isSnapshotLoading, error: snapshotError } = useLatestSnapshot(address);
 
   const { data: prices, isLoading: isPricesLoading, isError: isPricesError } = useQuery({
     queryKey: ["api-prices", "eth-matic"],
@@ -154,7 +156,7 @@ export default function DashboardPage() {
 
       {isConnected && (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
             {/* Total Portfolio Value card unchanged except totalUsd now includes ERC-20 */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -245,6 +247,44 @@ export default function DashboardPage() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">vs. previous day</p>
+              </CardContent>
+            </Card>
+
+            {/* Latest Snapshot Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Latest Snapshot</CardTitle>
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isSnapshotLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-7 w-24 bg-muted rounded mb-2" />
+                    <div className="h-3 w-32 bg-muted rounded" />
+                  </div>
+                ) : snapshotError || !latestSnapshot ? (
+                  <>
+                    <div className="text-2xl font-bold text-muted-foreground">-</div>
+                    <p className="text-xs text-muted-foreground">No snapshot yet</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(latestSnapshot.totalValue)}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>
+                        {new Date(latestSnapshot.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
