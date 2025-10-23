@@ -19,7 +19,7 @@ function platformIdForChain(chain: "ethereum" | "polygon"): string {
 }
 
 /**
- * Menghitung seri nilai portofolio (USD) 7 hari terakhir
+ * Menghitung seri nilai portofolio (USD) untuk range hari tertentu
  * berdasarkan saldo ETH, MATIC, dan ERC-20 (top 10 by value).
  */
 export function usePortfolioSeries(
@@ -27,11 +27,14 @@ export function usePortfolioSeries(
   maticAmount: number,
   erc20Tokens: TokenHoldingDTO[],
   enabled: boolean,
+  rangeDays: number = 7,
 ): PortfolioSeriesResult {
   const topTokens = (erc20Tokens ?? [])
     .slice() // copy
     .sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0))
     .slice(0, 10);
+
+  const interval: "hourly" | "daily" = rangeDays <= 7 ? "hourly" : "daily";
 
   const query = useQuery({
     queryKey: [
@@ -40,13 +43,15 @@ export function usePortfolioSeries(
         ethAmount,
         maticAmount,
         tokens: topTokens.map((t) => t.contractAddress),
+        rangeDays,
+        interval,
       },
     ],
     queryFn: async () => {
       const [ethPrices, maticPrices]: [MarketChartPoint[], MarketChartPoint[]] =
         await Promise.all([
-          getMarketChart("ethereum", "usd", 7, "hourly", 60_000),
-          getMarketChart("matic-network", "usd", 7, "hourly", 60_000),
+          getMarketChart("ethereum", "usd", rangeDays, interval, 60_000),
+          getMarketChart("matic-network", "usd", rangeDays, interval, 60_000),
         ]);
 
       // Ambil histori harga untuk token ERC-20 top
@@ -57,8 +62,8 @@ export function usePortfolioSeries(
             platform,
             t.contractAddress,
             "usd",
-            7,
-            "hourly",
+            rangeDays,
+            interval,
             60_000,
           );
           return [t.contractAddress, prices] as const;
@@ -83,7 +88,7 @@ export function usePortfolioSeries(
         // Tambahkan nilai ERC-20
         for (const tok of topTokens) {
           const series = tokenCharts.get(tok.contractAddress) ?? [];
-          // Cari harga terdekat by exact timestamp (Coingecko hourly timestamps should align)
+          // Cari harga terdekat by exact timestamp (Coingecko timestamps align per interval)
           const priceAtT = series.find((pt) => pt[0] === t)?.[1] ?? 0;
           const qty = tok.formatted ? Number(tok.formatted) : 0;
           valueUsd += qty * priceAtT;

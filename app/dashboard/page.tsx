@@ -93,17 +93,18 @@ export default function DashboardPage() {
     ((isConnected || !!overrideAddress) && isTokensLoading) ||
     (isConnected && isPricesLoading);
 
+  const [rangeDays, setRangeDays] = useState<number>(7);
   const { points: portfolioPoints, isLoading: isSeriesLoading } =
     usePortfolioSeries(
       ethAmount,
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
+      rangeDays,
     );
 
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
-
   const handleSaveSnapshot = useCallback(async () => {
     if (!address) return;
     try {
@@ -469,10 +470,42 @@ export default function DashboardPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Portfolio Performance (7d)</CardTitle>
+                <CardTitle>Portfolio Performance ({rangeDays}d)</CardTitle>
                 <CardDescription>
                   Value based on ETH, MATIC & top ERC-20
                 </CardDescription>
+                <CardAction>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={rangeDays === 1 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setRangeDays(1)}
+                    >
+                      1d
+                    </Button>
+                    <Button
+                      variant={rangeDays === 7 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setRangeDays(7)}
+                    >
+                      7d
+                    </Button>
+                    <Button
+                      variant={rangeDays === 30 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setRangeDays(30)}
+                    >
+                      30d
+                    </Button>
+                    <Button
+                      variant={rangeDays === 90 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setRangeDays(90)}
+                    >
+                      90d
+                    </Button>
+                  </div>
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {isSeriesLoading ? (
