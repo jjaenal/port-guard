@@ -14,7 +14,7 @@ export function useSnapshotHistory(
   page: number = 0,
 ) {
   const offset = Math.max(0, page) * Math.max(1, limit);
-  return useQuery<{ data: SnapshotItem[] } | null>({
+  return useQuery<{ data: SnapshotItem[]; total: number } | null>({
     queryKey: ["snapshot-history", address?.toLowerCase(), limit, page],
     enabled: !!address && limit > 0,
     staleTime: 300_000,
@@ -29,7 +29,7 @@ export function useSnapshotHistory(
         return null;
       }
       const json = await res.json();
-      return json as { data: SnapshotItem[] };
+      return json as { data: SnapshotItem[]; total: number };
     },
   });
 }

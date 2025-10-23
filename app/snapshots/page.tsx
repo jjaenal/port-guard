@@ -82,11 +82,15 @@ export default function SnapshotsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
-                disabled={isLoading || ((snapshotHistory?.data?.length ?? 0) < limit)}
+                disabled={
+                  isLoading || ((page + 1) * limit >= (snapshotHistory?.total ?? Number.MAX_SAFE_INTEGER))
+                }
               >
                 Next
               </Button>
-              <span className="text-xs text-muted-foreground">Page {page + 1}</span>
+              <span className="text-xs text-muted-foreground">
+                Page {page + 1}{snapshotHistory?.total ? ` of ${Math.ceil(snapshotHistory.total / limit)}` : ""}
+              </span>
             </div>
           </CardContent>
         </Card>

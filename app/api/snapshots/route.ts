@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ data: snapshots });
+      const total = await prisma.portfolioSnapshot.count({
+        where: { address: address.toLowerCase() },
+      });
+
+      return NextResponse.json({ data: snapshots, total });
     }
 
     // Get latest snapshot for the address
