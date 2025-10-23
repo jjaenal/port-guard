@@ -78,15 +78,15 @@
   );
   ```
 
-- [ ] Setup Prisma ORM
+- [x] Setup Prisma ORM
   ```bash
   npm install prisma @prisma/client
   npx prisma init
   ```
-- [ ] Create Prisma schema
-- [ ] Run first migration
+- [x] Create Prisma schema
+- [x] Run first migration
 - [ ] Setup Upstash Redis (free tier)
-- [ ] Test database connection
+- [x] Test database connection
 
 ### Day 5-7: Web3 Integration Basics
 
