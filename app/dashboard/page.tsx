@@ -16,19 +16,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { formatUnits } from "viem";
 import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableCaption,
-} from "@/components/ui/table";
-import { formatCurrency, formatNumber, formatPercentSigned, formatCurrencyTiny } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState, useCallback } from "react";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
+import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -385,49 +377,7 @@ export default function DashboardPage() {
                 ) : tokens.length === 0 ? (
                   <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Token</TableHead>
-                        <TableHead>Chain</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead>Price (USD)</TableHead>
-                        <TableHead>Value (USD)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tokens.map((t) => (
-                        <TableRow key={`${t.chain}-${t.contractAddress}`}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-muted overflow-hidden flex items-center justify-center text-[10px] font-bold">
-                                <img
-                                  src={`https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${t.chain}/assets/${t.contractAddress}/logo.png`}
-                                  alt={t.symbol ?? "token"}
-                                  className="w-6 h-6"
-                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                />
-                                <span className="uppercase">{(t.symbol ?? "?").slice(0, 2)}</span>
-                              </div>
-                              <div>
-                                <div className="font-medium">{t.symbol ?? "?"}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {t.name ?? t.contractAddress.slice(0, 6) + "..."}
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="capitalize">{t.chain}</TableCell>
-                          <TableCell>
-                            {t.formatted ? formatNumber(Number(t.formatted), { maximumFractionDigits: 6 }) : "-"}
-                          </TableCell>
-                          <TableCell>{t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}</TableCell>
-                          <TableCell>{t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableCaption>Showing ERC-20 balances on Ethereum & Polygon</TableCaption>
-                  </Table>
+                  <TokenHoldingsTable tokens={tokens} />
                 )}
               </CardContent>
             </Card>
