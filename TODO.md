@@ -148,7 +148,7 @@
 - [ ] Create portfolio summary card
   - [ ] Total portfolio value
   - [ ] 24h change (%)
-  
+
 ### Day 15-16: Snapshot Features
 
 - [x] Create snapshot database schema
@@ -167,7 +167,7 @@
   - [x] 24h price change
   - [x] Percentage of portfolio
 - [x] Add sorting functionality (by value, change, name)
-- [ ] Implement search/filter
+- [x] Implement search/filter
 - [x] Add loading skeletons
 - [ ] Create empty state
 - [ ] Make responsive (mobile-first)
