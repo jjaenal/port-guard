@@ -119,7 +119,7 @@
 
 ### Day 8-10: Token Balance Tracking
 
-- [ ] Create `getTokenBalances` function
+- [x] Create `getTokenBalances` function
   ```typescript
   // lib/blockchain/balances.ts
   async function getTokenBalances(address: string, chainId: number) {
