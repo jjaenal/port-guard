@@ -133,7 +133,7 @@
 - [x] Calculate USD values
 - [x] Create token balance display component (TokenHoldingsTable)
 - [x] Add token logos (TrustWallet assets fallback)
-- [ ] Implement balance caching (Redis)
+- [x] Implement balance caching (In-memory + Next.js API cache)
 - [ ] Test with multiple wallets
 
 ### Day 11-14: Portfolio Dashboard UI

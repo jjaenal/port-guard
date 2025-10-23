@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSimplePrices, getTokenPricesByAddress } from "@/lib/utils/coingecko";
 
+// Cache configuration - 5 minutes (300 seconds)
+export const revalidate = 300;
+
 // GET /api/prices?ids=ethereum,matic-network&vs=usd
 // GET /api/prices?platform=ethereum&contracts=0x...,...&vs=usd
 export async function GET(req: Request) {

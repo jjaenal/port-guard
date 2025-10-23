@@ -104,22 +104,61 @@ async function getMetadata(chain: ChainKey, contracts: string[], apiKey: string)
   return out;
 }
 
+// Simple in-memory cache for token balances
+const balancesCache: Record<string, { timestamp: number; data: AlchemyBalanceItem[] }> = {};
+const metadataCache: Record<string, { timestamp: number; data: Record<string, TokenMetadata> }> = {};
+const pricesCache: Record<string, { timestamp: number; data: Record<string, { usd?: number }> }> = {};
+
+// Cache TTL in milliseconds
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function getTokenBalances(address: string, chainId: number): Promise<TokenHolding[]> {
   const apiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
   if (!apiKey) return [];
 
   const chain = chainKeyFromId(chainId);
+  const now = Date.now();
+  const cacheKey = `${chain}:${address.toLowerCase()}`;
+  
+  // Get balances (from cache if available)
+  let balances: AlchemyBalanceItem[];
+  const cachedBalances = balancesCache[cacheKey];
+  if (cachedBalances && now - cachedBalances.timestamp < CACHE_TTL) {
+    balances = cachedBalances.data;
+  } else {
+    balances = await getBalances(chain, address, apiKey);
+    balancesCache[cacheKey] = { timestamp: now, data: balances };
+  }
 
-  const balances = await getBalances(chain, address, apiKey);
   const contracts = Array.from(new Set(balances.map((b) => b.contractAddress.toLowerCase())));
-  const meta = await getMetadata(chain, contracts, apiKey);
+  
+  // Get metadata (from cache if available)
+  const metaCacheKey = `${chain}:${contracts.join(',')}`;
+  let meta: Record<string, TokenMetadata>;
+  const cachedMeta = metadataCache[metaCacheKey];
+  if (cachedMeta && now - cachedMeta.timestamp < CACHE_TTL) {
+    meta = cachedMeta.data;
+  } else {
+    meta = await getMetadata(chain, contracts, apiKey);
+    metadataCache[metaCacheKey] = { timestamp: now, data: meta };
+  }
 
-  const prices: Record<string, { usd?: number }> = contracts.length > 0
-    ? await fetch(`/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd`)
+  // Get prices (from cache if available)
+  const pricesCacheKey = `${platformIdForChain(chain)}:${contracts.join(',')}`;
+  let prices: Record<string, { usd?: number }> = {};
+  const cachedPrices = pricesCache[pricesCacheKey];
+  
+  if (contracts.length > 0) {
+    if (cachedPrices && now - cachedPrices.timestamp < CACHE_TTL) {
+      prices = cachedPrices.data;
+    } else {
+      prices = await fetch(`/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd`)
         .then((res) => res.json())
         .then((json) => json.data || {})
-        .catch(() => ({}))
-    : {};
+        .catch(() => ({}));
+      pricesCache[pricesCacheKey] = { timestamp: now, data: prices };
+    }
+  }
 
   const tokens: TokenHolding[] = [];
   for (const bal of balances) {

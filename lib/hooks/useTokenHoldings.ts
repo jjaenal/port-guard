@@ -11,10 +11,10 @@ export function useTokenHoldings() {
   const query = useQuery<{ tokens: TokenHolding[] } | null>({
     queryKey: ["erc20-holdings", address],
     enabled: !!address && !!apiKey,
-    staleTime: 60_000,
-    gcTime: 300_000, // keep cache for 5 minutes
-    refetchOnWindowFocus: false,
-    refetchInterval: 60_000, // background refresh every 60s
+    staleTime: 300_000, // 5 minutes - match server cache
+    gcTime: 600_000, // keep cache for 10 minutes
+    refetchOnWindowFocus: true,
+    refetchInterval: 300_000, // background refresh every 5 minutes
     retry: 1,
     placeholderData: (prev) => prev ?? null,
     queryFn: async () => {
