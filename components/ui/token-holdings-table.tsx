@@ -37,7 +37,7 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
-  const [sortKey, setSortKey] = useState<"valueUsd" | "balance" | "token">(
+  const [sortKey, setSortKey] = useState<"valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent">(
     "valueUsd",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -47,6 +47,9 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   >("all");
   const [search, setSearch] = useState<string>("");
 
+  // Total value for portfolio percentage (use full tokens list, not filtered)
+  const totalValue = (tokens ?? []).reduce((sum, t) => sum + (t.valueUsd ?? 0), 0);
+
   // Load persisted preferences
   useEffect(() => {
     try {
@@ -54,7 +57,13 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       const sd = localStorage.getItem("tokenSortDir");
       const cf = localStorage.getItem("tokenChainFilter");
       const sq = localStorage.getItem("tokenSearchQuery");
-      if (sk === "valueUsd" || sk === "balance" || sk === "token")
+      if (
+        sk === "valueUsd" ||
+        sk === "balance" ||
+        sk === "token" ||
+        sk === "priceChange24h" ||
+        sk === "portfolioPercent"
+      )
         setSortKey(sk as any);
       if (sd === "asc" || sd === "desc") setSortDir(sd as any);
       if (cf === "all" || cf === "ethereum" || cf === "polygon")
@@ -93,6 +102,16 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       const bb = Number(b.formatted ?? 0);
       return ab === bb ? 0 : ab > bb ? 1 * dir : -1 * dir;
     }
+    if (sortKey === "priceChange24h") {
+      const ac = a.priceChange24h ?? 0;
+      const bc = b.priceChange24h ?? 0;
+      return ac === bc ? 0 : ac > bc ? 1 * dir : -1 * dir;
+    }
+    if (sortKey === "portfolioPercent") {
+      const ap = totalValue ? (a.valueUsd ?? 0) / totalValue : 0;
+      const bp = totalValue ? (b.valueUsd ?? 0) / totalValue : 0;
+      return ap === bp ? 0 : ap > bp ? 1 * dir : -1 * dir;
+    }
     // token label sort
     const at = (a.symbol ?? a.name ?? "").toLowerCase();
     const bt = (b.symbol ?? b.name ?? "").toLowerCase();
@@ -124,6 +143,20 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             aria-pressed={sortKey === "token"}
           >
             Token
+          </button>
+          <button
+            className={`px-2 py-1 rounded border text-xs ${sortKey === "priceChange24h" ? "bg-muted" : ""}`}
+            onClick={() => setSortKey("priceChange24h")}
+            aria-pressed={sortKey === "priceChange24h"}
+          >
+            24h Change
+          </button>
+          <button
+            className={`px-2 py-1 rounded border text-xs ${sortKey === "portfolioPercent" ? "bg-muted" : ""}`}
+            onClick={() => setSortKey("portfolioPercent")}
+            aria-pressed={sortKey === "portfolioPercent"}
+          >
+            Portfolio %
           </button>
           <button
             className="px-2 py-1 rounded border text-xs"
@@ -175,7 +208,9 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
               <TableHead>Chain</TableHead>
               <TableHead>Balance</TableHead>
               <TableHead>Price (USD)</TableHead>
+              <TableHead>24h Change</TableHead>
               <TableHead>Value (USD)</TableHead>
+              <TableHead>Portfolio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -214,7 +249,32 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
                   {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
                 </TableCell>
                 <TableCell>
+                  {t.priceChange24h !== undefined ? (
+                    <span
+                      className={`font-medium ${
+                        t.priceChange24h >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {t.priceChange24h >= 0 ? "+" : ""}
+                      {t.priceChange24h.toFixed(2)}%
+                    </span>
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+                <TableCell>
                   {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
+                </TableCell>
+                <TableCell>
+                  {totalValue > 0 && t.valueUsd !== undefined ? (
+                    <span className="text-xs font-medium">
+                      {(((t.valueUsd ?? 0) / totalValue) * 100).toFixed(2)}%
+                    </span>
+                  ) : (
+                    "-"
+                  )}
                 </TableCell>
               </TableRow>
             ))}
