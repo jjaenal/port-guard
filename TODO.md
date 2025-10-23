@@ -159,7 +159,7 @@
   - [x] Calculate value differences
   - [x] Show token-by-token changes
   - [ ] Number of tokens
-  - [ ] Last updated timestamp
+  - [x] Last updated timestamp
 - [x] Build token holdings table
   - [x] Token name & symbol
   - [x] Balance
