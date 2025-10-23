@@ -148,6 +148,16 @@
 - [ ] Create portfolio summary card
   - [ ] Total portfolio value
   - [ ] 24h change (%)
+  
+### Day 15-16: Snapshot Features
+
+- [x] Create snapshot database schema
+- [x] Implement snapshot saving functionality
+- [x] Create snapshot history page
+- [x] Add snapshot comparison feature
+  - [x] Create comparison UI
+  - [x] Calculate value differences
+  - [x] Show token-by-token changes
   - [ ] Number of tokens
   - [ ] Last updated timestamp
 - [ ] Build token holdings table

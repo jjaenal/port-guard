@@ -21,9 +21,14 @@ export default function SnapshotsPage() {
           <h1 className="text-3xl font-bold mb-1">Snapshot History</h1>
           <p className="text-muted-foreground">Recent snapshots for your wallet</p>
         </div>
-        <Link href="/dashboard">
-          <Button variant="outline">Back to Dashboard</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/snapshots/compare">
+            <Button>Compare Snapshots</Button>
+          </Link>
+          <Link href="/dashboard">
+            <Button variant="outline">Back to Dashboard</Button>
+          </Link>
+        </div>
       </div>
 
       {!isConnected ? (
