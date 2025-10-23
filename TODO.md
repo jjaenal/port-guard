@@ -108,7 +108,7 @@
 
 - [x] Implement RainbowKit wallet connection
 - [x] Create wallet connection button component
-- [ ] Test wallet connection flow
+- [x] Test wallet connection flow
 - [ ] Setup ENS resolution
 - [ ] Create utilities for address formatting
 - [ ] Test on testnet first
