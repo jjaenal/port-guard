@@ -9,7 +9,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const address = searchParams.get("address");
     const limitParam = searchParams.get("limit");
-    const limit = limitParam ? Math.max(1, Math.min(50, Number(limitParam))) : 1;
+    const limit = limitParam
+      ? Math.max(1, Math.min(50, Number(limitParam)))
+      : 1;
     const offsetParam = searchParams.get("offset");
     const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
 
