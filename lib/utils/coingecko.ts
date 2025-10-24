@@ -84,6 +84,7 @@ export async function getSimplePrices(
 
 export type ContractPriceItem = {
   usd: number;
+  usd_24h_change?: number;
 };
 
 export type ContractPriceResponse = Record<string, ContractPriceItem>;
@@ -103,7 +104,7 @@ export async function getTokenPricesByAddress(
   }
 
   const base = `https://api.coingecko.com/api/v3/simple/token_price/${platformId}`;
-  const url = `${base}?contract_addresses=${encodeURIComponent(addresses.join(","))}&vs_currencies=${vsCurrency}`;
+  const url = `${base}?contract_addresses=${encodeURIComponent(addresses.join(","))}&vs_currencies=${vsCurrency}&include_24hr_change=true`;
 
   const res = await fetch(url, {
     method: "GET",
