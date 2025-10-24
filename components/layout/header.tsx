@@ -1,13 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { Moon, Sun, Wallet } from "lucide-react";
+import { Moon, Sun, Wallet, WifiOff } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useEffect, useState } from "react";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+
+  useEffect(() => {
+    const updateOnline = () => setIsOnline(navigator.onLine);
+    
+    // Set initial state
+    updateOnline();
+    
+    // Add event listeners
+    window.addEventListener("online", updateOnline);
+    window.addEventListener("offline", updateOnline);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener("online", updateOnline);
+      window.removeEventListener("offline", updateOnline);
+    };
+  }, []);
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -36,6 +55,13 @@ export function Header() {
           </nav>
 
           <div className="flex items-center space-x-2">
+            {!isOnline && (
+              <div className="flex items-center px-2 py-1 text-xs font-medium rounded-md bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                <WifiOff className="h-3 w-3 mr-1" />
+                Offline
+              </div>
+            )}
+            
             <Button
               variant="ghost"
               size="sm"
