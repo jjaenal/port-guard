@@ -73,6 +73,15 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     } catch {}
     return "all";
   });
+  const [change24hFilter, setChange24hFilter] = useState<"all" | "up" | "down">(
+    () => {
+      try {
+        const f = localStorage.getItem("tokenChange24hFilter");
+        if (f === "all" || f === "up" || f === "down") return f as any;
+      } catch {}
+      return "all";
+    },
+  );
   const [search, setSearch] = useState<string>(() => {
     try {
       const sq = localStorage.getItem("tokenSearchQuery");
@@ -87,16 +96,23 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenSortKey", sortKey);
       localStorage.setItem("tokenSortDir", sortDir);
       localStorage.setItem("tokenChainFilter", chainFilter);
+      localStorage.setItem("tokenChange24hFilter", change24hFilter);
       localStorage.setItem("tokenSearchQuery", search);
     } catch {}
-  }, [sortKey, sortDir, chainFilter, search]);
+  }, [sortKey, sortDir, chainFilter, change24hFilter, search]);
 
   const filtered = tokens.filter((t) => {
     const chainOk = chainFilter === "all" ? true : t.chain === chainFilter;
     const q = search.trim().toLowerCase();
     const text = `${t.symbol ?? ""} ${t.name ?? ""}`.toLowerCase();
     const searchOk = q ? text.includes(q) : true;
-    return chainOk && searchOk;
+    const changeOk =
+      change24hFilter === "all"
+        ? true
+        : change24hFilter === "up"
+          ? (t.change24h ?? 0) > 0
+          : (t.change24h ?? 0) < 0;
+    return chainOk && searchOk && changeOk;
   });
 
   // Total portfolio value (across all tokens) for percentage calc
@@ -201,12 +217,34 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             Polygon
           </button>
         </div>
-        <input
-          className="px-2 py-1 rounded border text-xs w-40 bg-background"
-          placeholder="Search token"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <button
+              className={`px-2 py-1 rounded border text-xs ${change24hFilter === "all" ? "bg-muted" : ""}`}
+              onClick={() => setChange24hFilter("all")}
+            >
+              24h All
+            </button>
+            <button
+              className={`px-2 py-1 rounded border text-xs ${change24hFilter === "up" ? "bg-muted" : ""}`}
+              onClick={() => setChange24hFilter("up")}
+            >
+              24h Up
+            </button>
+            <button
+              className={`px-2 py-1 rounded border text-xs ${change24hFilter === "down" ? "bg-muted" : ""}`}
+              onClick={() => setChange24hFilter("down")}
+            >
+              24h Down
+            </button>
+          </div>
+          <input
+            className="px-2 py-1 rounded border text-xs w-40 bg-background"
+            placeholder="Search token"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {sortedTokens.length === 0 ? (

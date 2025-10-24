@@ -430,9 +430,31 @@ function CompareSnapshots() {
                       },
                     )}
                   </CardDescription>
-                  <div className="text-sm text-muted-foreground">
-                    Tokens: {snapshot1Data.data.tokenCount} →{" "}
-                    {snapshot2Data.data.tokenCount}
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      Tokens: {snapshot1Data.data.tokenCount} →{" "}
+                      {snapshot2Data.data.tokenCount}
+                    </span>
+                    {snapshot2Data.data.tokenCount -
+                      snapshot1Data.data.tokenCount !==
+                      0 && (
+                      <span
+                        className={`${snapshot2Data.data.tokenCount - snapshot1Data.data.tokenCount > 0 ? "text-green-600" : "text-red-600"} flex items-center gap-1`}
+                      >
+                        {snapshot2Data.data.tokenCount -
+                          snapshot1Data.data.tokenCount >
+                        0 ? (
+                          <TrendingUp className="h-4 w-4" />
+                        ) : (
+                          <TrendingDown className="h-4 w-4" />
+                        )}
+                        {snapshot2Data.data.tokenCount -
+                          snapshot1Data.data.tokenCount >
+                        0
+                          ? `+${snapshot2Data.data.tokenCount - snapshot1Data.data.tokenCount}`
+                          : `${snapshot2Data.data.tokenCount - snapshot1Data.data.tokenCount}`}
+                      </span>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
