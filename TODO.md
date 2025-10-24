@@ -16,11 +16,11 @@
 ### Day 1-2: Project Setup
 
 - [x] Create GitHub repository (https://github.com/jjaenal/port-guard.git)
-- [ ] Initialize Next.js 14 project with TypeScript
+- [x] Initialize Next.js 14 project with TypeScript
   ```bash
   npx create-next-app@latest defi-dashboard --typescript --tailwind --app
   ```
-- [ ] Install core dependencies
+- [x] Install core dependencies
   ```bash
   npm install wagmi viem @tanstack/react-query
   npm install @rainbow-me/rainbowkit
@@ -28,13 +28,13 @@
   npm install recharts lucide-react
   npm install -D @types/node
   ```
-- [ ] Setup shadcn/ui
+- [x] Setup shadcn/ui
   ```bash
   npx shadcn-ui@latest init
   npx shadcn-ui@latest add button card input table
   ```
-- [ ] Configure Tailwind dark mode
-- [ ] Setup folder structure
+- [x] Configure Tailwind dark mode
+- [x] Setup folder structure
   ```
   /app
   /components
@@ -42,8 +42,8 @@
   /config
   /api
   ```
-- [ ] Create `.env.local` file
-- [ ] Setup ESLint + Prettier
+- [x] Create `.env.local` file
+- [x] Setup ESLint + Prettier
 
 ### Day 3-4: Database & Backend Setup
 
@@ -78,15 +78,15 @@
   );
   ```
 
-- [ ] Setup Prisma ORM
+- [x] Setup Prisma ORM
   ```bash
   npm install prisma @prisma/client
   npx prisma init
   ```
-- [ ] Create Prisma schema
-- [ ] Run first migration
+- [x] Create Prisma schema
+- [x] Run first migration
 - [ ] Setup Upstash Redis (free tier)
-- [ ] Test database connection
+- [x] Test database connection
 
 ### Day 5-7: Web3 Integration Basics
 
@@ -108,7 +108,7 @@
 
 - [x] Implement RainbowKit wallet connection
 - [x] Create wallet connection button component
-- [ ] Test wallet connection flow
+- [x] Test wallet connection flow
 - [ ] Setup ENS resolution
 - [ ] Create utilities for address formatting
 - [ ] Test on testnet first
@@ -119,7 +119,7 @@
 
 ### Day 8-10: Token Balance Tracking
 
-- [ ] Create `getTokenBalances` function
+- [x] Create `getTokenBalances` function
   ```typescript
   // lib/blockchain/balances.ts
   async function getTokenBalances(address: string, chainId: number) {
@@ -131,10 +131,10 @@
 - [ ] Fetch ERC-20 token balances (use Alchemy getTokenBalances API)
 - [x] Get token prices from CoinGecko
 - [x] Calculate USD values
-- [ ] Create token balance display component
-- [ ] Add token logos (use Token Lists)
-- [ ] Implement balance caching (Redis)
-- [ ] Test with multiple wallets
+- [x] Create token balance display component (TokenHoldingsTable)
+- [x] Add token logos (TrustWallet assets fallback)
+- [x] Implement balance caching (In-memory + Next.js API cache)
+- [x] Test with multiple wallets (via address override on dashboard)
 
 ### Day 11-14: Portfolio Dashboard UI
 
@@ -148,24 +148,35 @@
 - [ ] Create portfolio summary card
   - [ ] Total portfolio value
   - [ ] 24h change (%)
+
+### Day 15-16: Snapshot Features
+
+- [x] Create snapshot database schema
+- [x] Implement snapshot saving functionality
+- [x] Create snapshot history page
+- [x] Add snapshot comparison feature
+  - [x] Create comparison UI
+  - [x] Calculate value differences
+  - [x] Show token-by-token changes
   - [ ] Number of tokens
-  - [ ] Last updated timestamp
-- [ ] Build token holdings table
-  - [ ] Token name & symbol
-  - [ ] Balance
-  - [ ] USD value
-  - [ ] 24h price change
-  - [ ] Percentage of portfolio
-- [ ] Add sorting functionality (by value, change, name)
-- [ ] Implement search/filter
+  - [x] Last updated timestamp
+- [x] Build token holdings table
+  - [x] Token name & symbol
+  - [x] Balance
+  - [x] USD value
+  - [x] 24h price change
+  - [x] Percentage of portfolio
+- [x] Add sorting functionality (by value, change, name)
+- [x] Implement search/filter
 - [x] Add loading skeletons
-- [ ] Create empty state
-- [ ] Make responsive (mobile-first)
-- [ ] Add auto-refresh (every 5 minutes)
-- [ ] Add error handling banner/toast for API failures
-  - [ ] Price API errors
-  - [ ] Balance fetching errors
-  - [ ] Network connectivity issues
+- [x] Create empty state
+- [x] Make responsive (mobile-first)
+- [x] Add auto-refresh (every 5 minutes)
+- [x] Add error handling banner/toast for API failures
+  - [x] Price API errors
+  - [x] Balance fetching errors
+  - [x] Network connectivity issues
+  - Notes: Token holdings error banner + Retry; native balances refresh toasts; snapshot save toasts; price error banner + Retry; offline/online toasts; disable refresh when offline
 
 ---
 

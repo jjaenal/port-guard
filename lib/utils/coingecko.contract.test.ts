@@ -13,12 +13,15 @@ type MinimalResponse = {
 
 describe("getTokenPricesByAddress", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn(async (_url: string): Promise<MinimalResponse> => {
-      return {
-        ok: true,
-        json: async () => mockResponse,
-      } as MinimalResponse;
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string): Promise<MinimalResponse> => {
+        return {
+          ok: true,
+          json: async () => mockResponse,
+        } as MinimalResponse;
+      }),
+    );
   });
 
   afterEach(() => {
