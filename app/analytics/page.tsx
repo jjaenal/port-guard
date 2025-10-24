@@ -6,6 +6,7 @@ import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { AnalyticsCards } from "@/components/ui/analytics-cards";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
 import { TokenAllocation } from "@/components/ui/token-allocation";
+import { PortfolioSummary } from "@/components/ui/portfolio-summary";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -71,6 +72,10 @@ export default function AnalyticsPage() {
       )}
 
       <AnalyticsCards tokens={tokens} isLoading={isLoading || isFetching} />
+
+      <div className="mt-6">
+        <PortfolioSummary tokens={tokens} isLoading={isLoading || isFetching} />
+      </div>
 
       {/* Portfolio Chart Section */}
       <Card className="mt-6">
