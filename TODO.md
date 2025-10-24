@@ -169,9 +169,9 @@
 - [x] Add sorting functionality (by value, change, name)
 - [x] Implement search/filter
 - [x] Add loading skeletons
-- [ ] Create empty state
-- [ ] Make responsive (mobile-first)
-- [ ] Add auto-refresh (every 5 minutes)
+- [x] Create empty state
+- [x] Make responsive (mobile-first)
+- [x] Add auto-refresh (every 5 minutes)
 - [ ] Add error handling banner/toast for API failures
   - [ ] Price API errors
   - [ ] Balance fetching errors
