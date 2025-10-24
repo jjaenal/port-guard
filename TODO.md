@@ -148,7 +148,7 @@
 - [ ] Create portfolio summary card
   - [ ] Total portfolio value
   - [ ] 24h change (%)
-  
+
 ### Day 15-16: Snapshot Features
 
 - [x] Create snapshot database schema
