@@ -26,7 +26,7 @@ import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
 import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
@@ -107,6 +107,23 @@ export default function DashboardPage() {
       isConnected || !!overrideAddress,
       rangeDays,
     );
+
+  // Series khusus 24 jam untuk kalkulasi perubahan keseluruhan portofolio
+  const { points: portfolioPoints1d, isLoading: isSeries1dLoading } =
+    usePortfolioSeries(
+      ethAmount,
+      maticAmount,
+      tokens,
+      isConnected || !!overrideAddress,
+      1,
+    );
+
+  const portfolioChange24hPercent = useMemo(() => {
+    if (!portfolioPoints1d || portfolioPoints1d.length < 2) return 0;
+    const start = portfolioPoints1d[0].v;
+    const end = portfolioPoints1d[portfolioPoints1d.length - 1].v;
+    return start > 0 ? ((end - start) / start) * 100 : 0;
+  }, [portfolioPoints1d]);
 
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -303,7 +320,7 @@ export default function DashboardPage() {
       {(isConnected || !!overrideAddress) && (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
-            {/* Total Portfolio Value card unchanged except totalUsd now includes ERC-20 */}
+            {/* Total Portfolio Value card with 24h change */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -313,7 +330,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
-                {isPortfolioLoading ? (
+                {isPortfolioLoading || isSeries1dLoading ? (
                   <div className="animate-pulse">
                     <div className="h-7 w-36 bg-muted rounded mb-2" />
                     <div className="h-3 w-48 bg-muted rounded" />
@@ -323,11 +340,11 @@ export default function DashboardPage() {
                     <div className="text-2xl font-bold">
                       {isPricesError ? "-" : formatCurrency(totalUsd)}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {isPricesError
-                        ? "Prices unavailable"
-                        : "Updated with live prices"}
-                    </p>
+                    <div
+                      className={`text-sm ${portfolioChange24hPercent >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatPercentSigned(portfolioChange24hPercent)} (24h)
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -644,32 +661,48 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Snapshot History</CardTitle>
-                <CardDescription>Last 5 snapshots for this wallet</CardDescription>
+                <CardDescription>
+                  Last 5 snapshots for this wallet
+                </CardDescription>
                 <CardAction>
                   <Link href="/snapshots">
-                    <Button variant="outline" size="sm">View All</Button>
+                    <Button variant="outline" size="sm">
+                      View All
+                    </Button>
                   </Link>
                 </CardAction>
               </CardHeader>
               <CardContent>
                 {isHistoryLoading && (
-                  <div className="text-sm text-muted-foreground">Loading snapshots...</div>
-                )}
-                {!isHistoryLoading && (!snapshotHistory || snapshotHistory.data.length === 0) && (
-                  <div className="text-sm text-muted-foreground">No snapshots yet. Save one to get started.</div>
-                )}
-                {!isHistoryLoading && snapshotHistory && snapshotHistory.data.length > 0 && (
-                  <div className="space-y-2">
-                    {snapshotHistory.data.map((snap) => (
-                      <div key={snap.id} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          {new Date(snap.createdAt).toLocaleString()}
-                        </span>
-                        <span className="font-medium">{formatCurrency(snap.totalValue)}</span>
-                      </div>
-                    ))}
+                  <div className="text-sm text-muted-foreground">
+                    Loading snapshots...
                   </div>
                 )}
+                {!isHistoryLoading &&
+                  (!snapshotHistory || snapshotHistory.data.length === 0) && (
+                    <div className="text-sm text-muted-foreground">
+                      No snapshots yet. Save one to get started.
+                    </div>
+                  )}
+                {!isHistoryLoading &&
+                  snapshotHistory &&
+                  snapshotHistory.data.length > 0 && (
+                    <div className="space-y-2">
+                      {snapshotHistory.data.map((snap) => (
+                        <div
+                          key={snap.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {new Date(snap.createdAt).toLocaleString()}
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(snap.totalValue)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </CardContent>
             </Card>
 
