@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "wagmi";
@@ -14,7 +16,7 @@ import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
 import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
 import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
 
-export default function CompareSnapshotsPage() {
+function CompareSnapshots() {
   const { address, isConnected } = useAccount();
   const [page, setPage] = useState(0);
   const limit = 10;
@@ -26,6 +28,7 @@ export default function CompareSnapshotsPage() {
   const [tokenFilter, setTokenFilter] = useState<"all" | "up" | "down">("all");
   const [tokenQuery, setTokenQuery] = useState("");
   const [sortBy, setSortBy] = useState<"abs" | "percent" | "symbol">("abs");
+  const params = useSearchParams();
   
   useEffect(() => {
     const a = params.get("a");
@@ -491,5 +494,13 @@ export default function CompareSnapshotsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CompareSnapshotsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CompareSnapshots />
+    </Suspense>
   );
 }
