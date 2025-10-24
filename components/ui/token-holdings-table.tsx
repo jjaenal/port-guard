@@ -125,15 +125,15 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
         <div className="text-xs text-muted-foreground">Sort by</div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             className={`px-2 py-1 rounded border text-xs ${sortKey === "valueUsd" ? "bg-muted" : ""}`}
             onClick={() => setSortKey("valueUsd")}
             aria-pressed={sortKey === "valueUsd"}
           >
-            Value (USD)
+            Value
           </button>
           <button
             className={`px-2 py-1 rounded border text-xs ${sortKey === "balance" ? "bg-muted" : ""}`}
@@ -154,14 +154,14 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             onClick={() => setSortKey("priceChange24h")}
             aria-pressed={sortKey === "priceChange24h"}
           >
-            24h Change
+            24h
           </button>
           <button
             className={`px-2 py-1 rounded border text-xs ${sortKey === "portfolioPercent" ? "bg-muted" : ""}`}
             onClick={() => setSortKey("portfolioPercent")}
             aria-pressed={sortKey === "portfolioPercent"}
           >
-            Portfolio %
+            %
           </button>
           <button
             className="px-2 py-1 rounded border text-xs"
@@ -169,18 +169,18 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             aria-label="Toggle sort direction"
             aria-pressed={sortDir === "desc"}
           >
-            {sortDir === "desc" ? "Desc" : "Asc"}
+            {sortDir === "desc" ? "↓" : "↑"}
           </button>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             className={`px-2 py-1 rounded border text-xs ${chainFilter === "all" ? "bg-muted" : ""}`}
             onClick={() => setChainFilter("all")}
           >
-            All Chains
+            All
           </button>
           <button
             className={`px-2 py-1 rounded border text-xs ${chainFilter === "ethereum" ? "bg-muted" : ""}`}
@@ -204,7 +204,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
           </button>
         </div>
         <input
-          className="px-2 py-1 rounded border text-xs w-40 bg-background"
+          className="px-2 py-1 rounded border text-xs w-full sm:w-40 bg-background"
           placeholder="Search token"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -214,22 +214,16 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       {sortedTokens.length === 0 ? (
         <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Token</TableHead>
-              <TableHead>Chain</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Price (USD)</TableHead>
-              <TableHead>24h Change</TableHead>
-              <TableHead>Value (USD)</TableHead>
-              <TableHead>Portfolio %</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile Card Layout (< 768px) */}
+          <div className="block md:hidden space-y-3">
             {sortedTokens.map((t) => (
-              <TableRow key={`${t.chain}-${t.contractAddress}`}>
-                <TableCell>
+              <div
+                key={`${t.chain}-${t.contractAddress}`}
+                className="bg-card border rounded-lg p-4 space-y-3"
+              >
+                {/* Header: Token + Chain */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <TokenAvatar token={t} />
                     <div>
@@ -239,8 +233,6 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
                       </div>
                     </div>
                   </div>
-                </TableCell>
-                <TableCell className="capitalize">
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       t.chain === "ethereum"
@@ -248,56 +240,221 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
                         : "bg-purple-100 text-purple-700"
                     }`}
                   >
-                    {t.chain === "ethereum" ? "Ethereum" : "Polygon"}
+                    {t.chain === "ethereum" ? "ETH" : "POLY"}
                   </span>
-                </TableCell>
-                <TableCell>
-                  {t.formatted
-                    ? formatNumber(Number(t.formatted), {
-                        maximumFractionDigits: 6,
-                      })
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
-                </TableCell>
-                <TableCell>
-                  {t.priceChange24h !== undefined ? (
-                    <span
-                      className={`font-medium ${
-                        t.priceChange24h >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {t.priceChange24h >= 0 ? "+" : ""}
-                      {t.priceChange24h.toFixed(2)}%
-                    </span>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
-                </TableCell>
-                <TableCell>
-                  {totalValue > 0 && t.valueUsd !== undefined ? (
-                    <span className="text-xs font-medium">
-                      {(((t.valueUsd ?? 0) / totalValue) * 100).toFixed(2)}%
-                    </span>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
+                </div>
+
+                {/* Main Info: Value + Change */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-lg font-semibold">
+                      {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {t.formatted
+                        ? formatNumber(Number(t.formatted), {
+                            maximumFractionDigits: 4,
+                          })
+                        : "-"}{" "}
+                      {t.symbol}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {t.priceChange24h !== undefined ? (
+                      <div
+                        className={`font-medium ${
+                          t.priceChange24h >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {t.priceChange24h >= 0 ? "+" : ""}
+                        {t.priceChange24h.toFixed(2)}%
+                      </div>
+                    ) : (
+                      <div>-</div>
+                    )}
+                    {totalValue > 0 && t.valueUsd !== undefined ? (
+                      <div className="text-xs text-muted-foreground">
+                        {(((t.valueUsd ?? 0) / totalValue) * 100).toFixed(1)}%
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             ))}
-          </TableBody>
-          <TableCaption>
-            Showing {sortedTokens.length} ERC-20{" "}
-            {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum &
-            Polygon
-          </TableCaption>
-        </Table>
+          </div>
+
+          {/* Tablet Simplified Table (768px - 1024px) */}
+          <div className="hidden md:block lg:hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Token</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>24h Change</TableHead>
+                  <TableHead>Value (USD)</TableHead>
+                  <TableHead>%</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTokens.map((t) => (
+                  <TableRow key={`${t.chain}-${t.contractAddress}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <TokenAvatar token={t} />
+                        <div>
+                          <div className="font-medium flex items-center gap-1">
+                            {t.symbol ?? "?"}
+                            <span
+                              className={`px-1 py-0.5 rounded text-xs ${
+                                t.chain === "ethereum"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-purple-100 text-purple-700"
+                              }`}
+                            >
+                              {t.chain === "ethereum" ? "ETH" : "POLY"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {t.formatted
+                        ? formatNumber(Number(t.formatted), {
+                            maximumFractionDigits: 4,
+                          })
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {t.priceChange24h !== undefined ? (
+                        <span
+                          className={`font-medium ${
+                            t.priceChange24h >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {t.priceChange24h >= 0 ? "+" : ""}
+                          {t.priceChange24h.toFixed(2)}%
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {totalValue > 0 && t.valueUsd !== undefined ? (
+                        <span className="text-xs font-medium">
+                          {(((t.valueUsd ?? 0) / totalValue) * 100).toFixed(1)}%
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableCaption>
+                Showing {sortedTokens.length} ERC-20{" "}
+                {chainFilter !== "all" ? chainFilter : "tokens"}
+              </TableCaption>
+            </Table>
+          </div>
+
+          {/* Desktop Full Table (> 1024px) */}
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Token</TableHead>
+                  <TableHead>Chain</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>Price (USD)</TableHead>
+                  <TableHead>24h Change</TableHead>
+                  <TableHead>Value (USD)</TableHead>
+                  <TableHead>Portfolio %</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTokens.map((t) => (
+                  <TableRow key={`${t.chain}-${t.contractAddress}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <TokenAvatar token={t} />
+                        <div>
+                          <div className="font-medium">{t.symbol ?? "?"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          t.chain === "ethereum"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}
+                      >
+                        {t.chain === "ethereum" ? "Ethereum" : "Polygon"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {t.formatted
+                        ? formatNumber(Number(t.formatted), {
+                            maximumFractionDigits: 6,
+                          })
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {t.priceChange24h !== undefined ? (
+                        <span
+                          className={`font-medium ${
+                            t.priceChange24h >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {t.priceChange24h >= 0 ? "+" : ""}
+                          {t.priceChange24h.toFixed(2)}%
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {totalValue > 0 && t.valueUsd !== undefined ? (
+                        <span className="text-xs font-medium">
+                          {(((t.valueUsd ?? 0) / totalValue) * 100).toFixed(2)}%
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableCaption>
+                Showing {sortedTokens.length} ERC-20{" "}
+                {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum &
+                Polygon
+              </TableCaption>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );
