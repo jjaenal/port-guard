@@ -26,7 +26,7 @@ import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
 import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
@@ -34,10 +34,46 @@ import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
 import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
 
+// Add useToast import at the top with other imports
+import { useToast } from "@/components/ui/toast-provider";
+
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
-  const { eth, matic, isLoading } = useNativeBalances();
+  const {
+    eth,
+    matic,
+    isLoading,
+    refetch: refetchNativeBalances,
+    isError: isNativeBalancesError,
+    error: nativeBalancesError,
+  } = useNativeBalances();
   const [overrideAddress, setOverrideAddress] = useState<string>("");
+  const { toast } = useToast();
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+
+  useEffect(() => {
+    const updateOnline = () => setIsOnline(navigator.onLine);
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast({ title: "Back online", type: "success", duration: 2000 });
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        title: "You are offline",
+        description: "Network connectivity lost",
+        type: "warning",
+      });
+    };
+
+    updateOnline();
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [toast]);
 
   // Debug logging
   console.log("🔍 Dashboard - Wallet status:", {
@@ -47,13 +83,65 @@ export default function DashboardPage() {
     effectiveAddress: overrideAddress || address,
   });
 
+  // Handle native balance refresh with toast notifications
+  const handleRefreshNativeBalances = async () => {
+    toast({
+      title: "Refreshing native balances...",
+      type: "info",
+      duration: 2000,
+    });
+
+    try {
+      await refetchNativeBalances();
+      toast({
+        title: "Native balances refreshed",
+        description: "Latest ETH and MATIC balances loaded successfully",
+        type: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to refresh native balances",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+      });
+    }
+  };
   const {
     tokens,
     isLoading: isTokensLoading,
     isError: isTokensError,
     isFetching: isTokensFetching,
     error: tokensError,
+    refetch: refetchTokens,
   } = useTokenHoldings(overrideAddress ? overrideAddress : undefined);
+
+  // Handle token refresh with toast notifications
+  const handleRefreshTokens = async () => {
+    toast({ title: "Refreshing tokens...", type: "info", duration: 2000 });
+    try {
+      const result = await refetchTokens();
+      if (result?.data) {
+        toast({
+          title: "Tokens refreshed",
+          description: "Latest holdings loaded",
+          type: "success",
+        });
+      } else {
+        toast({
+          title: "No changes",
+          description: "Token data unchanged",
+          type: "info",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to refresh tokens",
+        description: error instanceof Error ? error.message : "Unknown error",
+        type: "error",
+      });
+    }
+  };
   const {
     data: latestSnapshot,
     isLoading: isSnapshotLoading,
@@ -67,11 +155,13 @@ export default function DashboardPage() {
     data: prices,
     isLoading: isPricesLoading,
     isError: isPricesError,
+    error: pricesError,
+    refetch: refetchPrices,
   } = useQuery({
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
       const response = await fetch(
-        "/api/prices?ids=ethereum,matic-network&vs=usd",
+        "/api/prices?ids=ethereum,matic-network&vs=usd"
       );
       const json = await response.json();
       return json.data || {};
@@ -80,6 +170,32 @@ export default function DashboardPage() {
     retry: 1,
     staleTime: 60_000,
   });
+
+  const handleRefreshPrices = async () => {
+    toast({ title: "Refreshing prices...", type: "info", duration: 2000 });
+    try {
+      const result = await refetchPrices();
+      if (result?.data) {
+        toast({
+          title: "Prices refreshed",
+          description: "Latest ETH/MATIC prices loaded",
+          type: "success",
+        });
+      } else {
+        toast({
+          title: "No changes",
+          description: "Prices unchanged",
+          type: "info",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to refresh prices",
+        description: error instanceof Error ? error.message : "Unknown error",
+        type: "error",
+      });
+    }
+  };
 
   const ethAmount = eth ? Number(formatUnits(eth.value, eth.decimals)) : 0;
   const maticAmount = matic
@@ -105,7 +221,7 @@ export default function DashboardPage() {
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
-      rangeDays,
+      rangeDays
     );
 
   const [saving, setSaving] = useState(false);
@@ -115,6 +231,12 @@ export default function DashboardPage() {
     try {
       setSaving(true);
       setSaveMsg(null);
+
+      toast({
+        title: "Saving portfolio snapshot...",
+        type: "info",
+        duration: 2000,
+      });
 
       const nativeTokens = [] as Array<{
         chain: "ethereum" | "polygon";
@@ -173,9 +295,21 @@ export default function DashboardPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to save snapshot");
       setSaveMsg("Snapshot saved ✓");
+
+      toast({
+        title: "Portfolio snapshot saved",
+        description: "Your current portfolio has been saved successfully",
+        type: "success",
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       setSaveMsg(`Failed to save snapshot: ${msg}`);
+
+      toast({
+        title: "Failed to save snapshot",
+        description: msg,
+        type: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -262,7 +396,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
                       )
                     }
                     className="text-xs"
@@ -274,7 +408,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503"
                       )
                     }
                     className="text-xs"
@@ -286,7 +420,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x28C6c06298d514Db089934071355E5743bf21d60",
+                        "0x28C6c06298d514Db089934071355E5743bf21d60"
                       )
                     }
                     className="text-xs"
@@ -318,15 +452,37 @@ export default function DashboardPage() {
                     <div className="h-7 w-36 bg-muted rounded mb-2" />
                     <div className="h-3 w-48 bg-muted rounded" />
                   </div>
+                ) : isPricesError ? (
+                  <div className="flex items-start justify-between p-3 border rounded bg-destructive/10">
+                    <div>
+                      <p className="font-medium text-destructive">
+                        Failed to load prices
+                      </p>
+                      {typeof pricesError?.message === "string" && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {pricesError.message}
+                        </p>
+                      )}
+                      {!isOnline && (
+                        <p className="text-xs mt-1 text-yellow-600">Offline</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshPrices}
+                      disabled={!isOnline}
+                    >
+                      Retry
+                    </Button>
+                  </div>
                 ) : (
                   <>
                     <div className="text-2xl font-bold">
-                      {isPricesError ? "-" : formatCurrency(totalUsd)}
+                      {formatCurrency(totalUsd)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {isPricesError
-                        ? "Prices unavailable"
-                        : "Updated with live prices"}
+                      Updated with live prices
                     </p>
                   </>
                 )}
@@ -355,7 +511,34 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm font-medium">
                   ETH 24h Change
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleRefreshNativeBalances}
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`${isLoading ? "animate-spin" : ""}`}
+                    >
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                      <path d="M16 21h5v-5"></path>
+                    </svg>
+                  </Button>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -370,7 +553,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.ethereum?.usd_24h_change ?? 0,
+                        prices?.ethereum?.usd_24h_change ?? 0
                       )}
                     </span>
                   </div>
@@ -386,7 +569,34 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm font-medium">
                   MATIC 24h Change
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleRefreshNativeBalances}
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`${isLoading ? "animate-spin" : ""}`}
+                    >
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                      <path d="M16 21h5v-5"></path>
+                    </svg>
+                  </Button>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -401,7 +611,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.["matic-network"]?.usd_24h_change ?? 0,
+                        prices?.["matic-network"]?.usd_24h_change ?? 0
                       )}
                     </span>
                   </div>
@@ -450,7 +660,7 @@ export default function DashboardPage() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          },
+                          }
                         )}
                       </span>
                     </div>
@@ -565,7 +775,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.ethereum?.usd_24h_change ?? 0,
+                            prices?.ethereum?.usd_24h_change ?? 0
                           )}
                         </p>
                       </div>
@@ -594,7 +804,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.["matic-network"]?.usd_24h_change ?? 0,
+                            prices?.["matic-network"]?.usd_24h_change ?? 0
                           )}
                         </p>
                       </div>
@@ -625,12 +835,25 @@ export default function DashboardPage() {
                     <div className="h-6 w-64 bg-muted rounded" />
                   </div>
                 ) : isTokensError ? (
-                  <p className="text-destructive">
-                    Failed to load token holdings
-                    {typeof tokensError?.message === "string"
-                      ? `: ${tokensError.message}`
-                      : "."}
-                  </p>
+                  <div className="flex items-start justify-between p-3 border rounded bg-destructive/10">
+                    <div>
+                      <p className="font-medium text-destructive">
+                        Failed to load token holdings
+                      </p>
+                      {typeof tokensError?.message === "string" && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {tokensError.message}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshTokens}
+                    >
+                      Retry
+                    </Button>
+                  </div>
                 ) : tokens.length === 0 ? (
                   <p className="text-muted-foreground">
                     No ERC-20 tokens detected.
@@ -644,32 +867,48 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Snapshot History</CardTitle>
-                <CardDescription>Last 5 snapshots for this wallet</CardDescription>
+                <CardDescription>
+                  Last 5 snapshots for this wallet
+                </CardDescription>
                 <CardAction>
                   <Link href="/snapshots">
-                    <Button variant="outline" size="sm">View All</Button>
+                    <Button variant="outline" size="sm">
+                      View All
+                    </Button>
                   </Link>
                 </CardAction>
               </CardHeader>
               <CardContent>
                 {isHistoryLoading && (
-                  <div className="text-sm text-muted-foreground">Loading snapshots...</div>
-                )}
-                {!isHistoryLoading && (!snapshotHistory || snapshotHistory.data.length === 0) && (
-                  <div className="text-sm text-muted-foreground">No snapshots yet. Save one to get started.</div>
-                )}
-                {!isHistoryLoading && snapshotHistory && snapshotHistory.data.length > 0 && (
-                  <div className="space-y-2">
-                    {snapshotHistory.data.map((snap) => (
-                      <div key={snap.id} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          {new Date(snap.createdAt).toLocaleString()}
-                        </span>
-                        <span className="font-medium">{formatCurrency(snap.totalValue)}</span>
-                      </div>
-                    ))}
+                  <div className="text-sm text-muted-foreground">
+                    Loading snapshots...
                   </div>
                 )}
+                {!isHistoryLoading &&
+                  (!snapshotHistory || snapshotHistory.data.length === 0) && (
+                    <div className="text-sm text-muted-foreground">
+                      No snapshots yet. Save one to get started.
+                    </div>
+                  )}
+                {!isHistoryLoading &&
+                  snapshotHistory &&
+                  snapshotHistory.data.length > 0 && (
+                    <div className="space-y-2">
+                      {snapshotHistory.data.map((snap) => (
+                        <div
+                          key={snap.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {new Date(snap.createdAt).toLocaleString()}
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(snap.totalValue)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </CardContent>
             </Card>
 

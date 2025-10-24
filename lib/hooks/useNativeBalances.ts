@@ -5,7 +5,7 @@
  * Menggunakan wagmi v2 `useBalance` per chain dan mengembalikan
  * data terformat bersama status loading.
  *
- * @returns Objek saldo { eth, matic, isLoading }
+ * @returns Objek saldo { eth, matic, isLoading, refetch }
  */
 import { useAccount, useBalance } from "wagmi";
 import { mainnet, polygon } from "wagmi/chains";
@@ -21,6 +21,9 @@ export type NativeBalances = {
   eth?: NativeBalance;
   matic?: NativeBalance;
   isLoading: boolean;
+  isError: boolean;
+  error?: Error;
+  refetch: () => Promise<void>;
 };
 
 export function useNativeBalances(): NativeBalances {
@@ -38,6 +41,12 @@ export function useNativeBalances(): NativeBalances {
   });
 
   const isLoading = !!address && (eth.isLoading || matic.isLoading);
+  const isError = eth.isError || matic.isError;
+  const error = eth.error || matic.error || undefined;
+
+  const refetch = async () => {
+    await Promise.all([eth.refetch(), matic.refetch()]);
+  };
 
   return {
     eth: eth.data
@@ -57,5 +66,8 @@ export function useNativeBalances(): NativeBalances {
         }
       : undefined,
     isLoading,
+    isError,
+    error,
+    refetch,
   };
 }

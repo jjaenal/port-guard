@@ -61,5 +61,6 @@ export function useTokenHoldings(addressOverride?: string) {
     isError: query.isError,
     isFetching: query.isFetching,
     error: query.error,
+    refetch: query.refetch,
   };
 }
