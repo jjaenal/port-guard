@@ -33,6 +33,7 @@ import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
 import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -319,6 +320,28 @@ export default function DashboardPage() {
 
       {(isConnected || !!overrideAddress) && (
         <>
+          {(isPricesError || isTokensError) && (
+            <div className="mb-4 space-y-2">
+              {isPricesError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Failed to load prices</AlertTitle>
+                  <AlertDescription>
+                    ETH/MATIC price API failed. Values may be outdated.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isTokensError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Failed to load token holdings</AlertTitle>
+                  <AlertDescription>
+                    {typeof (tokensError as any)?.message === "string"
+                      ? (tokensError as any).message
+                      : "Balances API error."}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
             {/* Total Portfolio Value card with 24h change */}
             <Card>
