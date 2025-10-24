@@ -17,18 +17,21 @@ export function Footer() {
         <div className="flex gap-4">
           <Link
             href="/terms"
+            prefetch={false}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Terms
           </Link>
           <Link
             href="/privacy"
+            prefetch={false}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Privacy
           </Link>
           <Link
             href="/about"
+            prefetch={false}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             About

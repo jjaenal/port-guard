@@ -42,12 +42,14 @@ export function Header() {
           <nav className="flex items-center space-x-6">
             <Link
               href="/dashboard"
+              prefetch={false}
               className="text-sm font-medium transition-colors hover:text-primary"
             >
               Dashboard
             </Link>
             <Link
               href="/analytics"
+              prefetch={false}
               className="text-sm font-medium transition-colors hover:text-primary"
             >
               Analytics
