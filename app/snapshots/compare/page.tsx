@@ -572,9 +572,21 @@ function CompareSnapshots() {
                         onChange={(e) => setSortBy(e.target.value as any)}
                       >
                         <option value="abs">Sort: Diff</option>
-                        <option value="percent">Sort: Percent</option>
+                        <option value="percent">Sort: % Change</option>
                         <option value="symbol">Sort: Symbol</option>
                       </select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setTokenFilter("all");
+                          setTokenQuery("");
+                          setSortBy("abs");
+                        }}
+                        aria-label="Reset filters"
+                      >
+                        Reset
+                      </Button>
                     </div>
                   </div>
                   <div className="overflow-x-auto">

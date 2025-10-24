@@ -245,6 +245,19 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <button
+            className="px-2 py-1 rounded border text-xs"
+            onClick={() => {
+              setChainFilter("all");
+              setChange24hFilter("all");
+              setSearch("");
+              setSortKey("valueUsd");
+              setSortDir("desc");
+            }}
+            aria-label="Reset filters"
+          >
+            Reset
+          </button>
         </div>
       </div>
 
