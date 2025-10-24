@@ -17,6 +17,7 @@ import {
   formatCurrencyTiny,
   formatPercentSigned,
 } from "@/lib/utils";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
   const [error, setError] = useState(false);
@@ -318,7 +319,14 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
                     {change === undefined ? (
                       "-"
                     ) : (
-                      <span className={changeClass}>
+                      <span
+                        className={`inline-flex items-center gap-1 ${changeClass}`}
+                      >
+                        {change > 0 ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : change < 0 ? (
+                          <TrendingDown className="h-3 w-3" />
+                        ) : null}
                         {formatPercentSigned(change)}
                       </span>
                     )}
