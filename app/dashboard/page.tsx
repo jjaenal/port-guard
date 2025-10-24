@@ -228,15 +228,24 @@ export default function DashboardPage() {
     );
 
   // Hitung persen perubahan dari series
-  const firstPoint = portfolioPoints && portfolioPoints.length > 0 ? portfolioPoints[0] : null;
-  const lastPoint = portfolioPoints && portfolioPoints.length > 0 ? portfolioPoints[portfolioPoints.length - 1] : null;
-  const portfolioChangePct = firstPoint && lastPoint && firstPoint.v > 0
-    ? ((lastPoint.v - firstPoint.v) / firstPoint.v) * 100
-    : 0;
-  const portfolioChangeAbs = firstPoint && lastPoint ? (lastPoint.v - firstPoint.v) : 0;
-  const lastUpdatedTs = [tokensUpdatedAt, pricesUpdatedAt, nativeUpdatedAt]
-    .filter(Boolean)
-    .reduce((max, ts) => (ts! > max ? ts! : max), 0);
+  const firstPoint =
+    portfolioPoints && portfolioPoints.length > 0 ? portfolioPoints[0] : null;
+  const lastPoint =
+    portfolioPoints && portfolioPoints.length > 0
+      ? portfolioPoints[portfolioPoints.length - 1]
+      : null;
+  const portfolioChangePct =
+    firstPoint && lastPoint && firstPoint.v > 0
+      ? ((lastPoint.v - firstPoint.v) / firstPoint.v) * 100
+      : 0;
+  const portfolioChangeAbs =
+    firstPoint && lastPoint ? lastPoint.v - firstPoint.v : 0;
+  const lastUpdatedTs = Math.max(
+    0,
+    ...[tokensUpdatedAt, pricesUpdatedAt, nativeUpdatedAt].filter(
+      (x): x is number => typeof x === "number"
+    )
+  );
   const lastUpdatedStr = lastUpdatedTs
     ? new Date(lastUpdatedTs).toLocaleString(undefined, {
         month: "short",
@@ -422,7 +431,7 @@ export default function DashboardPage() {
                     }
                     className="text-xs"
                   >
-                    Try Vitalik's Address
+                    Try Vitalik&apos;s Address
                   </Button>
                   <Button
                     variant="outline"
@@ -475,15 +484,24 @@ export default function DashboardPage() {
                 ) : isPricesError ? (
                   <div className="flex items-start justify-between p-3 border rounded bg-destructive/10">
                     <div>
-                      <p className="font-medium text-destructive">Failed to load prices</p>
+                      <p className="font-medium text-destructive">
+                        Failed to load prices
+                      </p>
                       {typeof pricesError?.message === "string" && (
-                        <p className="text-sm text-muted-foreground mt-1">{pricesError.message}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {pricesError.message}
+                        </p>
                       )}
                       {!isOnline && (
                         <p className="text-xs mt-1 text-yellow-600">Offline</p>
                       )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleRefreshPrices} disabled={!isOnline}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshPrices}
+                      disabled={!isOnline}
+                    >
                       Retry
                     </Button>
                   </div>
@@ -501,7 +519,9 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {lastUpdatedStr ? `Last updated ${lastUpdatedStr}` : "Updated with live prices"}
+                      {lastUpdatedStr
+                        ? `Last updated ${lastUpdatedStr}`
+                        : "Updated with live prices"}
                     </p>
                   </>
                 )}
@@ -755,203 +775,6 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Token Holdings</CardTitle>
-                <CardDescription>
-                  Your current token balances and values
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isPortfolioLoading ? (
-                  <div className="space-y-4 animate-pulse">
-                    <div className="h-6 w-64 bg-muted rounded" />
-                    <div className="h-6 w-64 bg-muted rounded" />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                          ETH
-                        </div>
-                        <div>
-                          <p className="font-medium">Ethereum</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatNumber(ethAmount, {
-                              maximumFractionDigits: 6,
-                            })}{" "}
-                            ETH
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">
-                          {isPricesError ? "-" : `$${ethUsd.toFixed(2)}`}
-                        </p>
-                        <p
-                          className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {formatPercentSigned(
-                            prices?.ethereum?.usd_24h_change ?? 0
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                          MATIC
-                        </div>
-                        <div>
-                          <p className="font-medium">Polygon</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatNumber(maticAmount, {
-                              maximumFractionDigits: 6,
-                            })}{" "}
-                            MATIC
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">
-                          {isPricesError ? "-" : `$${maticUsd.toFixed(2)}`}
-                        </p>
-                        <p
-                          className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {formatPercentSigned(
-                            prices?.["matic-network"]?.usd_24h_change ?? 0
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>ERC-20 Token Holdings</CardTitle>
-                <CardDescription>
-                  Your ERC-20 balances and USD values
-                </CardDescription>
-                <CardAction>
-                  {isTokensFetching && (
-                    <span className="text-xs text-muted-foreground">
-                      Refreshing…
-                    </span>
-                  )}
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                {isTokensLoading ? (
-                  <div className="space-y-2 animate-pulse">
-                    <div className="h-6 w-64 bg-muted rounded" />
-                    <div className="h-6 w-64 bg-muted rounded" />
-                  </div>
-                ) : isTokensError ? (
-                  <div className="flex items-start justify-between p-3 border rounded bg-destructive/10">
-                    <div>
-                      <p className="font-medium text-destructive">
-                        Failed to load token holdings
-                      </p>
-                      {typeof tokensError?.message === "string" && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {tokensError.message}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRefreshTokens}
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                ) : tokens.length === 0 ? (
-                  <p className="text-muted-foreground">
-                    No ERC-20 tokens detected.
-                  </p>
-                ) : (
-                  <TokenHoldingsTable tokens={tokens} />
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Snapshot History</CardTitle>
-                <CardDescription>
-                  Last 5 snapshots for this wallet
-                </CardDescription>
-                <CardAction>
-                  <Link href="/snapshots">
-                    <Button variant="outline" size="sm">
-                      View All
-                    </Button>
-                  </Link>
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                {isHistoryLoading && (
-                  <div className="text-sm text-muted-foreground">
-                    Loading snapshots...
-                  </div>
-                )}
-                {!isHistoryLoading &&
-                  (!snapshotHistory || snapshotHistory.data.length === 0) && (
-                    <div className="text-sm text-muted-foreground">
-                      No snapshots yet. Save one to get started.
-                    </div>
-                  )}
-                {!isHistoryLoading &&
-                  snapshotHistory &&
-                  snapshotHistory.data.length > 0 && (
-                    <div className="space-y-2">
-                      {snapshotHistory.data.map((snap) => (
-                        <div
-                          key={snap.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span className="text-muted-foreground">
-                            {new Date(snap.createdAt).toLocaleString()}
-                          </span>
-                          <span className="font-medium">
-                            {formatCurrency(snap.totalValue)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-              </CardContent>
-            </Card>
-
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Portfolio Performance</CardTitle>
-                <CardDescription>
-                  Your portfolio value over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
-                  <p className="text-muted-foreground">
-                    Chart will be implemented here
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
             <Card>
               <CardHeader>
