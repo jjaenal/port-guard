@@ -10,7 +10,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  TooltipProps,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 
@@ -26,8 +25,12 @@ const CustomTooltip = ({
   active, 
   payload, 
   label 
-}: TooltipProps<number, string>) => {
-  if (active && payload && payload.length) {
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
+}) => {
+  if (active && payload && payload.length && label) {
     return (
       <div className="bg-white p-2 border rounded shadow-sm text-xs">
         <p className="font-medium">{new Date(label).toLocaleDateString()}</p>
