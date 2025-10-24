@@ -38,30 +38,40 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
   const [sortKey, setSortKey] = useState<"valueUsd" | "balance" | "token">(
-    "valueUsd",
+    () => {
+      try {
+        const sk = localStorage.getItem("tokenSortKey");
+        if (sk === "valueUsd" || sk === "balance" || sk === "token") return sk;
+      } catch {}
+      return "valueUsd";
+    },
   );
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => {
+    try {
+      const sd = localStorage.getItem("tokenSortDir");
+      if (sd === "asc" || sd === "desc") return sd;
+    } catch {}
+    return "desc";
+  });
   // Filters
   const [chainFilter, setChainFilter] = useState<
     "all" | "ethereum" | "polygon"
-  >("all");
-  const [search, setSearch] = useState<string>("");
-
-  // Load persisted preferences
-  useEffect(() => {
+  >(() => {
     try {
-      const sk = localStorage.getItem("tokenSortKey");
-      const sd = localStorage.getItem("tokenSortDir");
       const cf = localStorage.getItem("tokenChainFilter");
-      const sq = localStorage.getItem("tokenSearchQuery");
-      if (sk === "valueUsd" || sk === "balance" || sk === "token")
-        setSortKey(sk as any);
-      if (sd === "asc" || sd === "desc") setSortDir(sd as any);
-      if (cf === "all" || cf === "ethereum" || cf === "polygon")
-        setChainFilter(cf as any);
-      if (typeof sq === "string") setSearch(sq);
+      if (cf === "all" || cf === "ethereum" || cf === "polygon") return cf;
     } catch {}
-  }, []);
+    return "all";
+  });
+  const [search, setSearch] = useState<string>(() => {
+    try {
+      const sq = localStorage.getItem("tokenSearchQuery");
+      if (typeof sq === "string") return sq;
+    } catch {}
+    return "";
+  });
+
+  // Load persisted preferences removed; using lazy initial state above
 
   // Persist changes
   useEffect(() => {
@@ -80,6 +90,12 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     const searchOk = q ? text.includes(q) : true;
     return chainOk && searchOk;
   });
+
+  // Total portfolio value (across all tokens) for percentage calc
+  const totalPortfolioUsd = tokens.reduce(
+    (sum, t) => sum + (t.valueUsd ?? 0),
+    0,
+  );
 
   const sortedTokens = [...filtered].sort((a, b) => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -172,57 +188,64 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Token</TableHead>
-              <TableHead>Chain</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Price (USD)</TableHead>
+              <TableHead className="hidden md:table-cell">Chain</TableHead>
+              <TableHead className="hidden sm:table-cell">Balance</TableHead>
+              <TableHead className="hidden md:table-cell">Price (USD)</TableHead>
               <TableHead>Value (USD)</TableHead>
+              <TableHead className="w-[120px]">Portfolio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTokens.map((t) => (
-              <TableRow key={`${t.chain}-${t.contractAddress}`}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <TokenAvatar token={t} />
-                    <div>
-                      <div className="font-medium">{t.symbol ?? "?"}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+            {sortedTokens.map((t) => {
+              const percent = totalPortfolioUsd > 0
+                ? ((t.valueUsd ?? 0) / totalPortfolioUsd) * 100
+                : 0;
+              return (
+                <TableRow key={`${t.chain}-${t.contractAddress}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <TokenAvatar token={t} />
+                      <div>
+                        <div className="font-medium">{t.symbol ?? "?"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell className="capitalize">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      t.chain === "ethereum"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-purple-100 text-purple-700"
-                    }`}
-                  >
-                    {t.chain === "ethereum" ? "Ethereum" : "Polygon"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {t.formatted
-                    ? formatNumber(Number(t.formatted), {
-                        maximumFractionDigits: 6,
-                      })
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
-                </TableCell>
-                <TableCell>
-                  {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell className="capitalize hidden md:table-cell">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        t.chain === "ethereum"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
+                      {t.chain === "ethereum" ? "Ethereum" : "Polygon"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {t.formatted
+                      ? formatNumber(Number(t.formatted), {
+                          maximumFractionDigits: 6,
+                        })
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
+                  </TableCell>
+                  <TableCell className="w-[120px]">
+                    {formatNumber(percent, { maximumFractionDigits: 2 })}%
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
           <TableCaption>
-            Showing {sortedTokens.length} ERC-20{" "}
-            {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum &
-            Polygon
+            Showing {sortedTokens.length} ERC-20 {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum & Polygon. Total portfolio value used for %.
           </TableCaption>
         </Table>
       )}
