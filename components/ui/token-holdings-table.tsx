@@ -35,11 +35,85 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
   );
 }
 
+function EmptyState({
+  hasTokens,
+  hasFilters,
+  onClearFilters,
+}: {
+  hasTokens: boolean;
+  hasFilters: boolean;
+  onClearFilters: () => void;
+}) {
+  if (!hasTokens) {
+    // No tokens at all
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+          <svg
+            className="w-8 h-8 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">No Tokens Found</h3>
+        <p className="text-muted-foreground text-sm max-w-md">
+          No ERC-20 tokens detected in this wallet. Connect a wallet with token
+          holdings or check if the address is correct.
+        </p>
+      </div>
+    );
+  }
+
+  if (hasFilters) {
+    // Has tokens but filtered out
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+          <svg
+            className="w-8 h-8 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">No Matching Tokens</h3>
+        <p className="text-muted-foreground text-sm mb-4 max-w-md">
+          No tokens match your current filters. Try adjusting your search or
+          filter criteria.
+        </p>
+        <button
+          onClick={onClearFilters}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
+        >
+          Clear All Filters
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
-  const [sortKey, setSortKey] = useState<"valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent">(
-    "valueUsd",
-  );
+  const [sortKey, setSortKey] = useState<
+    "valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent"
+  >("valueUsd");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   // Filters
   const [chainFilter, setChainFilter] = useState<
@@ -49,7 +123,10 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   const [hideSmall, setHideSmall] = useState<boolean>(false);
 
   // Total value for portfolio percentage (use full tokens list, not filtered)
-  const totalValue = (tokens ?? []).reduce((sum, t) => sum + (t.valueUsd ?? 0), 0);
+  const totalValue = (tokens ?? []).reduce(
+    (sum, t) => sum + (t.valueUsd ?? 0),
+    0
+  );
 
   // Load persisted preferences
   useEffect(() => {
@@ -91,7 +168,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     const q = search.trim().toLowerCase();
     const text = `${t.symbol ?? ""} ${t.name ?? ""}`.toLowerCase();
     const searchOk = q ? text.includes(q) : true;
-    const smallOk = hideSmall ? ((t.valueUsd ?? Infinity) >= 1) : true;
+    const smallOk = hideSmall ? (t.valueUsd ?? Infinity) >= 1 : true;
     return chainOk && searchOk && smallOk;
   });
 
@@ -200,7 +277,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             aria-pressed={hideSmall}
             aria-label="Toggle hide small balances"
           >
-            Hide <$1
+            Hide &lt;$1
           </button>
         </div>
         <input
@@ -212,7 +289,15 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       </div>
 
       {sortedTokens.length === 0 ? (
-        <p className="text-muted-foreground">No ERC-20 tokens detected.</p>
+        <EmptyState
+          hasTokens={tokens.length > 0}
+          hasFilters={search.length > 0 || chainFilter !== "all" || hideSmall}
+          onClearFilters={() => {
+            setSearch("");
+            setChainFilter("all");
+            setHideSmall(false);
+          }}
+        />
       ) : (
         <>
           {/* Mobile Card Layout (< 768px) */}
