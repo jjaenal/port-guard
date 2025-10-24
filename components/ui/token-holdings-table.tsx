@@ -12,7 +12,11 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { formatNumber, formatCurrencyTiny } from "@/lib/utils";
+import {
+  formatNumber,
+  formatCurrencyTiny,
+  formatPercentSigned,
+} from "@/lib/utils";
 
 function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
   const [error, setError] = useState(false);
@@ -37,15 +41,21 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
-  const [sortKey, setSortKey] = useState<"valueUsd" | "balance" | "token">(
-    () => {
-      try {
-        const sk = localStorage.getItem("tokenSortKey");
-        if (sk === "valueUsd" || sk === "balance" || sk === "token") return sk;
-      } catch {}
-      return "valueUsd";
-    },
-  );
+  const [sortKey, setSortKey] = useState<
+    "valueUsd" | "balance" | "token" | "change24h"
+  >(() => {
+    try {
+      const sk = localStorage.getItem("tokenSortKey");
+      if (
+        sk === "valueUsd" ||
+        sk === "balance" ||
+        sk === "token" ||
+        sk === "change24h"
+      )
+        return sk as any;
+    } catch {}
+    return "valueUsd";
+  });
   const [sortDir, setSortDir] = useState<"asc" | "desc">(() => {
     try {
       const sd = localStorage.getItem("tokenSortDir");
@@ -70,8 +80,6 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     } catch {}
     return "";
   });
-
-  // Load persisted preferences removed; using lazy initial state above
 
   // Persist changes
   useEffect(() => {
@@ -109,6 +117,19 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       const bb = Number(b.formatted ?? 0);
       return ab === bb ? 0 : ab > bb ? 1 * dir : -1 * dir;
     }
+    if (sortKey === "change24h") {
+      const av =
+        a.change24h ??
+        (sortDir === "asc"
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY);
+      const bv =
+        b.change24h ??
+        (sortDir === "asc"
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY);
+      return av === bv ? 0 : av > bv ? 1 * dir : -1 * dir;
+    }
     // token label sort
     const at = (a.symbol ?? a.name ?? "").toLowerCase();
     const bt = (b.symbol ?? b.name ?? "").toLowerCase();
@@ -140,6 +161,13 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             aria-pressed={sortKey === "token"}
           >
             Token
+          </button>
+          <button
+            className={`px-2 py-1 rounded border text-xs ${sortKey === "change24h" ? "bg-muted" : ""}`}
+            onClick={() => setSortKey("change24h")}
+            aria-pressed={sortKey === "change24h"}
+          >
+            24h Change
           </button>
           <button
             className="px-2 py-1 rounded border text-xs"
@@ -190,16 +218,27 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
               <TableHead>Token</TableHead>
               <TableHead className="hidden md:table-cell">Chain</TableHead>
               <TableHead className="hidden sm:table-cell">Balance</TableHead>
-              <TableHead className="hidden md:table-cell">Price (USD)</TableHead>
+              <TableHead className="hidden md:table-cell">
+                Price (USD)
+              </TableHead>
               <TableHead>Value (USD)</TableHead>
+              <TableHead className="hidden md:table-cell">24h Change</TableHead>
               <TableHead className="w-[120px]">Portfolio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedTokens.map((t) => {
-              const percent = totalPortfolioUsd > 0
-                ? ((t.valueUsd ?? 0) / totalPortfolioUsd) * 100
-                : 0;
+              const percent =
+                totalPortfolioUsd > 0
+                  ? ((t.valueUsd ?? 0) / totalPortfolioUsd) * 100
+                  : 0;
+              const change = t.change24h;
+              const changeClass =
+                change === undefined
+                  ? ""
+                  : change >= 0
+                    ? "text-green-600"
+                    : "text-red-600";
               return (
                 <TableRow key={`${t.chain}-${t.contractAddress}`}>
                   <TableCell>
@@ -237,6 +276,15 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
                   <TableCell>
                     {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
                   </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {change === undefined ? (
+                      "-"
+                    ) : (
+                      <span className={changeClass}>
+                        {formatPercentSigned(change)}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="w-[120px]">
                     {formatNumber(percent, { maximumFractionDigits: 2 })}%
                   </TableCell>
@@ -245,7 +293,9 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             })}
           </TableBody>
           <TableCaption>
-            Showing {sortedTokens.length} ERC-20 {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum & Polygon. Total portfolio value used for %.
+            Showing {sortedTokens.length} ERC-20{" "}
+            {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum &
+            Polygon. Total portfolio value used for %.
           </TableCaption>
         </Table>
       )}
