@@ -125,7 +125,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Total value for portfolio percentage (use full tokens list, not filtered)
   const totalValue = (tokens ?? []).reduce(
     (sum, t) => sum + (t.valueUsd ?? 0),
-    0
+    0,
   );
 
   // Load persisted preferences

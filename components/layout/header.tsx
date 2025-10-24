@@ -13,14 +13,14 @@ export function Header() {
 
   useEffect(() => {
     const updateOnline = () => setIsOnline(navigator.onLine);
-    
+
     // Set initial state
     updateOnline();
-    
+
     // Add event listeners
     window.addEventListener("online", updateOnline);
     window.addEventListener("offline", updateOnline);
-    
+
     // Cleanup
     return () => {
       window.removeEventListener("online", updateOnline);
@@ -61,7 +61,7 @@ export function Header() {
                 Offline
               </div>
             )}
-            
+
             <Button
               variant="ghost"
               size="sm"

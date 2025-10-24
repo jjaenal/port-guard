@@ -15,7 +15,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const toast = useCallback((props: Omit<ToastProps, "id" | "onClose">) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { ...props, id, onClose: () => dismiss(id) }]);
+    setToasts((prev) => [
+      ...prev,
+      { ...props, id, onClose: () => dismiss(id) },
+    ]);
     return id;
   }, []);
 

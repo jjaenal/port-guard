@@ -44,8 +44,6 @@ export default function DashboardPage() {
     matic,
     isLoading,
     refetch: refetchNativeBalances,
-    isError: isNativeBalancesError,
-    error: nativeBalancesError,
     updatedAt: nativeUpdatedAt,
   } = useNativeBalances();
   const [overrideAddress, setOverrideAddress] = useState<string>("");
@@ -164,7 +162,7 @@ export default function DashboardPage() {
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
       const response = await fetch(
-        "/api/prices?ids=ethereum,matic-network&vs=usd"
+        "/api/prices?ids=ethereum,matic-network&vs=usd",
       );
       const json = await response.json();
       return json.data || {};
@@ -224,7 +222,7 @@ export default function DashboardPage() {
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
-      rangeDays
+      rangeDays,
     );
 
   // Hitung persen perubahan dari series
@@ -243,8 +241,8 @@ export default function DashboardPage() {
   const lastUpdatedTs = Math.max(
     0,
     ...[tokensUpdatedAt, pricesUpdatedAt, nativeUpdatedAt].filter(
-      (x): x is number => typeof x === "number"
-    )
+      (x): x is number => typeof x === "number",
+    ),
   );
   const lastUpdatedStr = lastUpdatedTs
     ? new Date(lastUpdatedTs).toLocaleString(undefined, {
@@ -353,6 +351,7 @@ export default function DashboardPage() {
     maticUsd,
     prices,
     tokens,
+    toast,
   ]);
 
   return (
@@ -426,7 +425,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                       )
                     }
                     className="text-xs"
@@ -438,7 +437,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503"
+                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
                       )
                     }
                     className="text-xs"
@@ -450,7 +449,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x28C6c06298d514Db089934071355E5743bf21d60"
+                        "0x28C6c06298d514Db089934071355E5743bf21d60",
                       )
                     }
                     className="text-xs"
@@ -592,7 +591,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.ethereum?.usd_24h_change ?? 0
+                        prices?.ethereum?.usd_24h_change ?? 0,
                       )}
                     </span>
                   </div>
@@ -650,7 +649,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.["matic-network"]?.usd_24h_change ?? 0
+                        prices?.["matic-network"]?.usd_24h_change ?? 0,
                       )}
                     </span>
                   </div>
@@ -699,7 +698,7 @@ export default function DashboardPage() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          }
+                          },
                         )}
                       </span>
                     </div>
@@ -814,7 +813,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.ethereum?.usd_24h_change ?? 0
+                            prices?.ethereum?.usd_24h_change ?? 0,
                           )}
                         </p>
                       </div>
@@ -843,7 +842,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.["matic-network"]?.usd_24h_change ?? 0
+                            prices?.["matic-network"]?.usd_24h_change ?? 0,
                           )}
                         </p>
                       </div>

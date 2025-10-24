@@ -33,11 +33,11 @@ export async function GET(req: Request) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      
-      const data = include24hrChange 
+
+      const data = include24hrChange
         ? await getTokenPricesByAddressWithChange(platform, addrList, vs)
         : await getTokenPricesByAddress(platform, addrList, vs);
-        
+
       return NextResponse.json({
         source: "coingecko:contract",
         platform,
