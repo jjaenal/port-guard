@@ -5,6 +5,7 @@ import { useNativeBalances } from "@/lib/hooks/useNativeBalances";
 import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { AnalyticsCards } from "@/components/ui/analytics-cards";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
+import { TokenAllocation } from "@/components/ui/token-allocation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -125,6 +126,11 @@ export default function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Token Allocation Section */}
+      <div className="mt-6">
+        <TokenAllocation tokens={tokens} isLoading={isLoading || isFetching} />
+      </div>
 
       {!isLoading && !isFetching && tokens.length === 0 && (
         <p className="mt-6 text-sm text-muted-foreground">Connect your wallet to see analytics.</p>
