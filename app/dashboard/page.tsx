@@ -493,11 +493,13 @@ export default function DashboardPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-6">
             {/* Total Portfolio Value card with 24h change */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   Total Portfolio Value
                 </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -522,11 +524,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   Total Tokens
                 </CardTitle>
-                <Coins className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <Coins className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -539,11 +543,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   ETH 24h Change
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -570,11 +576,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   MATIC 24h Change
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -602,11 +610,13 @@ export default function DashboardPage() {
 
             {/* Latest Snapshot Card */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   Latest Snapshot
                 </CardTitle>
-                <Camera className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {isSnapshotLoading ? (
