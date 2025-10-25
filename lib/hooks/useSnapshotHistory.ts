@@ -25,8 +25,8 @@ export function useSnapshotHistory(
       const url = `/api/snapshots?address=${address}&limit=${limit}&offset=${offset}`;
       const res = await fetch(url);
       if (!res.ok) {
-        // For history, treat empty as null; consumer can show fallback
-        return null;
+        const text = await res.text();
+        throw new Error(`Snapshots API error: ${res.status} ${text}`);
       }
       const json = await res.json();
       return json as { data: SnapshotItem[]; total: number };

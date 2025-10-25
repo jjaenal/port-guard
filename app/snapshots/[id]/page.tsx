@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function SnapshotDetailPage() {
   const { id } = useParams();
@@ -19,6 +20,7 @@ export default function SnapshotDetailPage() {
     data: snapshotData,
     isLoading,
     error,
+    refetch,
   } = useSnapshotDetail(snapshotId);
 
   // Format date to local string
@@ -54,6 +56,24 @@ export default function SnapshotDetailPage() {
         </Button>
       </div>
 
+      {error && (
+        <div className="mb-4">
+          <Alert variant="destructive" closable>
+            <AlertTitle>Failed to load snapshot</AlertTitle>
+            <AlertDescription>
+              {typeof (error as any)?.message === "string"
+                ? (error as any).message
+                : "Snapshot details API error."}
+            </AlertDescription>
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          </Alert>
+        </div>
+      )}
+
       {isLoading ? (
         <Card>
           <CardHeader>
@@ -65,13 +85,13 @@ export default function SnapshotDetailPage() {
             </div>
           </CardContent>
         </Card>
-      ) : error || !snapshotData?.data ? (
+      ) : !snapshotData?.data ? (
         <Card>
           <CardHeader>
-            <CardTitle>Error</CardTitle>
+            <CardTitle>No Data</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Failed to load snapshot details. The snapshot may not exist.</p>
+            <p>No snapshot data available. The snapshot may not exist.</p>
             <div className="mt-4">
               <Link href="/snapshots">
                 <Button>View All Snapshots</Button>

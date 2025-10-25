@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -19,18 +21,18 @@ import { ArrowLeft, ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
 import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
 import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
-import { PortfolioChart } from "@/components/ui/portfolio-chart";
-import type { SeriesPoint } from "@/lib/hooks/usePortfolioSeries";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
-function CompareSnapshotsContent() {
+function CompareSnapshots() {
   const { address, isConnected } = useAccount();
   const [page, setPage] = useState(0);
   const limit = 10;
-  const { data: snapshotHistory, isLoading } = useSnapshotHistory(
-    address,
-    limit,
-    page,
-  );
+  const {
+    data: snapshotHistory,
+    isLoading,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useSnapshotHistory(address, limit, page);
 
   const [selectedSnapshots, setSelectedSnapshots] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
@@ -38,7 +40,6 @@ function CompareSnapshotsContent() {
   const [tokenFilter, setTokenFilter] = useState<"all" | "up" | "down">("all");
   const [tokenQuery, setTokenQuery] = useState("");
   const [sortBy, setSortBy] = useState<"abs" | "percent" | "symbol">("abs");
-  const [highlightThreshold, setHighlightThreshold] = useState<number>(0);
   const params = useSearchParams();
 
   useEffect(() => {
@@ -65,13 +66,19 @@ function CompareSnapshotsContent() {
       setCompareMode(true);
     }
   }, [params]);
-  const { data: snapshot1Data, isLoading: isLoading1 } = useSnapshotDetail(
-    selectedSnapshots[0],
-  );
+  const {
+    data: snapshot1Data,
+    isLoading: isLoading1,
+    error: error1,
+    refetch: refetch1,
+  } = useSnapshotDetail(selectedSnapshots[0]);
 
-  const { data: snapshot2Data, isLoading: isLoading2 } = useSnapshotDetail(
-    selectedSnapshots[1],
-  );
+  const {
+    data: snapshot2Data,
+    isLoading: isLoading2,
+    error: error2,
+    refetch: refetch2,
+  } = useSnapshotDetail(selectedSnapshots[1]);
 
   const handleSelectSnapshot = (id: string) => {
     if (selectedSnapshots.includes(id)) {
@@ -333,23 +340,6 @@ function CompareSnapshotsContent() {
               >
                 Copy Link
               </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const s = btoa(
-                    JSON.stringify({
-                      a: selectedSnapshots[0],
-                      b: selectedSnapshots[1],
-                    }),
-                  );
-                  const url = `${window.location.origin}/snapshots/compare?s=${s}`;
-                  await navigator.clipboard.writeText(url);
-                  setCopyMsg("Short link copied");
-                  setTimeout(() => setCopyMsg(""), 2000);
-                }}
-              >
-                Copy Short Link
-              </Button>
               {copyMsg && (
                 <span className="text-xs text-muted-foreground">{copyMsg}</span>
               )}
@@ -383,6 +373,55 @@ function CompareSnapshotsContent() {
             </Button>
           </div>
 
+          {selectedSnapshots.length < 2 &&
+            !isLoading &&
+            snapshotHistory &&
+            snapshotHistory.data.length > 0 && (
+              <Alert className="mb-4" closable>
+                <AlertTitle>Pro tip</AlertTitle>
+                <AlertDescription>
+                  Pick snapshots far apart in time to see bigger changes. After
+                  selecting two, use the "Copy Link" button to share the
+                  comparison.
+                </AlertDescription>
+              </Alert>
+            )}
+
+          {historyError && (
+            <div className="mb-4">
+              <Alert variant="destructive" closable>
+                <AlertTitle>Failed to load snapshots</AlertTitle>
+                <AlertDescription>
+                  {(() => {
+                    const msg = (historyError as any)?.message || "";
+                    if (msg.includes("Snapshots API error:")) {
+                      const match = msg.match(/\d+\s+(.+)$/);
+                      if (match) {
+                        try {
+                          const body = JSON.parse(match[1]);
+                          return (
+                            body.error || body.message || "Unknown API error"
+                          );
+                        } catch {
+                          return match[1] || "API request failed";
+                        }
+                      }
+                    }
+                    return msg || "Failed to load snapshots. Please try again.";
+                  })()}
+                </AlertDescription>
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchHistory()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Alert>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Snapshots</CardTitle>
@@ -478,6 +517,48 @@ function CompareSnapshotsContent() {
         </>
       ) : (
         <div className="space-y-6">
+          {(error1 || error2) && (
+            <div className="mb-2 space-y-2">
+              {error1 && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load snapshot A</AlertTitle>
+                  <AlertDescription>
+                    {typeof (error1 as any)?.message === "string"
+                      ? (error1 as any).message
+                      : "Snapshot details API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetch1()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+              {error2 && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load snapshot B</AlertTitle>
+                  <AlertDescription>
+                    {typeof (error2 as any)?.message === "string"
+                      ? (error2 as any).message
+                      : "Snapshot details API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetch2()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+            </div>
+          )}
           {isLoading1 || isLoading2 ? (
             <Card>
               <CardContent className="py-8">
@@ -521,7 +602,56 @@ function CompareSnapshotsContent() {
                         day: "numeric",
                       },
                     )}
+                    <br />
+                    <span className="text-xs text-muted-foreground">
+                      Last updated:{" "}
+                      {new Date(
+                        snapshot1Data.data.createdAt,
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      {"\u2192"}{" "}
+                      {new Date(
+                        snapshot2Data.data.createdAt,
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </CardDescription>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      Tokens: {snapshot1Data.data.tokenCount} →{" "}
+                      {snapshot2Data.data.tokenCount}
+                    </span>
+                    {snapshot2Data.data.tokenCount -
+                      snapshot1Data.data.tokenCount !==
+                      0 && (
+                      <span
+                        className={`${snapshot2Data.data.tokenCount - snapshot1Data.data.tokenCount > 0 ? "text-green-600" : "text-red-600"} flex items-center gap-1`}
+                      >
+                        {snapshot2Data.data.tokenCount -
+                          snapshot1Data.data.tokenCount >
+                        0 ? (
+                          <TrendingUp className="h-4 w-4" />
+                        ) : (
+                          <TrendingDown className="h-4 w-4" />
+                        )}
+                        {snapshot2Data.data.tokenCount -
+                          snapshot1Data.data.tokenCount >
+                        0
+                          ? `+${snapshot2Data.data.tokenCount - snapshot1Data.data.tokenCount}`
+                          : `${snapshot2Data.data.tokenCount - snapshot1Data.data.tokenCount}`}
+                      </span>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid md:grid-cols-3 gap-6">
@@ -639,29 +769,26 @@ function CompareSnapshotsContent() {
                         placeholder="Search token..."
                         className="w-48"
                       />
-                      <Input
-                        type="number"
-                        value={highlightThreshold}
-                        onChange={(e) =>
-                          setHighlightThreshold(Number(e.target.value) || 0)
-                        }
-                        placeholder="Highlight ≥ USD"
-                        className="w-40"
-                      />
                       <select
                         className="border rounded px-2 py-1 text-sm"
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as any)}
                       >
                         <option value="abs">Sort: Diff</option>
-                        <option value="percent">Sort: Percent</option>
+                        <option value="percent">Sort: % Change</option>
                         <option value="symbol">Sort: Symbol</option>
                       </select>
-                      <Button size="sm" variant="outline" onClick={exportCSV}>
-                        Export CSV
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={exportJSON}>
-                        Export JSON
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setTokenFilter("all");
+                          setTokenQuery("");
+                          setSortBy("abs");
+                        }}
+                        aria-label="Reset filters"
+                      >
+                        Reset
                       </Button>
                     </div>
                   </div>
@@ -728,14 +855,8 @@ function CompareSnapshotsContent() {
 
 export default function CompareSnapshotsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          Loading...
-        </div>
-      }
-    >
-      <CompareSnapshotsContent />
+    <Suspense fallback={<div>Loading...</div>}>
+      <CompareSnapshots />
     </Suspense>
   );
 }

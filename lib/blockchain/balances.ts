@@ -13,6 +13,7 @@ export type TokenHolding = {
   priceUsd?: number;
   priceChange24h?: number; // 24h price change percentage
   valueUsd?: number;
+  change24h?: number;
 };
 
 // DTO type for client-side serialization (BigInt -> string)
@@ -166,7 +167,7 @@ export async function getTokenBalances(
     return [];
   }
 
-  console.log(`🔍 Getting token balances for ${address} on chain ${chainId}`);
+  console.warn(`🔍 Getting token balances for ${address} on chain ${chainId}`);
 
   const chain = chainKeyFromId(chainId);
   const now = Date.now();
@@ -176,14 +177,14 @@ export async function getTokenBalances(
   let balances: AlchemyBalanceItem[];
   const cachedBalances = balancesCache[cacheKey];
   if (cachedBalances && now - cachedBalances.timestamp < CACHE_TTL) {
-    console.log(`📦 Using cached balances for ${chain}`);
+    console.warn(`📦 Using cached balances for ${chain}`);
     balances = cachedBalances.data;
   } else {
-    console.log(`🌐 Fetching fresh balances from Alchemy for ${chain}`);
+    console.warn(`🌐 Fetching fresh balances from Alchemy for ${chain}`);
     try {
       balances = await getBalances(chain, address, apiKey);
       balancesCache[cacheKey] = { timestamp: now, data: balances };
-      console.log(`✅ Got ${balances.length} token balances for ${chain}`);
+      console.warn(`✅ Got ${balances.length} token balances for ${chain}`);
     } catch (error) {
       console.error(`❌ Error fetching balances for ${chain}:`, error);
       throw error;
@@ -199,14 +200,14 @@ export async function getTokenBalances(
   let meta: Record<string, TokenMetadata>;
   const cachedMeta = metadataCache[metaCacheKey];
   if (cachedMeta && now - cachedMeta.timestamp < CACHE_TTL) {
-    console.log(`📦 Using cached metadata for ${chain}`);
+    console.warn(`📦 Using cached metadata for ${chain}`);
     meta = cachedMeta.data;
   } else {
-    console.log(`🌐 Fetching fresh metadata from Alchemy for ${chain}`);
+    console.warn(`🌐 Fetching fresh metadata from Alchemy for ${chain}`);
     try {
       meta = await getMetadata(chain, contracts, apiKey);
       metadataCache[metaCacheKey] = { timestamp: now, data: meta };
-      console.log(
+      console.warn(
         `✅ Got metadata for ${Object.keys(meta).length} tokens on ${chain}`,
       );
     } catch (error) {
@@ -222,10 +223,10 @@ export async function getTokenBalances(
 
   if (contracts.length > 0) {
     if (cachedPrices && now - cachedPrices.timestamp < CACHE_TTL) {
-      console.log(`📦 Using cached prices for ${chain}`);
+      console.warn(`📦 Using cached prices for ${chain}`);
       prices = cachedPrices.data;
     } else {
-      console.log(`🌐 Fetching fresh prices for ${chain}`);
+      console.warn(`🌐 Fetching fresh prices for ${chain}`);
       try {
         prices = await fetch(
           `/api/prices?platform=${platformIdForChain(chain)}&contracts=${contracts.join(",")}&vs=usd&include_24hr_change=true`,
@@ -233,7 +234,7 @@ export async function getTokenBalances(
           .then((res) => res.json())
           .then((json) => json.data || {});
         pricesCache[pricesCacheKey] = { timestamp: now, data: prices };
-        console.log(
+        console.warn(
           `✅ Got prices for ${Object.keys(prices).length} tokens on ${chain}`,
         );
       } catch (error) {
@@ -254,6 +255,7 @@ export async function getTokenBalances(
     const priceUsd = prices[addr]?.usd;
     const priceChange24h = prices[addr]?.usd_24h_change;
     const valueUsd = priceUsd ? Number(formatted) * priceUsd : undefined;
+    const change24h = prices[addr]?.usd_24h_change;
     tokens.push({
       chain,
       contractAddress: addr,
@@ -265,11 +267,13 @@ export async function getTokenBalances(
       priceUsd,
       priceChange24h,
       valueUsd,
+      change24h,
     });
   }
 
   // Sort by value desc
   tokens.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
-  console.log(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
+  -console.log(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
+  +console.warn(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
   return tokens;
 }
