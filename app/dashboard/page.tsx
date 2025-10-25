@@ -33,6 +33,7 @@ import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
 import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -53,6 +54,7 @@ export default function DashboardPage() {
     isError: isTokensError,
     isFetching: isTokensFetching,
     error: tokensError,
+    refetch: refetchTokens,
   } = useTokenHoldings(overrideAddress ? overrideAddress : undefined);
   const {
     data: latestSnapshot,
@@ -63,11 +65,7 @@ export default function DashboardPage() {
   const { data: snapshotHistory, isLoading: isHistoryLoading } =
     useSnapshotHistory(address, 5);
 
-  const {
-    data: prices,
-    isLoading: isPricesLoading,
-    isError: isPricesError,
-  } = useQuery({
+  const pricesQuery = useQuery({
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
       const response = await fetch(
@@ -80,6 +78,12 @@ export default function DashboardPage() {
     retry: 1,
     staleTime: 60_000,
   });
+  const {
+    data: prices,
+    isLoading: isPricesLoading,
+    isError: isPricesError,
+    refetch: refetchPrices,
+  } = pricesQuery;
 
   const ethAmount = eth ? Number(formatUnits(eth.value, eth.decimals)) : 0;
   const maticAmount = matic
@@ -319,6 +323,46 @@ export default function DashboardPage() {
 
       {(isConnected || !!overrideAddress) && (
         <>
+          {(isPricesError || isTokensError) && (
+            <div className="mb-4 space-y-2">
+              {isPricesError && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load prices</AlertTitle>
+                  <AlertDescription>
+                    ETH/MATIC price API failed. Values may be outdated.
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchPrices()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+              {isTokensError && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load token holdings</AlertTitle>
+                  <AlertDescription>
+                    {typeof (tokensError as any)?.message === "string"
+                      ? (tokensError as any).message
+                      : "Balances API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchTokens()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
             {/* Total Portfolio Value card with 24h change */}
             <Card>

@@ -13,16 +13,18 @@ import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { formatCurrency } from "@/lib/utils";
 import { useState } from "react";
 import Link from "next/link";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function SnapshotsPage() {
   const { address, isConnected } = useAccount();
   const [page, setPage] = useState(0);
   const limit = 10;
-  const { data: snapshotHistory, isLoading } = useSnapshotHistory(
-    address,
-    limit,
-    page,
-  );
+  const {
+    data: snapshotHistory,
+    isLoading,
+    error,
+    refetch,
+  } = useSnapshotHistory(address, limit, page);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -128,6 +130,23 @@ export default function SnapshotsPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+      {isConnected && !isLoading && (snapshotHistory === null || error) && (
+        <div className="mb-4">
+          <Alert variant="destructive" closable>
+            <AlertTitle>Failed to load snapshots</AlertTitle>
+            <AlertDescription>
+              {error && typeof (error as any)?.message === "string"
+                ? (error as any).message
+                : "Snapshots API returned an error or empty response."}
+            </AlertDescription>
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          </Alert>
+        </div>
       )}
     </div>
   );
