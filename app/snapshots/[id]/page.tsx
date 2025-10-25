@@ -8,15 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function SnapshotDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { isConnected } = useAccount();
   const snapshotId = typeof id === "string" ? id : "";
-  
-  const { data: snapshotData, isLoading, error } = useSnapshotDetail(snapshotId);
-  
+
+  const {
+    data: snapshotData,
+    isLoading,
+    error,
+    refetch,
+  } = useSnapshotDetail(snapshotId);
+
   // Format date to local string
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -50,6 +56,24 @@ export default function SnapshotDetailPage() {
         </Button>
       </div>
 
+      {error && (
+        <div className="mb-4">
+          <Alert variant="destructive" closable>
+            <AlertTitle>Failed to load snapshot</AlertTitle>
+            <AlertDescription>
+              {typeof (error as any)?.message === "string"
+                ? (error as any).message
+                : "Snapshot details API error."}
+            </AlertDescription>
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          </Alert>
+        </div>
+      )}
+
       {isLoading ? (
         <Card>
           <CardHeader>
@@ -61,13 +85,13 @@ export default function SnapshotDetailPage() {
             </div>
           </CardContent>
         </Card>
-      ) : error || !snapshotData?.data ? (
+      ) : !snapshotData?.data ? (
         <Card>
           <CardHeader>
-            <CardTitle>Error</CardTitle>
+            <CardTitle>No Data</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Failed to load snapshot details. The snapshot may not exist.</p>
+            <p>No snapshot data available. The snapshot may not exist.</p>
             <div className="mt-4">
               <Link href="/snapshots">
                 <Button>View All Snapshots</Button>
@@ -102,7 +126,9 @@ export default function SnapshotDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Wallet Address</p>
+                  <p className="text-sm text-muted-foreground">
+                    Wallet Address
+                  </p>
                   <p className="text-lg font-medium truncate">
                     {snapshotData.data.address}
                   </p>
@@ -131,7 +157,10 @@ export default function SnapshotDetailPage() {
                     </thead>
                     <tbody>
                       {snapshotData.data.tokens.map((token) => (
-                        <tr key={token.id} className="border-b hover:bg-muted/50">
+                        <tr
+                          key={token.id}
+                          className="border-b hover:bg-muted/50"
+                        >
                           <td className="py-3 px-4">
                             <div className="flex items-center">
                               {token.logo && (
@@ -142,7 +171,9 @@ export default function SnapshotDetailPage() {
                                 />
                               )}
                               <div>
-                                <div className="font-medium">{token.symbol}</div>
+                                <div className="font-medium">
+                                  {token.symbol}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   {token.name}
                                 </div>

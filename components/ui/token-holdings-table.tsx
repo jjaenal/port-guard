@@ -12,7 +12,12 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { formatNumber, formatCurrencyTiny } from "@/lib/utils";
+import {
+  formatNumber,
+  formatCurrencyTiny,
+  formatPercentSigned,
+} from "@/lib/utils";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
   const [error, setError] = useState(false);
@@ -58,25 +63,49 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   useEffect(() => {
     try {
       const sk = localStorage.getItem("tokenSortKey");
-      const sd = localStorage.getItem("tokenSortDir");
-      const cf = localStorage.getItem("tokenChainFilter");
-      const sq = localStorage.getItem("tokenSearchQuery");
-      const hs = localStorage.getItem("tokenHideSmall");
       if (
         sk === "valueUsd" ||
         sk === "balance" ||
         sk === "token" ||
-        sk === "priceChange24h" ||
-        sk === "portfolioPercent"
+        sk === "change24h"
       )
-        setSortKey(sk as any);
-      if (sd === "asc" || sd === "desc") setSortDir(sd as any);
-      if (cf === "all" || cf === "ethereum" || cf === "polygon")
-        setChainFilter(cf as any);
-      if (typeof sq === "string") setSearch(sq);
-      if (hs === "true" || hs === "false") setHideSmall(hs === "true");
+        return sk as any;
     } catch {}
-  }, []);
+    return "valueUsd";
+  });
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => {
+    try {
+      const sd = localStorage.getItem("tokenSortDir");
+      if (sd === "asc" || sd === "desc") return sd;
+    } catch {}
+    return "desc";
+  });
+  // Filters
+  const [chainFilter, setChainFilter] = useState<
+    "all" | "ethereum" | "polygon"
+  >(() => {
+    try {
+      const cf = localStorage.getItem("tokenChainFilter");
+      if (cf === "all" || cf === "ethereum" || cf === "polygon") return cf;
+    } catch {}
+    return "all";
+  });
+  const [change24hFilter, setChange24hFilter] = useState<"all" | "up" | "down">(
+    () => {
+      try {
+        const f = localStorage.getItem("tokenChange24hFilter");
+        if (f === "all" || f === "up" || f === "down") return f as any;
+      } catch {}
+      return "all";
+    },
+  );
+  const [search, setSearch] = useState<string>(() => {
+    try {
+      const sq = localStorage.getItem("tokenSearchQuery");
+      if (typeof sq === "string") return sq;
+    } catch {}
+    return "";
+  });
 
   // Persist changes
   useEffect(() => {
@@ -84,10 +113,11 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenSortKey", sortKey);
       localStorage.setItem("tokenSortDir", sortDir);
       localStorage.setItem("tokenChainFilter", chainFilter);
+      localStorage.setItem("tokenChange24hFilter", change24hFilter);
       localStorage.setItem("tokenSearchQuery", search);
       localStorage.setItem("tokenHideSmall", String(hideSmall));
     } catch {}
-  }, [sortKey, sortDir, chainFilter, search]);
+  }, [sortKey, sortDir, chainFilter, change24hFilter, search]);
 
   const filtered = tokens.filter((t) => {
     const chainOk = chainFilter === "all" ? true : t.chain === chainFilter;
@@ -97,6 +127,12 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     const smallOk = hideSmall ? (t.valueUsd ?? Infinity) >= 1 : true;
     return chainOk && searchOk && smallOk;
   });
+
+  // Total portfolio value (across all tokens) for percentage calc
+  const totalPortfolioUsd = tokens.reduce(
+    (sum, t) => sum + (t.valueUsd ?? 0),
+    0,
+  );
 
   const sortedTokens = [...filtered].sort((a, b) => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -110,15 +146,18 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       const bb = Number(b.formatted ?? 0);
       return ab === bb ? 0 : ab > bb ? 1 * dir : -1 * dir;
     }
-    if (sortKey === "priceChange24h") {
-      const ac = a.priceChange24h ?? 0;
-      const bc = b.priceChange24h ?? 0;
-      return ac === bc ? 0 : ac > bc ? 1 * dir : -1 * dir;
-    }
-    if (sortKey === "portfolioPercent") {
-      const ap = totalValue ? (a.valueUsd ?? 0) / totalValue : 0;
-      const bp = totalValue ? (b.valueUsd ?? 0) / totalValue : 0;
-      return ap === bp ? 0 : ap > bp ? 1 * dir : -1 * dir;
+    if (sortKey === "change24h") {
+      const av =
+        a.change24h ??
+        (sortDir === "asc"
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY);
+      const bv =
+        b.change24h ??
+        (sortDir === "asc"
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY);
+      return av === bv ? 0 : av > bv ? 1 * dir : -1 * dir;
     }
     // token label sort
     const at = (a.symbol ?? a.name ?? "").toLowerCase();
@@ -153,18 +192,11 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             Token
           </button>
           <button
-            className={`px-2 py-1 rounded border text-xs ${sortKey === "priceChange24h" ? "bg-muted" : ""}`}
-            onClick={() => setSortKey("priceChange24h")}
-            aria-pressed={sortKey === "priceChange24h"}
+            className={`px-2 py-1 rounded border text-xs ${sortKey === "change24h" ? "bg-muted" : ""}`}
+            onClick={() => setSortKey("change24h")}
+            aria-pressed={sortKey === "change24h"}
           >
             24h Change
-          </button>
-          <button
-            className={`px-2 py-1 rounded border text-xs ${sortKey === "portfolioPercent" ? "bg-muted" : ""}`}
-            onClick={() => setSortKey("portfolioPercent")}
-            aria-pressed={sortKey === "portfolioPercent"}
-          >
-            Portfolio %
           </button>
           <button
             className="px-2 py-1 rounded border text-xs"
@@ -206,12 +238,6 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             Hide &lt;$1
           </button>
         </div>
-        <input
-          className="px-2 py-1 rounded border text-xs w-40 bg-background"
-          placeholder="Search token"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
       </div>
 
       {sortedTokens.length === 0 ? (
@@ -221,84 +247,93 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Token</TableHead>
-              <TableHead>Chain</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Price (USD)</TableHead>
-              <TableHead>24h Change</TableHead>
+              <TableHead className="hidden md:table-cell">Chain</TableHead>
+              <TableHead className="hidden sm:table-cell">Balance</TableHead>
+              <TableHead className="hidden md:table-cell">
+                Price (USD)
+              </TableHead>
               <TableHead>Value (USD)</TableHead>
-              <TableHead>Portfolio %</TableHead>
+              <TableHead className="hidden md:table-cell">24h Change</TableHead>
+              <TableHead className="w-[120px]">Portfolio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTokens.map((t) => (
-              <TableRow key={`${t.chain}-${t.contractAddress}`}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <TokenAvatar token={t} />
-                    <div>
-                      <div className="font-medium">{t.symbol ?? "?"}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+            {sortedTokens.map((t) => {
+              const percent =
+                totalPortfolioUsd > 0
+                  ? ((t.valueUsd ?? 0) / totalPortfolioUsd) * 100
+                  : 0;
+              const change = t.change24h;
+              const changeClass =
+                change === undefined
+                  ? ""
+                  : change >= 0
+                    ? "text-green-600"
+                    : "text-red-600";
+              return (
+                <TableRow key={`${t.chain}-${t.contractAddress}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <TokenAvatar token={t} />
+                      <div>
+                        <div className="font-medium">{t.symbol ?? "?"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t.name ?? t.contractAddress.slice(0, 6) + "..."}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell className="capitalize">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      t.chain === "ethereum"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-purple-100 text-purple-700"
-                    }`}
-                  >
-                    {t.chain === "ethereum" ? "Ethereum" : "Polygon"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {t.formatted
-                    ? formatNumber(Number(t.formatted), {
-                        maximumFractionDigits: 6,
-                      })
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
-                </TableCell>
-                <TableCell>
-                  {t.priceChange24h !== undefined ? (
+                  </TableCell>
+                  <TableCell className="capitalize hidden md:table-cell">
                     <span
-                      className={`font-medium ${
-                        t.priceChange24h >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        t.chain === "ethereum"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-purple-100 text-purple-700"
                       }`}
                     >
-                      {t.priceChange24h >= 0 ? "+" : ""}
-                      {t.priceChange24h.toFixed(2)}%
+                      {t.chain === "ethereum" ? "Ethereum" : "Polygon"}
                     </span>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
-                </TableCell>
-                <TableCell>
-                  {totalValue > 0 && t.valueUsd !== undefined ? (
-                    <span className="text-xs font-medium">
-                      {(((t.valueUsd ?? 0) / totalValue) * 100).toFixed(2)}%
-                    </span>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {t.formatted
+                      ? formatNumber(Number(t.formatted), {
+                          maximumFractionDigits: 6,
+                        })
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {t.priceUsd ? formatCurrencyTiny(t.priceUsd) : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {t.valueUsd ? formatCurrencyTiny(t.valueUsd) : "-"}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {change === undefined ? (
+                      "-"
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 ${changeClass}`}
+                      >
+                        {change > 0 ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : change < 0 ? (
+                          <TrendingDown className="h-3 w-3" />
+                        ) : null}
+                        {formatPercentSigned(change)}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="w-[120px]">
+                    {formatNumber(percent, { maximumFractionDigits: 2 })}%
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
           <TableCaption>
             Showing {sortedTokens.length} ERC-20{" "}
             {chainFilter !== "all" ? chainFilter : "tokens"} on Ethereum &
-            Polygon
+            Polygon. Total portfolio value used for %.
           </TableCaption>
         </Table>
       )}

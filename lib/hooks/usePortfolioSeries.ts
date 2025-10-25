@@ -102,6 +102,8 @@ export function usePortfolioSeries(
     enabled,
     staleTime: 60_000,
     retry: 1,
+    refetchInterval: 300_000,
+    refetchOnWindowFocus: true,
   });
 
   return {
