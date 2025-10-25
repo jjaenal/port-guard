@@ -51,9 +51,7 @@ describe("SnapshotDetailPage UI", () => {
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/No Data/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/No snapshot data available/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No snapshot data available/i)).toBeInTheDocument();
   });
 
   it("renders snapshot details when data present", async () => {

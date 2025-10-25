@@ -530,25 +530,26 @@ function CompareSnapshots() {
                     )}
                     <br />
                     <span className="text-xs text-muted-foreground">
-                      Last updated: {new Date(snapshot1Data.data.createdAt).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )} {"\u2192"} {new Date(snapshot2Data.data.createdAt).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
+                      Last updated:{" "}
+                      {new Date(
+                        snapshot1Data.data.createdAt,
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      {"\u2192"}{" "}
+                      {new Date(
+                        snapshot2Data.data.createdAt,
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </CardDescription>
                   <div className="flex items-center gap-2 text-sm">

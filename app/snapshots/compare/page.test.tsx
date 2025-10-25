@@ -67,7 +67,9 @@ describe("CompareSnapshots UI", () => {
   });
 
   it("shows history error alert with parsed message and retry", async () => {
-    mockUseSnapshotHistory({ error: new Error("Snapshots API error: 404 {\"message\":\"Not found\"}") });
+    mockUseSnapshotHistory({
+      error: new Error('Snapshots API error: 404 {"message":"Not found"}'),
+    });
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/Failed to load snapshots/i)).toBeInTheDocument();
@@ -80,15 +82,29 @@ describe("CompareSnapshots UI", () => {
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/No snapshots found/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Create a Snapshot/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Create a Snapshot/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows Pro tip when less than 2 selected and history present", async () => {
     mockUseSnapshotHistory({
       data: {
         data: [
-          { id: "id1", address: "0xabc", totalValue: 10, createdAt: "2025-10-25T00:00:00.000Z", tokenCount: 1 },
-          { id: "id2", address: "0xabc", totalValue: 20, createdAt: "2025-10-24T00:00:00.000Z", tokenCount: 2 },
+          {
+            id: "id1",
+            address: "0xabc",
+            totalValue: 10,
+            createdAt: "2025-10-25T00:00:00.000Z",
+            tokenCount: 1,
+          },
+          {
+            id: "id2",
+            address: "0xabc",
+            totalValue: 20,
+            createdAt: "2025-10-24T00:00:00.000Z",
+            tokenCount: 2,
+          },
         ],
         total: 2,
       },
@@ -112,7 +128,9 @@ describe("CompareSnapshots UI", () => {
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/Error loading snapshots/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Go Back/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Go Back/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders portfolio comparison when two snapshots are loaded", async () => {
@@ -129,14 +147,28 @@ describe("CompareSnapshots UI", () => {
         id,
         address: "0xabc",
         totalValue: id === "snap1" ? 100 : 120,
-        createdAt: id === "snap1" ? "2025-10-20T00:00:00.000Z" : "2025-10-25T00:00:00.000Z",
+        createdAt:
+          id === "snap1"
+            ? "2025-10-20T00:00:00.000Z"
+            : "2025-10-25T00:00:00.000Z",
         tokenCount: 1,
         tokens: [
-          { id: `t-${id}`, symbol: "ETH", name: "Ethereum", address: "0xEth", balance: "0.5", value: 100, price: 2000 },
+          {
+            id: `t-${id}`,
+            symbol: "ETH",
+            name: "Ethereum",
+            address: "0xEth",
+            balance: "0.5",
+            value: 100,
+            price: 2000,
+          },
         ],
       },
     });
-    mockUseSnapshotDetail({ data: snapshotData("snap1") }, { data: snapshotData("snap2") });
+    mockUseSnapshotDetail(
+      { data: snapshotData("snap1") },
+      { data: snapshotData("snap2") },
+    );
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/^Portfolio Comparison$/i)).toBeInTheDocument();

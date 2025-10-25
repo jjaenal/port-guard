@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, formatNumber, formatPercentSigned, formatCurrencyTiny, cn } from "./utils";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentSigned,
+  formatCurrencyTiny,
+  cn,
+} from "./utils";
 
 describe("utils formatting", () => {
   it("formatCurrency with standard notation formats dollars", () => {
