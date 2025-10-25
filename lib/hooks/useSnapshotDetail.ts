@@ -32,7 +32,18 @@ export function useSnapshotDetail(snapshotId?: string) {
       const url = `/api/snapshots/${snapshotId}`;
       const res = await fetch(url);
       if (!res.ok) {
-        throw new Error("Failed to fetch snapshot details");
+        let message = `Snapshot API error: ${res.status}`;
+        try {
+          const text = await res.text();
+          try {
+            const body = JSON.parse(text);
+            const specific = (body as any)?.error || (body as any)?.message;
+            message = specific ? String(specific) : `${message} ${text}`;
+          } catch {
+            message = `${message} ${text}`;
+          }
+        } catch {}
+        throw new Error(message);
       }
       const json = await res.json();
       return json as { data: SnapshotDetail };
