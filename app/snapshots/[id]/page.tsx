@@ -85,13 +85,13 @@ export default function SnapshotDetailPage() {
             </div>
           </CardContent>
         </Card>
-      ) : error || !snapshotData?.data ? (
+      ) : !snapshotData?.data ? (
         <Card>
           <CardHeader>
-            <CardTitle>Error</CardTitle>
+            <CardTitle>No Data</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Failed to load snapshot details. The snapshot may not exist.</p>
+            <p>No snapshot data available. The snapshot may not exist.</p>
             <div className="mt-4">
               <Link href="/snapshots">
                 <Button>View All Snapshots</Button>

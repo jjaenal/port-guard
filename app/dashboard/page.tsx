@@ -693,9 +693,40 @@ export default function DashboardPage() {
                       : "."}
                   </p>
                 ) : tokens.length === 0 ? (
-                  <p className="text-muted-foreground">
-                    No ERC-20 tokens detected.
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Coins className="h-12 w-12 text-muted-foreground mb-3" />
+                    <h3 className="text-lg font-semibold mb-1">
+                      No ERC-20 tokens detected
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4 max-w-md">
+                      We didn’t find any ERC-20 balances for this address. If
+                      you just funded it, try refreshing. You can also test with
+                      a known demo address to see how the table looks.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetchTokens()}
+                      >
+                        Refresh
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setOverrideAddress(
+                            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                          )
+                        }
+                      >
+                        Try Vitalik's Address
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Tip: Add some tokens to your wallet to populate holdings.
+                    </p>
+                  </div>
                 ) : (
                   <TokenHoldingsTable tokens={tokens} />
                 )}

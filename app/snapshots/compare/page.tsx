@@ -21,16 +21,18 @@ import { ArrowLeft, ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
 import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
 import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 function CompareSnapshots() {
   const { address, isConnected } = useAccount();
   const [page, setPage] = useState(0);
   const limit = 10;
-  const { data: snapshotHistory, isLoading } = useSnapshotHistory(
-    address,
-    limit,
-    page,
-  );
+  const {
+    data: snapshotHistory,
+    isLoading,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useSnapshotHistory(address, limit, page);
 
   const [selectedSnapshots, setSelectedSnapshots] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
@@ -48,13 +50,19 @@ function CompareSnapshots() {
       setCompareMode(true);
     }
   }, [params]);
-  const { data: snapshot1Data, isLoading: isLoading1 } = useSnapshotDetail(
-    selectedSnapshots[0],
-  );
+  const {
+    data: snapshot1Data,
+    isLoading: isLoading1,
+    error: error1,
+    refetch: refetch1,
+  } = useSnapshotDetail(selectedSnapshots[0]);
 
-  const { data: snapshot2Data, isLoading: isLoading2 } = useSnapshotDetail(
-    selectedSnapshots[1],
-  );
+  const {
+    data: snapshot2Data,
+    isLoading: isLoading2,
+    error: error2,
+    refetch: refetch2,
+  } = useSnapshotDetail(selectedSnapshots[1]);
 
   const handleSelectSnapshot = (id: string) => {
     if (selectedSnapshots.includes(id)) {
@@ -291,6 +299,55 @@ function CompareSnapshots() {
             </Button>
           </div>
 
+          {selectedSnapshots.length < 2 &&
+            !isLoading &&
+            snapshotHistory &&
+            snapshotHistory.data.length > 0 && (
+              <Alert className="mb-4" closable>
+                <AlertTitle>Pro tip</AlertTitle>
+                <AlertDescription>
+                  Pick snapshots far apart in time to see bigger changes. After
+                  selecting two, use the "Copy Link" button to share the
+                  comparison.
+                </AlertDescription>
+              </Alert>
+            )}
+
+          {historyError && (
+            <div className="mb-4">
+              <Alert variant="destructive" closable>
+                <AlertTitle>Failed to load snapshots</AlertTitle>
+                <AlertDescription>
+                  {(() => {
+                    const msg = (historyError as any)?.message || "";
+                    if (msg.includes("Snapshots API error:")) {
+                      const match = msg.match(/\d+\s+(.+)$/);
+                      if (match) {
+                        try {
+                          const body = JSON.parse(match[1]);
+                          return (
+                            body.error || body.message || "Unknown API error"
+                          );
+                        } catch {
+                          return match[1] || "API request failed";
+                        }
+                      }
+                    }
+                    return msg || "Failed to load snapshots. Please try again.";
+                  })()}
+                </AlertDescription>
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchHistory()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Alert>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Snapshots</CardTitle>
@@ -386,6 +443,48 @@ function CompareSnapshots() {
         </>
       ) : (
         <div className="space-y-6">
+          {(error1 || error2) && (
+            <div className="mb-2 space-y-2">
+              {error1 && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load snapshot A</AlertTitle>
+                  <AlertDescription>
+                    {typeof (error1 as any)?.message === "string"
+                      ? (error1 as any).message
+                      : "Snapshot details API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetch1()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+              {error2 && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load snapshot B</AlertTitle>
+                  <AlertDescription>
+                    {typeof (error2 as any)?.message === "string"
+                      ? (error2 as any).message
+                      : "Snapshot details API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetch2()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+            </div>
+          )}
           {isLoading1 || isLoading2 ? (
             <Card>
               <CardContent className="py-8">
