@@ -323,7 +323,7 @@ export default function DashboardPage() {
           {(isPricesError || isTokensError) && (
             <div className="mb-4 space-y-2">
               {isPricesError && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" closable>
                   <AlertTitle>Failed to load prices</AlertTitle>
                   <AlertDescription>
                     ETH/MATIC price API failed. Values may be outdated.
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                 </Alert>
               )}
               {isTokensError && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" closable>
                   <AlertTitle>Failed to load token holdings</AlertTitle>
                   <AlertDescription>
                     {typeof (tokensError as any)?.message === "string"

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function SnapshotDetailPage() {
   const { id } = useParams();
@@ -53,6 +54,19 @@ export default function SnapshotDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
       </div>
+
+      {error && (
+        <div className="mb-4">
+          <Alert variant="destructive" closable>
+            <AlertTitle>Failed to load snapshot</AlertTitle>
+            <AlertDescription>
+              {typeof (error as any)?.message === "string"
+                ? (error as any).message
+                : "Snapshot details API error."}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {isLoading ? (
         <Card>
