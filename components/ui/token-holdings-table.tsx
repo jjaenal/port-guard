@@ -37,9 +37,9 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
-  const [sortKey, setSortKey] = useState<"valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent">(
-    "valueUsd",
-  );
+  const [sortKey, setSortKey] = useState<
+    "valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent"
+  >("valueUsd");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   // Filters
   const [chainFilter, setChainFilter] = useState<
@@ -49,7 +49,10 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   const [hideSmall, setHideSmall] = useState<boolean>(false);
 
   // Total value for portfolio percentage (use full tokens list, not filtered)
-  const totalValue = (tokens ?? []).reduce((sum, t) => sum + (t.valueUsd ?? 0), 0);
+  const totalValue = (tokens ?? []).reduce(
+    (sum, t) => sum + (t.valueUsd ?? 0),
+    0,
+  );
 
   // Load persisted preferences
   useEffect(() => {
@@ -91,7 +94,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     const q = search.trim().toLowerCase();
     const text = `${t.symbol ?? ""} ${t.name ?? ""}`.toLowerCase();
     const searchOk = q ? text.includes(q) : true;
-    const smallOk = hideSmall ? ((t.valueUsd ?? Infinity) >= 1) : true;
+    const smallOk = hideSmall ? (t.valueUsd ?? Infinity) >= 1 : true;
     return chainOk && searchOk && smallOk;
   });
 
@@ -200,7 +203,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             aria-pressed={hideSmall}
             aria-label="Toggle hide small balances"
           >
-            Hide <$1
+            Hide &lt;$1
           </button>
         </div>
         <input
