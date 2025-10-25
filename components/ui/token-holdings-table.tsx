@@ -99,6 +99,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenChainFilter", chainFilter);
       localStorage.setItem("tokenChange24hFilter", change24hFilter);
       localStorage.setItem("tokenSearchQuery", search);
+      localStorage.setItem("tokenHideSmall", String(hideSmall));
     } catch {}
   }, [sortKey, sortDir, chainFilter, change24hFilter, search]);
 
@@ -216,6 +217,14 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
             onClick={() => setChainFilter("polygon")}
           >
             Polygon
+          </button>
+          <button
+            className={`px-2 py-1 rounded border text-xs ${hideSmall ? "bg-muted" : ""}`}
+            onClick={() => setHideSmall((v) => !v)}
+            aria-pressed={hideSmall}
+            aria-label="Toggle hide small balances"
+          >
+            Hide &lt;$1
           </button>
         </div>
         <div className="flex items-center gap-2">

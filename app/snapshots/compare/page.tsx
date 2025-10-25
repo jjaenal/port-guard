@@ -45,6 +45,22 @@ function CompareSnapshots() {
   useEffect(() => {
     const a = params.get("a");
     const b = params.get("b");
+    const s = params.get("s");
+
+    // Decode short link if provided (base64 JSON { a, b })
+    if (s && !a && !b) {
+      try {
+        const decoded = JSON.parse(atob(s));
+        const sa = decoded?.a as string | undefined;
+        const sb = decoded?.b as string | undefined;
+        if (sa && sb) {
+          setSelectedSnapshots([sa, sb]);
+          setCompareMode(true);
+          return;
+        }
+      } catch {}
+    }
+
     if (a && b) {
       setSelectedSnapshots([a, b]);
       setCompareMode(true);
@@ -169,6 +185,64 @@ function CompareSnapshots() {
   };
 
   const comparison = calculateDifference();
+  const comparisonPoints: SeriesPoint[] = useMemo(() => {
+    if (!snapshot1Data?.data || !snapshot2Data?.data) return [];
+    return [
+      {
+        t: new Date(snapshot1Data.data.createdAt).getTime(),
+        v: snapshot1Data.data.totalValue,
+      },
+      {
+        t: new Date(snapshot2Data.data.createdAt).getTime(),
+        v: snapshot2Data.data.totalValue,
+      },
+    ];
+  }, [snapshot1Data?.data, snapshot2Data?.data]);
+
+  const exportJSON = () => {
+    if (!comparison) return;
+    const blob = new Blob([JSON.stringify(displayTokens, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "token-changes.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCSV = () => {
+    if (!comparison) return;
+    const header = [
+      "symbol",
+      "name",
+      "snapshot1Value",
+      "snapshot1Balance",
+      "snapshot2Value",
+      "snapshot2Balance",
+      "diff",
+      "percentDiff",
+    ];
+    const rows = displayTokens.map((t) => [
+      t.symbol,
+      t.name,
+      t.snapshot1Value,
+      t.snapshot1Balance,
+      t.snapshot2Value,
+      t.snapshot2Balance,
+      t.diff,
+      t.percentDiff,
+    ]);
+    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "token-changes.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const displayTokens = useMemo(() => {
     if (!comparison)
       return [] as Array<{
@@ -646,6 +720,13 @@ function CompareSnapshots() {
                       </div>
                     </div>
                   </div>
+                  <div className="mt-4 overflow-x-auto">
+                    <PortfolioChart
+                      points={comparisonPoints}
+                      width={700}
+                      height={180}
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -723,7 +804,10 @@ function CompareSnapshots() {
                       </thead>
                       <tbody>
                         {displayTokens.map((token, i) => (
-                          <tr key={i} className="border-b">
+                          <tr
+                            key={i}
+                            className={`border-b ${Math.abs(token.diff) >= highlightThreshold ? "bg-yellow-50" : ""}`}
+                          >
                             <td className="py-2">
                               <div className="font-medium">{token.symbol}</div>
                               <div className="text-xs text-muted-foreground">
