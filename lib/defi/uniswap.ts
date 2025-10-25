@@ -150,9 +150,7 @@ async function getPoolsApr7d(
   return aprMap;
 }
 
-export async function getUniswapV3Positions(
-  owner: Address,
-): Promise<{
+export async function getUniswapV3Positions(owner: Address): Promise<{
   positions: UniswapPosition[];
   totalUsd: number;
   avgApr7d: number;

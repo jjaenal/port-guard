@@ -96,8 +96,17 @@ function UniswapDetailContent() {
             <Alert variant="destructive">
               <AlertTitle>Address Error</AlertTitle>
               <AlertDescription>
-                <p className="mb-2">The address <code className="bg-muted-foreground/20 px-1 rounded">{targetAddress}</code> is not a valid Ethereum address.</p>
-                <p>Uniswap positions are only available for Ethereum addresses starting with &quot;0x&quot;.</p>
+                <p className="mb-2">
+                  The address{" "}
+                  <code className="bg-muted-foreground/20 px-1 rounded">
+                    {targetAddress}
+                  </code>{" "}
+                  is not a valid Ethereum address.
+                </p>
+                <p>
+                  Uniswap positions are only available for Ethereum addresses
+                  starting with &quot;0x&quot;.
+                </p>
               </AlertDescription>
             </Alert>
             <div className="mt-4">
