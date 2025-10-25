@@ -490,7 +490,7 @@ export default function DashboardPage() {
               )}
             </div>
           )}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
             {/* Total Portfolio Value card with 24h change */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
