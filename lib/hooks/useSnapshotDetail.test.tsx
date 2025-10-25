@@ -66,3 +66,32 @@ describe("useSnapshotDetail - error parsing", () => {
     expect(msg).toContain("Internal Server Error");
   });
 });
+
+describe("useSnapshotDetail - success", () => {
+  it("returns SnapshotDetail when API responds 200", async () => {
+    const mockDetail = {
+      id: "abc123",
+      address: "0xabc",
+      totalValue: 123.45,
+      createdAt: "2025-10-25T00:00:00.000Z",
+      tokenCount: 2,
+      tokens: [
+        { id: "t1", symbol: "ETH", name: "Ethereum", address: "0xEth", balance: "0.5", value: 100, price: 2000 },
+        { id: "t2", symbol: "MATIC", name: "Polygon", address: "0xMat", balance: "10", value: 23.45, price: 2.345 },
+      ],
+    };
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ data: mockDetail }),
+    });
+
+    const { result } = renderHook(() => useSnapshotDetail("abc123"), {
+      wrapper: createWrapper(),
+    });
+
+    const res = await result.current.refetch();
+    expect(res.isSuccess).toBe(true);
+    expect(res.data?.data.id).toBe("abc123");
+    expect(res.data?.data.tokens.length).toBe(2);
+  });
+});
