@@ -14,7 +14,7 @@ import {
   CardAction,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { CurrencyDollar } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatPercentSigned } from "@/lib/utils";
 import type { UniswapPosition } from "@/lib/defi/uniswap";
@@ -96,8 +96,17 @@ function UniswapDetailContent() {
             <Alert variant="destructive">
               <AlertTitle>Address Error</AlertTitle>
               <AlertDescription>
-                <p className="mb-2">The address <code className="bg-muted-foreground/20 px-1 rounded">{targetAddress}</code> is not a valid Ethereum address.</p>
-                <p>Uniswap positions are only available for Ethereum addresses starting with &quot;0x&quot;.</p>
+                <p className="mb-2">
+                  The address{" "}
+                  <code className="bg-muted-foreground/20 px-1 rounded">
+                    {targetAddress}
+                  </code>{" "}
+                  is not a valid Ethereum address.
+                </p>
+                <p>
+                  Uniswap positions are only available for Ethereum addresses
+                  starting with &quot;0x&quot;.
+                </p>
               </AlertDescription>
             </Alert>
             <div className="mt-4">
@@ -132,7 +141,7 @@ function UniswapDetailContent() {
           <CardTitle>Summary</CardTitle>
           <CardDescription>Your Uniswap LP overview</CardDescription>
           <CardAction>
-            <CurrencyDollar className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardAction>
         </CardHeader>
         <CardContent>
