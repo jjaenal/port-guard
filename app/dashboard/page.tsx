@@ -264,7 +264,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Portfolio Dashboard</h1>
         <p className="text-muted-foreground">
           {isConnected
@@ -490,7 +490,7 @@ export default function DashboardPage() {
               )}
             </div>
           )}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-6">
             {/* Total Portfolio Value card with 24h change */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1016,7 +1016,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="mt-6">
+            <Card>
               <CardHeader>
                 <CardTitle>Portfolio Performance</CardTitle>
                 <CardDescription>
