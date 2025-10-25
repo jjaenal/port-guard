@@ -50,13 +50,19 @@ function CompareSnapshots() {
       setCompareMode(true);
     }
   }, [params]);
-  const { data: snapshot1Data, isLoading: isLoading1 } = useSnapshotDetail(
-    selectedSnapshots[0],
-  );
+  const {
+    data: snapshot1Data,
+    isLoading: isLoading1,
+    error: error1,
+    refetch: refetch1,
+  } = useSnapshotDetail(selectedSnapshots[0]);
 
-  const { data: snapshot2Data, isLoading: isLoading2 } = useSnapshotDetail(
-    selectedSnapshots[1],
-  );
+  const {
+    data: snapshot2Data,
+    isLoading: isLoading2,
+    error: error2,
+    refetch: refetch2,
+  } = useSnapshotDetail(selectedSnapshots[1]);
 
   const handleSelectSnapshot = (id: string) => {
     if (selectedSnapshots.includes(id)) {
@@ -423,6 +429,48 @@ function CompareSnapshots() {
         </>
       ) : (
         <div className="space-y-6">
+          {(error1 || error2) && (
+            <div className="mb-2 space-y-2">
+              {error1 && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load snapshot A</AlertTitle>
+                  <AlertDescription>
+                    {typeof (error1 as any)?.message === "string"
+                      ? (error1 as any).message
+                      : "Snapshot details API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetch1()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+              {error2 && (
+                <Alert variant="destructive" closable>
+                  <AlertTitle>Failed to load snapshot B</AlertTitle>
+                  <AlertDescription>
+                    {typeof (error2 as any)?.message === "string"
+                      ? (error2 as any).message
+                      : "Snapshot details API error."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetch2()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+            </div>
+          )}
           {isLoading1 || isLoading2 ? (
             <Card>
               <CardContent className="py-8">
