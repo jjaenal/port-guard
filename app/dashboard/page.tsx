@@ -814,59 +814,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Portfolio Performance ({rangeDays}d)</CardTitle>
-                <CardDescription>
-                  Value based on ETH, MATIC & top ERC-20
-                </CardDescription>
-                <CardAction>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={rangeDays === 1 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setRangeDays(1)}
-                    >
-                      1d
-                    </Button>
-                    <Button
-                      variant={rangeDays === 7 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setRangeDays(7)}
-                    >
-                      7d
-                    </Button>
-                    <Button
-                      variant={rangeDays === 30 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setRangeDays(30)}
-                    >
-                      30d
-                    </Button>
-                    <Button
-                      variant={rangeDays === 90 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setRangeDays(90)}
-                    >
-                      90d
-                    </Button>
-                  </div>
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                {isSeriesLoading ? (
-                  <div className="animate-pulse h-[200px] w-full bg-muted rounded" />
-                ) : (
-                  <div className="overflow-x-auto">
-                    <PortfolioChart
-                      points={portfolioPoints}
-                      width={600}
-                      height={200}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+
 
             <Card>
               <CardHeader>
