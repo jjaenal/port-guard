@@ -11,8 +11,10 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  CardAction,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { CurrencyDollar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatPercentSigned } from "@/lib/utils";
 import type { UniswapPosition } from "@/lib/defi/uniswap";
@@ -129,6 +131,9 @@ function UniswapDetailContent() {
         <CardHeader>
           <CardTitle>Summary</CardTitle>
           <CardDescription>Your Uniswap LP overview</CardDescription>
+          <CardAction>
+            <CurrencyDollar className="h-4 w-4 text-muted-foreground" />
+          </CardAction>
         </CardHeader>
         <CardContent>
           {isLoading ? (
