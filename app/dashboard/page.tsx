@@ -54,6 +54,7 @@ export default function DashboardPage() {
     isError: isTokensError,
     isFetching: isTokensFetching,
     error: tokensError,
+    refetch: refetchTokens,
   } = useTokenHoldings(overrideAddress ? overrideAddress : undefined);
   const {
     data: latestSnapshot,
@@ -64,11 +65,7 @@ export default function DashboardPage() {
   const { data: snapshotHistory, isLoading: isHistoryLoading } =
     useSnapshotHistory(address, 5);
 
-  const {
-    data: prices,
-    isLoading: isPricesLoading,
-    isError: isPricesError,
-  } = useQuery({
+  const pricesQuery = useQuery({
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
       const response = await fetch(
@@ -81,6 +78,12 @@ export default function DashboardPage() {
     retry: 1,
     staleTime: 60_000,
   });
+  const {
+    data: prices,
+    isLoading: isPricesLoading,
+    isError: isPricesError,
+    refetch: refetchPrices,
+  } = pricesQuery;
 
   const ethAmount = eth ? Number(formatUnits(eth.value, eth.decimals)) : 0;
   const maticAmount = matic
@@ -328,6 +331,15 @@ export default function DashboardPage() {
                   <AlertDescription>
                     ETH/MATIC price API failed. Values may be outdated.
                   </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchPrices()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
                 </Alert>
               )}
               {isTokensError && (
@@ -338,6 +350,15 @@ export default function DashboardPage() {
                       ? (tokensError as any).message
                       : "Balances API error."}
                   </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchTokens()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
                 </Alert>
               )}
             </div>

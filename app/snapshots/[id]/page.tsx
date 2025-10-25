@@ -20,6 +20,7 @@ export default function SnapshotDetailPage() {
     data: snapshotData,
     isLoading,
     error,
+    refetch,
   } = useSnapshotDetail(snapshotId);
 
   // Format date to local string
@@ -64,6 +65,11 @@ export default function SnapshotDetailPage() {
                 ? (error as any).message
                 : "Snapshot details API error."}
             </AlertDescription>
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
           </Alert>
         </div>
       )}

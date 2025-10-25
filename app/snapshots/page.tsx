@@ -23,6 +23,7 @@ export default function SnapshotsPage() {
     data: snapshotHistory,
     isLoading,
     error,
+    refetch,
   } = useSnapshotHistory(address, limit, page);
 
   return (
@@ -139,6 +140,11 @@ export default function SnapshotsPage() {
                 ? (error as any).message
                 : "Snapshots API returned an error or empty response."}
             </AlertDescription>
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
           </Alert>
         </div>
       )}

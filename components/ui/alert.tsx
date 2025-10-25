@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type AlertVariant = "default" | "info" | "success" | "warning" | "destructive";
 
@@ -10,6 +10,8 @@ export interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: AlertVariant;
   closable?: boolean;
   onClose?: () => void;
+  autoHide?: boolean;
+  autoHideDuration?: number; // ms
 }
 
 const variantClasses: Record<AlertVariant, string> = {
@@ -25,10 +27,26 @@ export function Alert({
   variant = "default",
   closable = false,
   onClose,
+  autoHide = false,
+  autoHideDuration = 10000,
   children,
   ...props
 }: AlertProps) {
   const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (!visible) return;
+    const shouldAutoHide = autoHide && variant !== "destructive";
+    if (!shouldAutoHide) return;
+    const timer = setTimeout(
+      () => {
+        onClose?.();
+        setVisible(false);
+      },
+      Math.max(1000, autoHideDuration),
+    );
+    return () => clearTimeout(timer);
+  }, [autoHide, autoHideDuration, onClose, variant, visible]);
 
   if (!visible) return null;
 
