@@ -134,7 +134,10 @@ const metadataCache: Record<
 > = {};
 const pricesCache: Record<
   string,
-  { timestamp: number; data: Record<string, { usd?: number; usd_24h_change?: number }> }
+  {
+    timestamp: number;
+    data: Record<string, { usd?: number; usd_24h_change?: number }>;
+  }
 > = {};
 
 // Cache TTL in milliseconds

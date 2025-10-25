@@ -644,32 +644,48 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Snapshot History</CardTitle>
-                <CardDescription>Last 5 snapshots for this wallet</CardDescription>
+                <CardDescription>
+                  Last 5 snapshots for this wallet
+                </CardDescription>
                 <CardAction>
                   <Link href="/snapshots">
-                    <Button variant="outline" size="sm">View All</Button>
+                    <Button variant="outline" size="sm">
+                      View All
+                    </Button>
                   </Link>
                 </CardAction>
               </CardHeader>
               <CardContent>
                 {isHistoryLoading && (
-                  <div className="text-sm text-muted-foreground">Loading snapshots...</div>
-                )}
-                {!isHistoryLoading && (!snapshotHistory || snapshotHistory.data.length === 0) && (
-                  <div className="text-sm text-muted-foreground">No snapshots yet. Save one to get started.</div>
-                )}
-                {!isHistoryLoading && snapshotHistory && snapshotHistory.data.length > 0 && (
-                  <div className="space-y-2">
-                    {snapshotHistory.data.map((snap) => (
-                      <div key={snap.id} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          {new Date(snap.createdAt).toLocaleString()}
-                        </span>
-                        <span className="font-medium">{formatCurrency(snap.totalValue)}</span>
-                      </div>
-                    ))}
+                  <div className="text-sm text-muted-foreground">
+                    Loading snapshots...
                   </div>
                 )}
+                {!isHistoryLoading &&
+                  (!snapshotHistory || snapshotHistory.data.length === 0) && (
+                    <div className="text-sm text-muted-foreground">
+                      No snapshots yet. Save one to get started.
+                    </div>
+                  )}
+                {!isHistoryLoading &&
+                  snapshotHistory &&
+                  snapshotHistory.data.length > 0 && (
+                    <div className="space-y-2">
+                      {snapshotHistory.data.map((snap) => (
+                        <div
+                          key={snap.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {new Date(snap.createdAt).toLocaleString()}
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(snap.totalValue)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </CardContent>
             </Card>
 

@@ -14,9 +14,13 @@ export default function SnapshotDetailPage() {
   const router = useRouter();
   const { isConnected } = useAccount();
   const snapshotId = typeof id === "string" ? id : "";
-  
-  const { data: snapshotData, isLoading, error } = useSnapshotDetail(snapshotId);
-  
+
+  const {
+    data: snapshotData,
+    isLoading,
+    error,
+  } = useSnapshotDetail(snapshotId);
+
   // Format date to local string
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -102,7 +106,9 @@ export default function SnapshotDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Wallet Address</p>
+                  <p className="text-sm text-muted-foreground">
+                    Wallet Address
+                  </p>
                   <p className="text-lg font-medium truncate">
                     {snapshotData.data.address}
                   </p>
@@ -131,7 +137,10 @@ export default function SnapshotDetailPage() {
                     </thead>
                     <tbody>
                       {snapshotData.data.tokens.map((token) => (
-                        <tr key={token.id} className="border-b hover:bg-muted/50">
+                        <tr
+                          key={token.id}
+                          className="border-b hover:bg-muted/50"
+                        >
                           <td className="py-3 px-4">
                             <div className="flex items-center">
                               {token.logo && (
@@ -142,7 +151,9 @@ export default function SnapshotDetailPage() {
                                 />
                               )}
                               <div>
-                                <div className="font-medium">{token.symbol}</div>
+                                <div className="font-medium">
+                                  {token.symbol}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   {token.name}
                                 </div>
