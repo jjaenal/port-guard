@@ -161,16 +161,16 @@
   - [x] Number of tokens
   - [x] Last updated timestamp
 - [ ] Build token holdings table
-  - [ ] Token name & symbol
-  - [ ] Balance
-  - [ ] USD value
-  - [ ] 24h price change
-  - [ ] Percentage of portfolio
-- [ ] Add sorting functionality (by value, change, name)
-- [ ] Implement search/filter
+  - [x] Token name & symbol
+  - [x] Balance
+  - [x] USD value
+  - [x] 24h price change
+  - [x] Percentage of portfolio
+- [x] Add sorting functionality (by value, change, name)
+- [x] Implement search/filter
 - [x] Add loading skeletons
-- [ ] Create empty state
-- [ ] Make responsive (mobile-first)
+- [x] Create empty state
+- [x] Make responsive (mobile-first)
 - [ ] Add auto-refresh (every 5 minutes)
 - [ ] Add error handling banner/toast for API failures
   - [ ] Price API errors
