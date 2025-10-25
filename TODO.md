@@ -158,8 +158,8 @@
   - [x] Create comparison UI
   - [x] Calculate value differences
   - [x] Show token-by-token changes
-  - [ ] Number of tokens
-  - [ ] Last updated timestamp
+  - [x] Number of tokens
+  - [x] Last updated timestamp
 - [ ] Build token holdings table
   - [ ] Token name & symbol
   - [ ] Balance
