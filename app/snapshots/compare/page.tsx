@@ -299,6 +299,20 @@ function CompareSnapshots() {
             </Button>
           </div>
 
+          {selectedSnapshots.length < 2 &&
+            !isLoading &&
+            snapshotHistory &&
+            snapshotHistory.data.length > 0 && (
+              <Alert className="mb-4" closable>
+                <AlertTitle>Pro tip</AlertTitle>
+                <AlertDescription>
+                  Pick snapshots far apart in time to see bigger changes. After
+                  selecting two, use the "Copy Link" button to share the
+                  comparison.
+                </AlertDescription>
+              </Alert>
+            )}
+
           {historyError && (
             <div className="mb-4">
               <Alert variant="destructive" closable>
