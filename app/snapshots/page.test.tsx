@@ -26,7 +26,9 @@ describe("SnapshotsPage UI", () => {
   });
 
   it("shows error alert parsing API message and retry", async () => {
-    mockUseSnapshotHistory({ error: new Error("Snapshots API error: 404 {\"message\":\"Not found\"}") });
+    mockUseSnapshotHistory({
+      error: new Error('Snapshots API error: 404 {"message":"Not found"}'),
+    });
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/Failed to load snapshots/i)).toBeInTheDocument();
@@ -46,8 +48,20 @@ describe("SnapshotsPage UI", () => {
     mockUseSnapshotHistory({
       data: {
         data: [
-          { id: "id1", address: "0xabc", totalValue: 10, createdAt: "2025-10-25T00:00:00.000Z", tokenCount: 1 },
-          { id: "id2", address: "0xabc", totalValue: 20, createdAt: "2025-10-24T00:00:00.000Z", tokenCount: 2 },
+          {
+            id: "id1",
+            address: "0xabc",
+            totalValue: 10,
+            createdAt: "2025-10-25T00:00:00.000Z",
+            tokenCount: 1,
+          },
+          {
+            id: "id2",
+            address: "0xabc",
+            totalValue: 20,
+            createdAt: "2025-10-24T00:00:00.000Z",
+            tokenCount: 2,
+          },
         ],
         total: 2,
       },
@@ -56,6 +70,10 @@ describe("SnapshotsPage UI", () => {
     const Page = (await import("./page")).default;
     render(<Page />);
     expect(screen.getByText(/^Snapshots$/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("link").some((a) => a.getAttribute("href")?.includes("/snapshots/"))).toBe(true);
+    expect(
+      screen
+        .getAllByRole("link")
+        .some((a) => a.getAttribute("href")?.includes("/snapshots/")),
+    ).toBe(true);
   });
 });

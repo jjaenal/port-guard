@@ -14,11 +14,17 @@ function createWrapper() {
 
 describe("useSnapshotHistory - errors", () => {
   it("handles 404 with message 'Snapshot history not found'", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      ok: false,
-      status: 404,
-      text: vi.fn().mockResolvedValue("Snapshot history not found"),
-    } as any)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: false,
+            status: 404,
+            text: vi.fn().mockResolvedValue("Snapshot history not found"),
+          }) as any,
+      ),
+    );
 
     const { result } = renderHook(() => useSnapshotHistory("0xabc", 5, 0), {
       wrapper: createWrapper(),
@@ -32,11 +38,17 @@ describe("useSnapshotHistory - errors", () => {
   });
 
   it("handles 500 with text 'Internal Server Error'", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      ok: false,
-      status: 500,
-      text: vi.fn().mockResolvedValue("Internal Server Error"),
-    } as any)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: false,
+            status: 500,
+            text: vi.fn().mockResolvedValue("Internal Server Error"),
+          }) as any,
+      ),
+    );
 
     const { result } = renderHook(() => useSnapshotHistory("0xabc", 5, 0), {
       wrapper: createWrapper(),
@@ -53,13 +65,31 @@ describe("useSnapshotHistory - errors", () => {
 describe("useSnapshotHistory - success", () => {
   it("returns list when API responds 200", async () => {
     const mockItems = [
-      { id: "id1", address: "0xabc", totalValue: 10, createdAt: "2025-10-25T00:00:00.000Z", tokenCount: 1 },
-      { id: "id2", address: "0xabc", totalValue: 20, createdAt: "2025-10-24T00:00:00.000Z", tokenCount: 2 },
+      {
+        id: "id1",
+        address: "0xabc",
+        totalValue: 10,
+        createdAt: "2025-10-25T00:00:00.000Z",
+        tokenCount: 1,
+      },
+      {
+        id: "id2",
+        address: "0xabc",
+        totalValue: 20,
+        createdAt: "2025-10-24T00:00:00.000Z",
+        tokenCount: 2,
+      },
     ];
-    vi.stubGlobal("fetch", vi.fn(async () => ({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ data: mockItems, total: 2 }),
-    } as any)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: vi.fn().mockResolvedValue({ data: mockItems, total: 2 }),
+          }) as any,
+      ),
+    );
 
     const { result } = renderHook(() => useSnapshotHistory("0xabc", 5, 0), {
       wrapper: createWrapper(),

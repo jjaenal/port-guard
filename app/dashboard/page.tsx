@@ -37,7 +37,15 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
-  const { eth, matic, isLoading } = useNativeBalances();
+  const {
+    eth,
+    matic,
+    isLoading,
+    isFetching: isNativeFetching,
+    isError: isNativeError,
+    errorMessage: nativeErrorMessage,
+    refetch: refetchNative,
+  } = useNativeBalances();
   const [overrideAddress, setOverrideAddress] = useState<string>("");
 
   // Debug logging
@@ -75,13 +83,24 @@ export default function DashboardPage() {
       return json.data || {};
     },
     enabled: isConnected,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Don't retry on 4xx errors (client errors)
+      if (error instanceof Error && error.message.includes("4")) {
+        return false;
+      }
+      // Retry up to 3 times for network/server errors
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 60_000,
+    refetchInterval: 300_000, // Auto-refresh every 5 minutes
+    refetchOnWindowFocus: true,
   });
   const {
     data: prices,
     isLoading: isPricesLoading,
     isError: isPricesError,
+    isFetching: isPricesFetching,
     refetch: refetchPrices,
   } = pricesQuery;
 
@@ -122,6 +141,37 @@ export default function DashboardPage() {
       1,
     );
 
+  // Uniswap LP summary
+  const {
+    data: uniswapData,
+    isLoading: isUniswapLoading,
+    isError: isUniswapError,
+    error: uniswapError,
+    refetch: refetchUniswap,
+    isFetching: isUniswapFetching,
+  } = useQuery({
+    queryKey: ["defi-uniswap", overrideAddress || address],
+    queryFn: async () => {
+      const a = overrideAddress || address;
+      if (!a) return { positions: [], totalUsd: 0 };
+      const res = await fetch(`/api/defi/uniswap?address=${a}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `Uniswap API failed: ${res.status}`);
+      }
+      const json = await res.json();
+      return json.data || { positions: [], totalUsd: 0 };
+    },
+    enabled: !!(isConnected || !!overrideAddress),
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: (failureCount, error) => {
+      const msg = (error as Error)?.message || "";
+      if (/400|not found|invalid/i.test(msg)) return false;
+      return failureCount < 3;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+  });
   const portfolioChange24hPercent = useMemo(() => {
     if (!portfolioPoints1d || portfolioPoints1d.length < 2) return 0;
     const start = portfolioPoints1d[0].v;
@@ -214,7 +264,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Portfolio Dashboard</h1>
         <p className="text-muted-foreground">
           {isConnected
@@ -288,7 +338,7 @@ export default function DashboardPage() {
                     }
                     className="text-xs"
                   >
-                    Try Vitalik's Address
+                    Try Vitalik&apos;s Address
                   </Button>
                   <Button
                     variant="outline"
@@ -323,54 +373,133 @@ export default function DashboardPage() {
 
       {(isConnected || !!overrideAddress) && (
         <>
-          {(isPricesError || isTokensError) && (
+          {(isPricesError || isTokensError || isNativeError) && (
             <div className="mb-4 space-y-2">
               {isPricesError && (
-                <Alert variant="destructive" closable>
-                  <AlertTitle>Failed to load prices</AlertTitle>
+                <Alert
+                  variant="destructive"
+                  closable
+                  autoHide
+                  autoHideDuration={15000}
+                >
+                  <AlertTitle>Price Data Unavailable</AlertTitle>
                   <AlertDescription>
-                    ETH/MATIC price API failed. Values may be outdated.
+                    {(() => {
+                      const errorMsg =
+                        (pricesQuery.error as Error)?.message || "";
+                      if (errorMsg.includes("fetch")) {
+                        return "Network connection issue. Check your internet connection and try again.";
+                      }
+                      if (
+                        errorMsg.includes("429") ||
+                        errorMsg.includes("rate limit")
+                      ) {
+                        return "Rate limit exceeded. Please wait a moment before refreshing.";
+                      }
+                      if (
+                        errorMsg.includes("500") ||
+                        errorMsg.includes("server")
+                      ) {
+                        return "Price service temporarily unavailable. Portfolio values may be outdated.";
+                      }
+                      return "Unable to fetch current prices. Portfolio values may be outdated.";
+                    })()}
                   </AlertDescription>
                   <div className="mt-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => refetchPrices()}
+                      disabled={isPricesFetching}
                     >
-                      Retry
+                      {isPricesFetching ? "Retrying..." : "Retry"}
                     </Button>
                   </div>
                 </Alert>
               )}
               {isTokensError && (
-                <Alert variant="destructive" closable>
-                  <AlertTitle>Failed to load token holdings</AlertTitle>
+                <Alert
+                  variant="destructive"
+                  closable
+                  autoHide
+                  autoHideDuration={15000}
+                >
+                  <AlertTitle>Token Holdings Unavailable</AlertTitle>
                   <AlertDescription>
-                    {typeof (tokensError as any)?.message === "string"
-                      ? (tokensError as any).message
-                      : "Balances API error."}
+                    {(() => {
+                      const errorMsg = (tokensError as Error)?.message || "";
+                      if (errorMsg.includes("fetch")) {
+                        return "Network connection issue. Check your internet connection and try again.";
+                      }
+                      if (errorMsg.includes("Both chains failed")) {
+                        return "Unable to connect to Ethereum and Polygon networks. Please check your connection.";
+                      }
+                      if (
+                        errorMsg.includes("429") ||
+                        errorMsg.includes("rate limit")
+                      ) {
+                        return "Rate limit exceeded. Please wait a moment before refreshing.";
+                      }
+                      if (
+                        errorMsg.includes("500") ||
+                        errorMsg.includes("server")
+                      ) {
+                        return "Blockchain service temporarily unavailable. Please try again later.";
+                      }
+                      return (
+                        errorMsg ||
+                        "Unable to load token holdings. Please try again."
+                      );
+                    })()}
                   </AlertDescription>
                   <div className="mt-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => refetchTokens()}
+                      disabled={isTokensFetching}
                     >
-                      Retry
+                      {isTokensFetching ? "Retrying..." : "Retry"}
+                    </Button>
+                  </div>
+                </Alert>
+              )}
+              {isNativeError && (
+                <Alert
+                  variant="destructive"
+                  closable
+                  autoHide
+                  autoHideDuration={15000}
+                >
+                  <AlertTitle>Wallet Balances Unavailable</AlertTitle>
+                  <AlertDescription>
+                    {nativeErrorMessage ||
+                      "Unable to fetch native balances. Values may be outdated."}
+                  </AlertDescription>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchNative()}
+                      disabled={isNativeFetching}
+                    >
+                      {isNativeFetching ? "Retrying..." : "Retry"}
                     </Button>
                   </div>
                 </Alert>
               )}
             </div>
           )}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-8">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-6">
             {/* Total Portfolio Value card with 24h change */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   Total Portfolio Value
                 </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -395,11 +524,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   Total Tokens
                 </CardTitle>
-                <Coins className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <Coins className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -412,11 +543,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   ETH 24h Change
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -443,11 +576,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   MATIC 24h Change
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {/* Skeleton saat loading */}
@@ -475,11 +610,13 @@ export default function DashboardPage() {
 
             {/* Latest Snapshot Card */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader>
                 <CardTitle className="text-sm font-medium">
                   Latest Snapshot
                 </CardTitle>
-                <Camera className="h-4 w-4 text-muted-foreground" />
+                <CardAction>
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {isSnapshotLoading ? (
@@ -577,23 +714,129 @@ export default function DashboardPage() {
                 {isSeriesLoading ? (
                   <div className="animate-pulse h-[200px] w-full bg-muted rounded" />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <PortfolioChart
-                      points={portfolioPoints}
-                      width={600}
-                      height={200}
-                    />
-                  </div>
+                  <PortfolioChart
+                    points={portfolioPoints}
+                    width={600}
+                    height={200}
+                  />
                 )}
               </CardContent>
             </Card>
 
+            <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-background">
+              <CardHeader>
+                <CardTitle>Uniswap v3 LP</CardTitle>
+                <CardDescription>
+                  Summary of your LP positions on ETH & Polygon
+                </CardDescription>
+                <CardAction>
+                  <div className="flex items-center gap-2">
+                    {isUniswapFetching && (
+                      <span className="text-xs text-muted-foreground">
+                        Refreshing…
+                      </span>
+                    )}
+                    {(overrideAddress || address) && (
+                      <Link
+                        href={`/defi/uniswap?address=${overrideAddress || address}`}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        View details
+                      </Link>
+                    )}
+                  </div>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                {isUniswapLoading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-6 w-64 bg-muted rounded" />
+                    <div className="h-6 w-64 bg-muted rounded" />
+                  </div>
+                ) : isUniswapError ? (
+                  <Alert
+                    variant="destructive"
+                    closable
+                    autoHide
+                    autoHideDuration={15000}
+                  >
+                    <AlertTitle>Uniswap Positions Unavailable</AlertTitle>
+                    <AlertDescription>
+                      {(() => {
+                        const msg = (uniswapError as Error)?.message || "";
+                        if (/fetch|network/i.test(msg))
+                          return "Network issue. Check your connection and retry.";
+                        if (/429|rate limit/i.test(msg))
+                          return "Rate limit exceeded. Please wait before refreshing.";
+                        if (/500|server/i.test(msg))
+                          return "Service temporarily unavailable. Try again later.";
+                        return (
+                          msg || "Unable to load positions. Please try again."
+                        );
+                      })()}
+                    </AlertDescription>
+                    <div className="mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetchUniswap()}
+                        disabled={isUniswapFetching}
+                      >
+                        {isUniswapFetching ? "Retrying..." : "Retry"}
+                      </Button>
+                    </div>
+                  </Alert>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">Positions</p>
+                      <p className="font-medium">
+                        {uniswapData?.positions?.length ?? 0}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Estimated Total Value
+                      </p>
+                      <p className="font-medium">
+                        {formatCurrency(uniswapData?.totalUsd ?? 0)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Avg APR (7d)
+                      </p>
+                      <p className="font-medium">
+                        {formatPercentSigned(uniswapData?.avgApr7d ?? 0)}
+                      </p>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      APR is estimated from 7-day pool volume and fee tier.
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Estimate based on pool TVL share. Actual values may
+                      differ.
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Token Holdings</CardTitle>
                 <CardDescription>
                   Your current token balances and values
                 </CardDescription>
+                <CardAction>
+                  {(isPricesFetching || isLoading || isNativeFetching) && (
+                    <span className="text-xs text-muted-foreground">
+                      Refreshing…
+                    </span>
+                  )}
+                </CardAction>
               </CardHeader>
               <CardContent>
                 {isPortfolioLoading ? (
@@ -720,7 +963,7 @@ export default function DashboardPage() {
                           )
                         }
                       >
-                        Try Vitalik's Address
+                        Try Vitalik&apos;s Address
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-3">
@@ -781,7 +1024,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="mt-6">
+            <Card>
               <CardHeader>
                 <CardTitle>Portfolio Performance</CardTitle>
                 <CardDescription>

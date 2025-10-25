@@ -22,7 +22,9 @@ describe("useSnapshotDetail - error parsing", () => {
     (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
       status: 404,
-      text: vi.fn().mockResolvedValue(JSON.stringify({ error: "Snapshot not found" })),
+      text: vi
+        .fn()
+        .mockResolvedValue(JSON.stringify({ error: "Snapshot not found" })),
     });
 
     const { result } = renderHook(() => useSnapshotDetail("does-not-exist"), {
@@ -38,10 +40,16 @@ describe("useSnapshotDetail - error parsing", () => {
     (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
       status: 400,
-      text: vi.fn().mockResolvedValue(JSON.stringify({ message: "Snapshot ID is required" })),
+      text: vi
+        .fn()
+        .mockResolvedValue(
+          JSON.stringify({ message: "Snapshot ID is required" }),
+        ),
     });
 
-    const { result } = renderHook(() => useSnapshotDetail("bad-id"), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useSnapshotDetail("bad-id"), {
+      wrapper: createWrapper(),
+    });
 
     const res400 = await result.current.refetch();
     expect(res400.isError).toBe(true);
@@ -76,8 +84,24 @@ describe("useSnapshotDetail - success", () => {
       createdAt: "2025-10-25T00:00:00.000Z",
       tokenCount: 2,
       tokens: [
-        { id: "t1", symbol: "ETH", name: "Ethereum", address: "0xEth", balance: "0.5", value: 100, price: 2000 },
-        { id: "t2", symbol: "MATIC", name: "Polygon", address: "0xMat", balance: "10", value: 23.45, price: 2.345 },
+        {
+          id: "t1",
+          symbol: "ETH",
+          name: "Ethereum",
+          address: "0xEth",
+          balance: "0.5",
+          value: 100,
+          price: 2000,
+        },
+        {
+          id: "t2",
+          symbol: "MATIC",
+          name: "Polygon",
+          address: "0xMat",
+          balance: "10",
+          value: 23.45,
+          price: 2.345,
+        },
       ],
     };
     (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({

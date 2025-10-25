@@ -43,8 +43,24 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
   const [sortKey, setSortKey] = useState<
-    "valueUsd" | "balance" | "token" | "change24h"
-  >(() => {
+    "valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent"
+  >("valueUsd");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Filters
+  const [chainFilter, setChainFilter] = useState<
+    "all" | "ethereum" | "polygon"
+  >("all");
+  const [search, setSearch] = useState<string>("");
+  const [hideSmall, setHideSmall] = useState<boolean>(false);
+
+  // Total value for portfolio percentage (use full tokens list, not filtered)
+  const totalValue = (tokens ?? []).reduce(
+    (sum, t) => sum + (t.valueUsd ?? 0),
+    0,
+  );
+
+  // Load persisted preferences
+  useEffect(() => {
     try {
       const sk = localStorage.getItem("tokenSortKey");
       if (
@@ -99,6 +115,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenChainFilter", chainFilter);
       localStorage.setItem("tokenChange24hFilter", change24hFilter);
       localStorage.setItem("tokenSearchQuery", search);
+      localStorage.setItem("tokenHideSmall", String(hideSmall));
     } catch {}
   }, [sortKey, sortDir, chainFilter, change24hFilter, search]);
 
@@ -107,13 +124,8 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     const q = search.trim().toLowerCase();
     const text = `${t.symbol ?? ""} ${t.name ?? ""}`.toLowerCase();
     const searchOk = q ? text.includes(q) : true;
-    const changeOk =
-      change24hFilter === "all"
-        ? true
-        : change24hFilter === "up"
-          ? (t.change24h ?? 0) > 0
-          : (t.change24h ?? 0) < 0;
-    return chainOk && searchOk && changeOk;
+    const smallOk = hideSmall ? (t.valueUsd ?? Infinity) >= 1 : true;
+    return chainOk && searchOk && smallOk;
   });
 
   // Total portfolio value (across all tokens) for percentage calc
@@ -217,46 +229,13 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
           >
             Polygon
           </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <button
-              className={`px-2 py-1 rounded border text-xs ${change24hFilter === "all" ? "bg-muted" : ""}`}
-              onClick={() => setChange24hFilter("all")}
-            >
-              24h All
-            </button>
-            <button
-              className={`px-2 py-1 rounded border text-xs ${change24hFilter === "up" ? "bg-muted" : ""}`}
-              onClick={() => setChange24hFilter("up")}
-            >
-              24h Up
-            </button>
-            <button
-              className={`px-2 py-1 rounded border text-xs ${change24hFilter === "down" ? "bg-muted" : ""}`}
-              onClick={() => setChange24hFilter("down")}
-            >
-              24h Down
-            </button>
-          </div>
-          <input
-            className="px-2 py-1 rounded border text-xs w-40 bg-background"
-            placeholder="Search token"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
           <button
-            className="px-2 py-1 rounded border text-xs"
-            onClick={() => {
-              setChainFilter("all");
-              setChange24hFilter("all");
-              setSearch("");
-              setSortKey("valueUsd");
-              setSortDir("desc");
-            }}
-            aria-label="Reset filters"
+            className={`px-2 py-1 rounded border text-xs ${hideSmall ? "bg-muted" : ""}`}
+            onClick={() => setHideSmall((v) => !v)}
+            aria-pressed={hideSmall}
+            aria-label="Toggle hide small balances"
           >
-            Reset
+            Hide &lt;$1
           </button>
         </div>
       </div>

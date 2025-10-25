@@ -2,19 +2,21 @@ import { NextResponse } from "next/server";
 import {
   getSimplePrices,
   getTokenPricesByAddress,
+  getTokenPricesByAddressWithChange,
 } from "@/lib/utils/coingecko";
 
 // Cache configuration - 5 minutes (300 seconds)
 export const revalidate = 300;
 
 // GET /api/prices?ids=ethereum,matic-network&vs=usd
-// GET /api/prices?platform=ethereum&contracts=0x...,...&vs=usd
+// GET /api/prices?platform=ethereum&contracts=0x...,...&vs=usd&include_24hr_change=true
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const ids = searchParams.get("ids");
   const platform = searchParams.get("platform");
   const contracts = searchParams.get("contracts");
   const vs = (searchParams.get("vs") || "usd").toLowerCase();
+  const include24hrChange = searchParams.get("include_24hr_change") === "true";
 
   try {
     if (ids) {
@@ -31,7 +33,11 @@ export async function GET(req: Request) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      const data = await getTokenPricesByAddress(platform, addrList, vs);
+
+      const data = include24hrChange
+        ? await getTokenPricesByAddressWithChange(platform, addrList, vs)
+        : await getTokenPricesByAddress(platform, addrList, vs);
+
       return NextResponse.json({
         source: "coingecko:contract",
         platform,
