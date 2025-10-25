@@ -21,16 +21,18 @@ import { ArrowLeft, ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
 import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
 import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 function CompareSnapshots() {
   const { address, isConnected } = useAccount();
   const [page, setPage] = useState(0);
   const limit = 10;
-  const { data: snapshotHistory, isLoading } = useSnapshotHistory(
-    address,
-    limit,
-    page,
-  );
+  const {
+    data: snapshotHistory,
+    isLoading,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useSnapshotHistory(address, limit, page);
 
   const [selectedSnapshots, setSelectedSnapshots] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
@@ -291,6 +293,41 @@ function CompareSnapshots() {
             </Button>
           </div>
 
+          {historyError && (
+            <div className="mb-4">
+              <Alert variant="destructive" closable>
+                <AlertTitle>Failed to load snapshots</AlertTitle>
+                <AlertDescription>
+                  {(() => {
+                    const msg = (historyError as any)?.message || "";
+                    if (msg.includes("Snapshots API error:")) {
+                      const match = msg.match(/\d+\s+(.+)$/);
+                      if (match) {
+                        try {
+                          const body = JSON.parse(match[1]);
+                          return (
+                            body.error || body.message || "Unknown API error"
+                          );
+                        } catch {
+                          return match[1] || "API request failed";
+                        }
+                      }
+                    }
+                    return msg || "Failed to load snapshots. Please try again.";
+                  })()}
+                </AlertDescription>
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchHistory()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Alert>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Snapshots</CardTitle>
