@@ -197,11 +197,11 @@
 - [x] Add time period selector
 - [x] Implement value change indicators (+/-)
 - [x] Create analytics cards
-  - [ ] Total gains
-  - [ ] Total losses
-  - [ ] Net profit/loss
-  - [ ] Best performing token
-- [ ] Style with proper colors (green/red)
+  - [x] Total gains
+  - [x] Total losses
+  - [x] Net profit/loss
+  - [x] Best performing token
+- [x] Style with proper colors (green/red)
 
 ---
 
@@ -341,6 +341,7 @@
 - [ ] Create sign-in page
 - [ ] Setup session management
 - [ ] Protect API routes
+- [x] Add structured error handling for balances and prices APIs
 - [ ] Create user profile
 - [ ] Store wallet associations
 - [ ] Test auth flow

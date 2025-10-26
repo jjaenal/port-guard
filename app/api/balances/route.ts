@@ -5,6 +5,13 @@ import {
   type TokenHoldingDTO,
 } from "@/lib/blockchain/balances";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import {
+  handleUnknownError,
+  createErrorResponse,
+  ErrorCodes,
+  validateEthereumAddress,
+  validateChains,
+} from "@/lib/utils/api-errors";
 
 // Do not cache; balances depend on wallet and change frequently
 export const revalidate = 0;
@@ -20,19 +27,22 @@ function prepareBigIntForJson(tokens: TokenHolding[]): TokenHoldingDTO[] {
 
 // GET /api/balances?address=0x...&chains=ethereum,polygon
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const address = (searchParams.get("address") || "").toLowerCase();
-  const chainsParam = (
-    searchParams.get("chains") || "ethereum,polygon"
-  ).toLowerCase();
-  const chains = chainsParam
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  try {
+    const { searchParams } = new URL(req.url);
+    const address = (searchParams.get("address") || "").toLowerCase();
+    const chainsParam = searchParams.get("chains") || "ethereum,polygon";
 
-  if (!address) {
-    return NextResponse.json({ error: "Missing address" }, { status: 400 });
-  }
+    // Validate address
+    if (!address) {
+      return createErrorResponse(ErrorCodes.MISSING_PARAMETER, "Address parameter is required");
+    }
+
+    if (!validateEthereumAddress(address)) {
+      return createErrorResponse(ErrorCodes.INVALID_ADDRESS);
+    }
+
+    // Validate and sanitize chains
+    const chains = validateChains(chainsParam);
 
   const doEth = chains.includes("ethereum");
   const doPolygon = chains.includes("polygon");
@@ -48,53 +58,51 @@ export async function GET(req: Request) {
     return NextResponse.json(cached);
   }
 
-  try {
-    const results = await Promise.allSettled<TokenHolding[]>([
-      doEth ? getTokenBalances(address, 1) : Promise.resolve([]),
-      doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
-    ]);
+  const results = await Promise.allSettled<TokenHolding[]>([
+    doEth ? getTokenBalances(address, 1) : Promise.resolve([]),
+    doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
+  ]);
 
-    const ethRes = results[0];
-    const polygonRes = results[1];
+  const ethRes = results[0];
+  const polygonRes = results[1];
 
-    const errors: Record<string, string> = {};
-    const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
-    const polygonTokens =
-      polygonRes.status === "fulfilled" ? polygonRes.value : [];
+  const errors: Record<string, string> = {};
+  const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
+  const polygonTokens =
+    polygonRes.status === "fulfilled" ? polygonRes.value : [];
 
-    if (ethRes.status === "rejected") {
-      errors.ethereum =
-        ethRes.reason instanceof Error
-          ? ethRes.reason.message
-          : String(ethRes.reason);
-    }
-    if (polygonRes.status === "rejected") {
-      errors.polygon =
-        polygonRes.reason instanceof Error
-          ? polygonRes.reason.message
-          : String(polygonRes.reason);
-    }
-
-    const tokens = [...ethTokens, ...polygonTokens].sort(
-      (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
-    );
-
-    // Convert BigInt to string for JSON serialization
-    const serializedTokens = prepareBigIntForJson(tokens);
-
-    const payload = {
-      address,
-      chains: { ethereum: doEth, polygon: doPolygon },
-      tokens: serializedTokens,
-      errors,
-    };
-
-    // Cache for 3 minutes to reduce RPC pressure
-    await cacheSet(cacheKey, payload, 180);
-
-    return NextResponse.json(payload);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+  if (ethRes.status === "rejected") {
+    errors.ethereum =
+      ethRes.reason instanceof Error
+        ? ethRes.reason.message
+        : String(ethRes.reason);
   }
+  if (polygonRes.status === "rejected") {
+    errors.polygon =
+      polygonRes.reason instanceof Error
+        ? polygonRes.reason.message
+        : String(polygonRes.reason);
+  }
+
+  const tokens = [...ethTokens, ...polygonTokens].sort(
+    (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
+  );
+
+  // Convert BigInt to string for JSON serialization
+  const serializedTokens = prepareBigIntForJson(tokens);
+
+  const payload = {
+    address,
+    chains: { ethereum: doEth, polygon: doPolygon },
+    tokens: serializedTokens,
+    errors,
+  };
+
+  // Cache for 3 minutes to reduce RPC pressure
+  await cacheSet(cacheKey, payload, 180);
+
+  return NextResponse.json(payload);
+} catch (err: unknown) {
+  return handleUnknownError(err);
+}
 }

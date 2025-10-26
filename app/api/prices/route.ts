@@ -5,6 +5,7 @@ import {
   getTokenPricesByAddressWithChange,
 } from "@/lib/utils/coingecko";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { handleUnknownError, createErrorResponse, ErrorCodes } from "@/lib/utils/api-errors";
 
 // Cache configuration - 5 minutes (300 seconds)
 export const revalidate = 300;
@@ -61,12 +62,12 @@ export async function GET(req: Request) {
       });
     }
 
-    return NextResponse.json(
-      { error: "Missing query. Provide `ids` or `platform`+`contracts`." },
-      { status: 400 },
+    return createErrorResponse(
+      ErrorCodes.MISSING_PARAMETER,
+      "Missing query. Provide `ids` or `platform`+`contracts`.",
+      400,
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return handleUnknownError(err);
   }
 }
