@@ -289,8 +289,8 @@ Year 2: $50k-100k/month (Scale + Enterprise)
 
 ### Must-Have (Phase 1)
 
-- Alchemy / QuickNode (RPC)
-- CoinGecko API (prices)
+- Alchemy / QuickNode (RPC)(jajang.developer@gmail.com)
+- CoinGecko API (prices)(jajang.developer@gmail.com)
 - The Graph (DeFi data)
 - Uniswap Token Lists
 - WalletConnect

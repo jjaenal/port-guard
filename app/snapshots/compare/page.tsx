@@ -22,6 +22,8 @@ import { useSnapshotDetail } from "@/lib/hooks/useSnapshotDetail";
 import type { SnapshotItem } from "@/lib/hooks/useSnapshotHistory";
 import type { SnapshotToken } from "@/lib/hooks/useSnapshotDetail";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import type { SeriesPoint } from "@/components/ui/portfolio-chart";
+import { PortfolioChart } from "@/components/ui/portfolio-chart";
 
 function CompareSnapshots() {
   const { address, isConnected } = useAccount();
@@ -40,6 +42,7 @@ function CompareSnapshots() {
   const [tokenFilter, setTokenFilter] = useState<"all" | "up" | "down">("all");
   const [tokenQuery, setTokenQuery] = useState("");
   const [sortBy, setSortBy] = useState<"abs" | "percent" | "symbol">("abs");
+  const highlightThreshold = 50; // USD change threshold to highlight rows
   const params = useSearchParams();
 
   useEffect(() => {

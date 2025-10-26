@@ -43,7 +43,7 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
   const [sortKey, setSortKey] = useState<
-    "valueUsd" | "balance" | "token" | "priceChange24h" | "portfolioPercent"
+    "valueUsd" | "balance" | "token" | "change24h"
   >("valueUsd");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   // Filters
@@ -60,6 +60,10 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   );
 
   // Load persisted preferences
+  const [change24hFilter, setChange24hFilter] = useState<"all" | "up" | "down">(
+    "all",
+  );
+
   useEffect(() => {
     try {
       const sk = localStorage.getItem("tokenSortKey");
@@ -68,44 +72,36 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
         sk === "balance" ||
         sk === "token" ||
         sk === "change24h"
-      )
-        return sk as any;
-    } catch {}
-    return "valueUsd";
-  });
-  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => {
-    try {
+      ) {
+        setSortKey(sk as any);
+      }
+
       const sd = localStorage.getItem("tokenSortDir");
-      if (sd === "asc" || sd === "desc") return sd;
-    } catch {}
-    return "desc";
-  });
-  // Filters
-  const [chainFilter, setChainFilter] = useState<
-    "all" | "ethereum" | "polygon"
-  >(() => {
-    try {
+      if (sd === "asc" || sd === "desc") {
+        setSortDir(sd as any);
+      }
+
       const cf = localStorage.getItem("tokenChainFilter");
-      if (cf === "all" || cf === "ethereum" || cf === "polygon") return cf;
-    } catch {}
-    return "all";
-  });
-  const [change24hFilter, setChange24hFilter] = useState<"all" | "up" | "down">(
-    () => {
-      try {
-        const f = localStorage.getItem("tokenChange24hFilter");
-        if (f === "all" || f === "up" || f === "down") return f as any;
-      } catch {}
-      return "all";
-    },
-  );
-  const [search, setSearch] = useState<string>(() => {
-    try {
+      if (cf === "all" || cf === "ethereum" || cf === "polygon") {
+        setChainFilter(cf as any);
+      }
+
+      const f = localStorage.getItem("tokenChange24hFilter");
+      if (f === "all" || f === "up" || f === "down") {
+        setChange24hFilter(f as any);
+      }
+
       const sq = localStorage.getItem("tokenSearchQuery");
-      if (typeof sq === "string") return sq;
+      if (typeof sq === "string") {
+        setSearch(sq);
+      }
+
+      const hs = localStorage.getItem("tokenHideSmall");
+      if (hs === "true" || hs === "false") {
+        setHideSmall(hs === "true");
+      }
     } catch {}
-    return "";
-  });
+  }, []);
 
   // Persist changes
   useEffect(() => {
@@ -117,7 +113,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenSearchQuery", search);
       localStorage.setItem("tokenHideSmall", String(hideSmall));
     } catch {}
-  }, [sortKey, sortDir, chainFilter, change24hFilter, search]);
+  }, [sortKey, sortDir, chainFilter, change24hFilter, search, hideSmall]);
 
   const filtered = tokens.filter((t) => {
     const chainOk = chainFilter === "all" ? true : t.chain === chainFilter;
