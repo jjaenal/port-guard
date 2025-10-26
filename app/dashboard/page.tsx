@@ -34,6 +34,8 @@ import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
 import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
+import { TokenPerformance } from "@/components/ui/token-performance";
+import { PortfolioAllocation } from "@/components/ui/portfolio-allocation";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function DashboardPage() {
@@ -1038,6 +1040,12 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Token Performance Analytics */}
+            {tokens.length > 0 && <TokenPerformance tokens={tokens} />}
+
+            {/* Portfolio Allocation Chart */}
+            {tokens.length > 0 && <PortfolioAllocation tokens={tokens} />}
 
             <Card>
               <CardHeader>

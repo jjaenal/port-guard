@@ -189,14 +189,14 @@
 
 ### Day 18-21: Token Performance Analytics
 
-- [ ] Create token performance component
-- [ ] Calculate individual token P&L
-- [ ] Show best/worst performers
-- [ ] Build allocation pie chart
-- [ ] Create gains/losses breakdown
-- [ ] Add time period selector
-- [ ] Implement value change indicators (+/-)
-- [ ] Create analytics cards
+- [x] Create token performance component
+- [x] Calculate individual token P&L
+- [x] Show best/worst performers
+- [x] Build allocation pie chart
+- [x] Create gains/losses breakdown
+- [x] Add time period selector
+- [x] Implement value change indicators (+/-)
+- [x] Create analytics cards
   - [ ] Total gains
   - [ ] Total losses
   - [ ] Net profit/loss
