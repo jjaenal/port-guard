@@ -228,6 +228,43 @@ export default function DashboardPage() {
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
+  const minHealthFactor = useMemo(() => {
+    const hfs = (aaveData?.chains || [])
+      .map((c: { healthFactor: number | null }) => c.healthFactor)
+      .filter((v: number | null): v is number => v != null);
+    return hfs.length ? Math.min(...hfs) : null;
+  }, [aaveData]);
+
+  const riskLevel = useMemo(() => {
+    if (minHealthFactor == null) return "unknown";
+    if (minHealthFactor < 1.0) return "liquidation";
+    if (minHealthFactor < 1.2) return "high";
+    if (minHealthFactor < 1.5) return "medium";
+    return "low";
+  }, [minHealthFactor]);
+
+  const riskLabel =
+    riskLevel === "low"
+      ? "Liquidation Risk: Low"
+      : riskLevel === "medium"
+      ? "Liquidation Risk: Medium"
+      : riskLevel === "high"
+      ? "Liquidation Risk: High"
+      : riskLevel === "liquidation"
+      ? "Liquidation Risk: LIQUIDATION"
+      : "Liquidation Risk: Unknown";
+
+  const riskClass =
+    riskLevel === "low"
+      ? "bg-green-100 text-green-700 border border-green-200"
+      : riskLevel === "medium"
+      ? "bg-amber-100 text-amber-700 border border-amber-200"
+      : riskLevel === "high"
+      ? "bg-red-100 text-red-700 border border-red-200"
+      : riskLevel === "liquidation"
+      ? "bg-red-200 text-red-800 border border-red-300 animate-pulse"
+      : "bg-gray-100 text-gray-700 border border-gray-200";
+
   const portfolioChange24hPercent = useMemo(() => {
     if (!portfolioPoints1d || portfolioPoints1d.length < 2) return 0;
     const start = portfolioPoints1d[0].v;
@@ -855,6 +892,18 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </div>
+                  {!isAaveLoading && !isAaveError && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${riskClass}`}>
+                        {riskLabel}
+                      </span>
+                      {minHealthFactor != null && (
+                        <span className="text-xs text-muted-foreground">
+                          HF min: {minHealthFactor.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </CardAction>
               </CardHeader>
               <CardContent>
