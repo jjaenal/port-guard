@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { Toaster } from "sonner";
 // Impor dengan path absolut untuk menghindari masalah resolusi
 import { Providers } from "@/app/providers";
 
@@ -68,6 +69,7 @@ export default function RootLayout({
                 <main className="flex-1">{children}</main>
                 <Footer />
               </div>
+              <Toaster richColors position="top-right" />
             </Providers>
           </Suspense>
         </ThemeProvider>

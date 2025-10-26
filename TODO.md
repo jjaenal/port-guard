@@ -158,8 +158,8 @@
 - [x] Add loading skeletons
 - [x] Create empty state
 - [x] Make responsive (mobile-first)
-- [ ] Add auto-refresh (every 5 minutes)
-- [ ] Add error handling banner/toast for API failures
+- [x] Add auto-refresh (every 5 minutes) - Implemented via refetchInterval in React Query
+- [x] Add error handling banner/toast for API failures (sonner toast notifications implemented for all API errors + success cases)
   - [ ] Price API errors
   - [ ] Balance fetching errors
   - [ ] Network connectivity issues
@@ -480,7 +480,7 @@
 - [x] Create landing page
   - [x] Hero section
   - [x] Features showcase
-  - [ ] Pricing section
+  - [x] Pricing section - Complete with Free/Pro/Enterprise tiers
   - [ ] FAQ
   - [x] CTA (Connect Wallet via header)
 - [x] Write copy (hero + features text)
@@ -490,7 +490,7 @@
   - [ ] Sitemap
   - [ ] Schema markup
   - [ ] robots.txt
-- [ ] Setup Google Analytics
+- [x] Setup Google Analytics - GA4 implemented with gtag integration
 - [ ] Create social media assets
 - [ ] Prepare Product Hunt launch
 

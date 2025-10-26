@@ -26,7 +26,8 @@ import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
 import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
@@ -179,6 +180,64 @@ export default function DashboardPage() {
     return start > 0 ? ((end - start) / start) * 100 : 0;
   }, [portfolioPoints1d]);
 
+  // Toast notifications for errors
+  useEffect(() => {
+    if (isPricesError && pricesQuery.error) {
+      const errorMsg = (pricesQuery.error as Error)?.message || "";
+      if (errorMsg.includes("429") || errorMsg.includes("rate limit")) {
+        toast.error("Rate limit exceeded. Please wait before refreshing.", {
+          id: "prices-rate-limit",
+        });
+      } else if (errorMsg.includes("fetch")) {
+        toast.error("Network error. Check your connection.", {
+          id: "prices-network",
+        });
+      } else {
+        toast.error("Failed to fetch price data", {
+          id: "prices-general",
+        });
+      }
+    }
+  }, [isPricesError, pricesQuery.error]);
+
+  useEffect(() => {
+    if (isTokensError && tokensError) {
+      const errorMsg = (tokensError as Error)?.message || "";
+      if (errorMsg.includes("Both chains failed")) {
+        toast.error("Unable to connect to blockchain networks", {
+          id: "tokens-chains",
+        });
+      } else if (errorMsg.includes("429") || errorMsg.includes("rate limit")) {
+        toast.error("Rate limit exceeded for token data", {
+          id: "tokens-rate-limit",
+        });
+      } else {
+        toast.error("Failed to fetch token holdings", {
+          id: "tokens-general",
+        });
+      }
+    }
+  }, [isTokensError, tokensError]);
+
+  useEffect(() => {
+    if (isUniswapError && uniswapError) {
+      const errorMsg = (uniswapError as Error)?.message || "";
+      if (!errorMsg.includes("not found") && !errorMsg.includes("400")) {
+        toast.error("Failed to fetch DeFi positions", {
+          id: "uniswap-general",
+        });
+      }
+    }
+  }, [isUniswapError, uniswapError]);
+
+  useEffect(() => {
+    if (isNativeError && nativeErrorMessage) {
+      toast.error("Failed to fetch native token balances", {
+        id: "native-balances",
+      });
+    }
+  }, [isNativeError, nativeErrorMessage]);
+
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const handleSaveSnapshot = useCallback(async () => {
@@ -244,9 +303,15 @@ export default function DashboardPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to save snapshot");
       setSaveMsg("Snapshot saved ✓");
+      toast.success("Portfolio snapshot saved successfully!", {
+        id: "snapshot-success",
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       setSaveMsg(`Failed to save snapshot: ${msg}`);
+      toast.error(`Failed to save snapshot: ${msg}`, {
+        id: "snapshot-error",
+      });
     } finally {
       setSaving(false);
     }
