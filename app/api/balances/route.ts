@@ -4,6 +4,7 @@ import {
   type TokenHolding,
   type TokenHoldingDTO,
 } from "@/lib/blockchain/balances";
+import { cacheGet, cacheSet } from "@/lib/cache/redis";
 
 // Do not cache; balances depend on wallet and change frequently
 export const revalidate = 0;
@@ -35,6 +36,17 @@ export async function GET(req: Request) {
 
   const doEth = chains.includes("ethereum");
   const doPolygon = chains.includes("polygon");
+
+  const cacheKey = `balances:${address}:${[...chains].sort().join(",")}`;
+  const cached = await cacheGet<{
+    address: string;
+    chains: { ethereum: boolean; polygon: boolean };
+    tokens: TokenHoldingDTO[];
+    errors: Record<string, string>;
+  }>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
 
   try {
     const results = await Promise.allSettled<TokenHolding[]>([
@@ -70,12 +82,17 @@ export async function GET(req: Request) {
     // Convert BigInt to string for JSON serialization
     const serializedTokens = prepareBigIntForJson(tokens);
 
-    return NextResponse.json({
+    const payload = {
       address,
       chains: { ethereum: doEth, polygon: doPolygon },
       tokens: serializedTokens,
       errors,
-    });
+    };
+
+    // Cache for 3 minutes to reduce RPC pressure
+    await cacheSet(cacheKey, payload, 180);
+
+    return NextResponse.json(payload);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 502 });

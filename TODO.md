@@ -72,7 +72,7 @@
   ```
 - [x] Create Prisma schema
 - [x] Run first migration
-- [ ] Setup Upstash Redis (free tier)
+- [x] Setup Upstash Redis (free tier)
 - [x] Test database connection
 
 ### Day 5-7: Web3 Integration Basics
@@ -385,8 +385,8 @@
 - [x] Code splitting - Next.js automatic code splitting
 - [x] Lazy load components - Dynamic imports implemented
 - [ ] Setup Redis caching properly
-  - [ ] Cache token prices (5 min)
-  - [ ] Cache balances (3 min)
+  - [x] Cache token prices (5 min)
+  - [x] Cache balances (3 min)
   - [ ] Cache DeFi positions (10 min)
 - [ ] Add service worker (PWA)
 - [x] Optimize bundle size - Webpack optimizations applied

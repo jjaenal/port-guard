@@ -4,6 +4,7 @@ import {
   getTokenPricesByAddress,
   getTokenPricesByAddressWithChange,
 } from "@/lib/utils/coingecko";
+import { cacheGet, cacheSet } from "@/lib/cache/redis";
 
 // Cache configuration - 5 minutes (300 seconds)
 export const revalidate = 300;
@@ -24,7 +25,15 @@ export async function GET(req: Request) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+
+      const cacheKey = `prices:simple:${vs}:${idList.join(",")}`;
+      const cached = await cacheGet<Record<string, Record<string, number>>>(cacheKey);
+      if (cached) {
+        return NextResponse.json({ source: "cache:simple", data: cached });
+      }
+
       const data = await getSimplePrices(idList, vs);
+      await cacheSet(cacheKey, data, 300);
       return NextResponse.json({ source: "coingecko:simple", data });
     }
 
@@ -34,10 +43,17 @@ export async function GET(req: Request) {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const cacheKey = `prices:contract:${platform}:${vs}:${include24hrChange ? "withChange" : "simple"}:${addrList.join(",")}`;
+      const cached = await cacheGet<Record<string, { usd?: number; usd_24h_change?: number }>>(cacheKey);
+      if (cached) {
+        return NextResponse.json({ source: "cache:contract", platform, data: cached });
+      }
+
       const data = include24hrChange
         ? await getTokenPricesByAddressWithChange(platform, addrList, vs)
         : await getTokenPricesByAddress(platform, addrList, vs);
 
+      await cacheSet(cacheKey, data, 300);
       return NextResponse.json({
         source: "coingecko:contract",
         platform,
