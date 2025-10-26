@@ -328,16 +328,18 @@ export default function DashboardPage() {
   ]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Portfolio Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+          Portfolio Dashboard
+        </h1>
         <p className="text-muted-foreground">
           {isConnected
             ? `Wallet: ${address}`
             : "Welcome to your DeFi portfolio dashboard. Connect your wallet to get started."}
         </p>
         {isConnected && (
-          <div className="mt-4 grid gap-2 md:grid-cols-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <div>
               <label className="text-sm text-muted-foreground">
                 Test with another address (optional)
@@ -555,7 +557,7 @@ export default function DashboardPage() {
               )}
             </div>
           )}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-6">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
             {/* Total Portfolio Value card with 24h change */}
             <Card>
               <CardHeader>
@@ -735,7 +737,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Portfolio Performance ({rangeDays}d)</CardTitle>
@@ -743,7 +745,7 @@ export default function DashboardPage() {
                   Value based on ETH, MATIC & top ERC-20
                 </CardDescription>
                 <CardAction>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-1 sm:gap-2">
                     <Button
                       variant={rangeDays === 1 ? "default" : "outline"}
                       size="sm"
@@ -779,11 +781,7 @@ export default function DashboardPage() {
                 {isSeriesLoading ? (
                   <div className="animate-pulse h-[200px] w-full bg-muted rounded" />
                 ) : (
-                  <PortfolioChart
-                    points={portfolioPoints}
-                    width={600}
-                    height={200}
-                  />
+                  <PortfolioChart points={portfolioPoints} height={200} />
                 )}
               </CardContent>
             </Card>
@@ -888,7 +886,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Token Holdings</CardTitle>

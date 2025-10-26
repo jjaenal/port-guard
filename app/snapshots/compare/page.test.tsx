@@ -6,7 +6,7 @@ vi.mock("wagmi", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => ({ get: (k: string) => null }),
+  useSearchParams: () => ({ get: () => null }),
 }));
 
 // Baseline mock untuk useSnapshotDetail agar tidak memerlukan QueryClientProvider
@@ -24,7 +24,11 @@ const mockRefetchHistory = vi.fn();
 const mockRefetch1 = vi.fn();
 const mockRefetch2 = vi.fn();
 
-function mockUseSnapshotHistory(result: any) {
+function mockUseSnapshotHistory(result: {
+  data?: unknown;
+  isLoading?: boolean;
+  error?: unknown;
+}) {
   vi.doMock("@/lib/hooks/useSnapshotHistory", () => ({
     useSnapshotHistory: () => ({
       data: result.data ?? null,
@@ -35,7 +39,10 @@ function mockUseSnapshotHistory(result: any) {
   }));
 }
 
-function mockUseSnapshotDetail(result1: any, result2?: any) {
+function mockUseSnapshotDetail(
+  result1: { data?: unknown; isLoading?: boolean; error?: unknown },
+  result2?: { data?: unknown; isLoading?: boolean; error?: unknown },
+) {
   let call = 0;
   vi.doMock("@/lib/hooks/useSnapshotDetail", () => ({
     useSnapshotDetail: () => {

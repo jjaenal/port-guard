@@ -36,9 +36,16 @@ export function useSnapshotDetail(snapshotId?: string) {
         try {
           const text = await res.text();
           try {
-            const body = JSON.parse(text);
-            const specific = (body as any)?.error || (body as any)?.message;
-            message = specific ? String(specific) : `${message} ${text}`;
+            const body = JSON.parse(text) as unknown;
+            const specific =
+              typeof body === "object" && body !== null
+                ? ("error" in body
+                    ? (body as { error?: unknown }).error
+                    : "message" in body
+                    ? (body as { message?: unknown }).message
+                    : undefined)
+                : undefined;
+            message = specific != null ? String(specific) : `${message} ${text}`;
           } catch {
             message = `${message} ${text}`;
           }

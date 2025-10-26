@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import Image from "next/image";
 
 export default function SnapshotDetailPage() {
   const { id } = useParams();
@@ -61,8 +62,8 @@ export default function SnapshotDetailPage() {
           <Alert variant="destructive" closable>
             <AlertTitle>Failed to load snapshot</AlertTitle>
             <AlertDescription>
-              {typeof (error as any)?.message === "string"
-                ? (error as any).message
+              {typeof (error as { message?: unknown })?.message === "string"
+                ? (error as { message: string }).message
                 : "Snapshot details API error."}
             </AlertDescription>
             <div className="mt-2">
@@ -164,9 +165,11 @@ export default function SnapshotDetailPage() {
                           <td className="py-3 px-4">
                             <div className="flex items-center">
                               {token.logo && (
-                                <img
+                                <Image
                                   src={token.logo}
                                   alt={token.symbol}
+                                  width={24}
+                                  height={24}
                                   className="w-6 h-6 mr-2 rounded-full"
                                 />
                               )}

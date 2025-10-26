@@ -16,15 +16,10 @@ export type SeriesPoint = { t: number; v: number };
 
 interface PortfolioChartProps {
   points: SeriesPoint[];
-  width?: number;
   height?: number;
 }
 
-export function PortfolioChart({
-  points,
-  width = 600,
-  height = 200,
-}: PortfolioChartProps) {
+export function PortfolioChart({ points, height = 200 }: PortfolioChartProps) {
   const data = useMemo(() => {
     return (points ?? []).map((p) => ({ t: p.t, v: p.v }));
   }, [points]);
@@ -51,7 +46,7 @@ export function PortfolioChart({
   const formatYTick = (val: number) => formatCurrencyTiny(val);
 
   return (
-    <div style={{ width, height }}>
+    <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}

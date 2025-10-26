@@ -15,7 +15,7 @@ describe("getTokenPricesByAddress", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (_url: string): Promise<MinimalResponse> => {
+      vi.fn(async (): Promise<MinimalResponse> => {
         return {
           ok: true,
           json: async () => mockResponse,

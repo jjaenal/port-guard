@@ -7,9 +7,10 @@ function createWrapper() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: 1 } },
   });
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
+  return Wrapper;
 }
 
 describe("useSnapshotHistory - errors", () => {
@@ -22,7 +23,7 @@ describe("useSnapshotHistory - errors", () => {
             ok: false,
             status: 404,
             text: vi.fn().mockResolvedValue("Snapshot history not found"),
-          }) as any,
+          }) as { ok: boolean; status: number; text: () => Promise<string> },
       ),
     );
 
@@ -46,7 +47,7 @@ describe("useSnapshotHistory - errors", () => {
             ok: false,
             status: 500,
             text: vi.fn().mockResolvedValue("Internal Server Error"),
-          }) as any,
+          }) as { ok: boolean; status: number; text: () => Promise<string> },
       ),
     );
 
@@ -87,7 +88,7 @@ describe("useSnapshotHistory - success", () => {
           ({
             ok: true,
             json: vi.fn().mockResolvedValue({ data: mockItems, total: 2 }),
-          }) as any,
+          }) as { ok: boolean; json: () => Promise<{ data: unknown; total: number }> },
       ),
     );
 

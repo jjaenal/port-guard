@@ -44,64 +44,90 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   // Sorting state and helpers
   const [sortKey, setSortKey] = useState<
     "valueUsd" | "balance" | "token" | "change24h"
-  >("valueUsd");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  // Filters
-  const [chainFilter, setChainFilter] = useState<
-    "all" | "ethereum" | "polygon"
-  >("all");
-  const [search, setSearch] = useState<string>("");
-  const [hideSmall, setHideSmall] = useState<boolean>(false);
-
-  // Total value for portfolio percentage (use full tokens list, not filtered)
-  const totalValue = (tokens ?? []).reduce(
-    (sum, t) => sum + (t.valueUsd ?? 0),
-    0,
-  );
-
-  // Load persisted preferences
-  const [change24hFilter, setChange24hFilter] = useState<"all" | "up" | "down">(
-    "all",
-  );
-
-  useEffect(() => {
+  >(() => {
     try {
-      const sk = localStorage.getItem("tokenSortKey");
-      if (
-        sk === "valueUsd" ||
+      const sk =
+        typeof window !== "undefined"
+          ? localStorage.getItem("tokenSortKey")
+          : null;
+      return sk === "valueUsd" ||
         sk === "balance" ||
         sk === "token" ||
         sk === "change24h"
-      ) {
-        setSortKey(sk as any);
-      }
+        ? (sk as "valueUsd" | "balance" | "token" | "change24h")
+        : "valueUsd";
+    } catch {
+      return "valueUsd";
+    }
+  });
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(() => {
+    try {
+      const sd =
+        typeof window !== "undefined"
+          ? localStorage.getItem("tokenSortDir")
+          : null;
+      return sd === "asc" || sd === "desc" ? (sd as "asc" | "desc") : "desc";
+    } catch {
+      return "desc";
+    }
+  });
+  // Filters
+  const [chainFilter, setChainFilter] = useState<
+    "all" | "ethereum" | "polygon"
+  >(() => {
+    try {
+      const cf =
+        typeof window !== "undefined"
+          ? localStorage.getItem("tokenChainFilter")
+          : null;
+      return cf === "all" || cf === "ethereum" || cf === "polygon"
+        ? (cf as "all" | "ethereum" | "polygon")
+        : "all";
+    } catch {
+      return "all";
+    }
+  });
+  const [search] = useState<string>(() => {
+    try {
+      const sq =
+        typeof window !== "undefined"
+          ? localStorage.getItem("tokenSearchQuery")
+          : null;
+      return typeof sq === "string" ? sq : "";
+    } catch {
+      return "";
+    }
+  });
+  const [hideSmall, setHideSmall] = useState<boolean>(() => {
+    try {
+      const hs =
+        typeof window !== "undefined"
+          ? localStorage.getItem("tokenHideSmall")
+          : null;
+      return hs === "true" ? true : hs === "false" ? false : false;
+    } catch {
+      return false;
+    }
+  });
+  const [change24hFilter] = useState<"all" | "up" | "down">(() => {
+    try {
+      const f =
+        typeof window !== "undefined"
+          ? localStorage.getItem("tokenChange24hFilter")
+          : null;
+      return f === "all" || f === "up" || f === "down"
+        ? (f as "all" | "up" | "down")
+        : "all";
+    } catch {
+      return "all";
+    }
+  });
 
-      const sd = localStorage.getItem("tokenSortDir");
-      if (sd === "asc" || sd === "desc") {
-        setSortDir(sd as any);
-      }
+  // Total value for portfolio percentage (use full tokens list, not filtered)
+  // Removed unused totalValue to satisfy lint
 
-      const cf = localStorage.getItem("tokenChainFilter");
-      if (cf === "all" || cf === "ethereum" || cf === "polygon") {
-        setChainFilter(cf as any);
-      }
-
-      const f = localStorage.getItem("tokenChange24hFilter");
-      if (f === "all" || f === "up" || f === "down") {
-        setChange24hFilter(f as any);
-      }
-
-      const sq = localStorage.getItem("tokenSearchQuery");
-      if (typeof sq === "string") {
-        setSearch(sq);
-      }
-
-      const hs = localStorage.getItem("tokenHideSmall");
-      if (hs === "true" || hs === "false") {
-        setHideSmall(hs === "true");
-      }
-    } catch {}
-  }, []);
+  // Load persisted preferences
+  // Removed useEffect that synchronously set multiple states; initialization now reads from localStorage lazily
 
   // Persist changes
   useEffect(() => {
@@ -138,34 +164,28 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       return av === bv ? 0 : av > bv ? 1 * dir : -1 * dir;
     }
     if (sortKey === "balance") {
-      const ab = Number(a.formatted ?? 0);
-      const bb = Number(b.formatted ?? 0);
-      return ab === bb ? 0 : ab > bb ? 1 * dir : -1 * dir;
-    }
-    if (sortKey === "change24h") {
-      const av =
-        a.change24h ??
-        (sortDir === "asc"
-          ? Number.POSITIVE_INFINITY
-          : Number.NEGATIVE_INFINITY);
-      const bv =
-        b.change24h ??
-        (sortDir === "asc"
-          ? Number.POSITIVE_INFINITY
-          : Number.NEGATIVE_INFINITY);
+      const av = parseFloat(a.balance ?? "0");
+      const bv = parseFloat(b.balance ?? "0");
       return av === bv ? 0 : av > bv ? 1 * dir : -1 * dir;
     }
-    // token label sort
-    const at = (a.symbol ?? a.name ?? "").toLowerCase();
-    const bt = (b.symbol ?? b.name ?? "").toLowerCase();
-    return at.localeCompare(bt) * dir;
+    if (sortKey === "token") {
+      const an = (a.symbol ?? "").toLowerCase();
+      const bn = (b.symbol ?? "").toLowerCase();
+      return an === bn ? 0 : an > bn ? 1 * dir : -1 * dir;
+    }
+    if (sortKey === "change24h") {
+      const av = a.change24h ?? 0;
+      const bv = b.change24h ?? 0;
+      return av === bv ? 0 : av > bv ? 1 * dir : -1 * dir;
+    }
+    return 0;
   });
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
         <div className="text-xs text-muted-foreground">Sort by</div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <button
             className={`px-2 py-1 rounded border text-xs ${sortKey === "valueUsd" ? "bg-muted" : ""}`}
             onClick={() => setSortKey("valueUsd")}
@@ -205,8 +225,8 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <button
             className={`px-2 py-1 rounded border text-xs ${chainFilter === "all" ? "bg-muted" : ""}`}
             onClick={() => setChainFilter("all")}

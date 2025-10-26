@@ -8,7 +8,11 @@ vi.mock("wagmi", () => ({
 
 const mockRefetch = vi.fn();
 
-function mockUseSnapshotHistory(result: any) {
+function mockUseSnapshotHistory(result: {
+  data?: unknown;
+  isLoading?: boolean;
+  error?: unknown;
+}) {
   vi.doMock("@/lib/hooks/useSnapshotHistory", () => ({
     useSnapshotHistory: () => ({
       data: result.data ?? null,

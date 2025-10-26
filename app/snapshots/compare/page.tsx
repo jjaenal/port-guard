@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, startTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useAccount } from "wagmi";
@@ -57,16 +57,20 @@ function CompareSnapshots() {
         const sa = decoded?.a as string | undefined;
         const sb = decoded?.b as string | undefined;
         if (sa && sb) {
-          setSelectedSnapshots([sa, sb]);
-          setCompareMode(true);
+          startTransition(() => {
+            setSelectedSnapshots([sa, sb]);
+            setCompareMode(true);
+          });
           return;
         }
       } catch {}
     }
 
     if (a && b) {
-      setSelectedSnapshots([a, b]);
-      setCompareMode(true);
+      startTransition(() => {
+        setSelectedSnapshots([a, b]);
+        setCompareMode(true);
+      });
     }
   }, [params]);
   const {
@@ -188,64 +192,20 @@ function CompareSnapshots() {
   };
 
   const comparison = calculateDifference();
-  const comparisonPoints: SeriesPoint[] = useMemo(() => {
-    if (!snapshot1Data?.data || !snapshot2Data?.data) return [];
-    return [
-      {
-        t: new Date(snapshot1Data.data.createdAt).getTime(),
-        v: snapshot1Data.data.totalValue,
-      },
-      {
-        t: new Date(snapshot2Data.data.createdAt).getTime(),
-        v: snapshot2Data.data.totalValue,
-      },
-    ];
-  }, [snapshot1Data?.data, snapshot2Data?.data]);
+  const comparisonPoints: SeriesPoint[] =
+    !snapshot1Data?.data || !snapshot2Data?.data
+      ? []
+      : [
+          {
+            t: new Date(snapshot1Data.data.createdAt).getTime(),
+            v: snapshot1Data.data.totalValue,
+          },
+          {
+            t: new Date(snapshot2Data.data.createdAt).getTime(),
+            v: snapshot2Data.data.totalValue,
+          },
+        ];
 
-  const exportJSON = () => {
-    if (!comparison) return;
-    const blob = new Blob([JSON.stringify(displayTokens, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "token-changes.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportCSV = () => {
-    if (!comparison) return;
-    const header = [
-      "symbol",
-      "name",
-      "snapshot1Value",
-      "snapshot1Balance",
-      "snapshot2Value",
-      "snapshot2Balance",
-      "diff",
-      "percentDiff",
-    ];
-    const rows = displayTokens.map((t) => [
-      t.symbol,
-      t.name,
-      t.snapshot1Value,
-      t.snapshot1Balance,
-      t.snapshot2Value,
-      t.snapshot2Balance,
-      t.diff,
-      t.percentDiff,
-    ]);
-    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "token-changes.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
   const displayTokens = useMemo(() => {
     if (!comparison)
       return [] as Array<{
@@ -285,10 +245,12 @@ function CompareSnapshots() {
 
   if (!isConnected) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h1 className="text-3xl font-bold mb-1">Compare Snapshots</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1">
+              Compare Snapshots
+            </h1>
             <p className="text-muted-foreground">
               Compare portfolio changes over time
             </p>
@@ -316,15 +278,17 @@ function CompareSnapshots() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Compare Snapshots</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">
+            Compare Snapshots
+          </h1>
           <p className="text-muted-foreground">
             Compare portfolio changes over time
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {compareMode && (
             <Button variant="outline" onClick={resetSelection}>
               Reset
@@ -384,8 +348,8 @@ function CompareSnapshots() {
                 <AlertTitle>Pro tip</AlertTitle>
                 <AlertDescription>
                   Pick snapshots far apart in time to see bigger changes. After
-                  selecting two, use the "Copy Link" button to share the
-                  comparison.
+                  selecting two, use the &quot;Copy Link&quot; button to share
+                  the comparison.
                 </AlertDescription>
               </Alert>
             )}
@@ -396,7 +360,8 @@ function CompareSnapshots() {
                 <AlertTitle>Failed to load snapshots</AlertTitle>
                 <AlertDescription>
                   {(() => {
-                    const msg = (historyError as any)?.message || "";
+                    const msg =
+                      historyError instanceof Error ? historyError.message : "";
                     if (msg.includes("Snapshots API error:")) {
                       const match = msg.match(/\d+\s+(.+)$/);
                       if (match) {
@@ -526,8 +491,8 @@ function CompareSnapshots() {
                 <Alert variant="destructive" closable>
                   <AlertTitle>Failed to load snapshot A</AlertTitle>
                   <AlertDescription>
-                    {typeof (error1 as any)?.message === "string"
-                      ? (error1 as any).message
+                    {error1 instanceof Error
+                      ? error1.message
                       : "Snapshot details API error."}
                   </AlertDescription>
                   <div className="mt-2">
@@ -545,8 +510,8 @@ function CompareSnapshots() {
                 <Alert variant="destructive" closable>
                   <AlertTitle>Failed to load snapshot B</AlertTitle>
                   <AlertDescription>
-                    {typeof (error2 as any)?.message === "string"
-                      ? (error2 as any).message
+                    {error2 instanceof Error
+                      ? error2.message
                       : "Snapshot details API error."}
                   </AlertDescription>
                   <div className="mt-2">
@@ -724,11 +689,7 @@ function CompareSnapshots() {
                     </div>
                   </div>
                   <div className="mt-4 overflow-x-auto">
-                    <PortfolioChart
-                      points={comparisonPoints}
-                      width={700}
-                      height={180}
-                    />
+                    <PortfolioChart points={comparisonPoints} height={180} />
                   </div>
                 </CardContent>
               </Card>
@@ -775,7 +736,11 @@ function CompareSnapshots() {
                       <select
                         className="border rounded px-2 py-1 text-sm"
                         value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
+                        onChange={(e) =>
+                          setSortBy(
+                            e.target.value as "abs" | "percent" | "symbol",
+                          )
+                        }
                       >
                         <option value="abs">Sort: Diff</option>
                         <option value="percent">Sort: % Change</option>

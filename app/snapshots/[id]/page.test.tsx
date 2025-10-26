@@ -13,7 +13,11 @@ vi.mock("next/navigation", () => ({
 const mockRefetch = vi.fn();
 
 // Helper to mock hook result
-function mockUseSnapshotDetail(result: any) {
+function mockUseSnapshotDetail(result: {
+  data?: unknown;
+  isLoading?: boolean;
+  error?: unknown;
+}) {
   vi.doMock("@/lib/hooks/useSnapshotDetail", () => ({
     useSnapshotDetail: () => ({
       data: result.data ?? null,

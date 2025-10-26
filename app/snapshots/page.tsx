@@ -27,15 +27,17 @@ export default function SnapshotsPage() {
   } = useSnapshotHistory(address, limit, page);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Snapshot History</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">
+            Snapshot History
+          </h1>
           <p className="text-muted-foreground">
             Recent snapshots for your wallet
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href="/snapshots/compare">
             <Button>Compare Snapshots</Button>
           </Link>
@@ -67,7 +69,8 @@ export default function SnapshotsPage() {
                 <AlertTitle>Failed to load snapshots</AlertTitle>
                 <AlertDescription>
                   {(() => {
-                    const errorMessage = (error as any)?.message || "";
+                    const errorMessage =
+                      error instanceof Error ? error.message : "";
                     if (errorMessage.includes("Snapshots API error:")) {
                       const match = errorMessage.match(/\d+\s+(.+)$/);
                       if (match) {

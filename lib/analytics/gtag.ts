@@ -1,22 +1,24 @@
 export const GA_TRACKING_ID = process.env.NEXT_PUBLIC_GA_ID || "";
 
+declare global {
+  interface Window {
+    gtag?: (command: string, param1: string, param2?: unknown) => void;
+  }
+}
+
 // Report a pageview to GA4
 export function pageview(url: string) {
   if (!GA_TRACKING_ID) return;
   if (typeof window === "undefined") return;
-  // @ts-ignore
   if (!window.gtag) return;
-  // @ts-ignore
   window.gtag("config", GA_TRACKING_ID, { page_path: url });
 }
 
 // Generic event helper
-export function gaEvent(action: string, params: Record<string, any> = {}) {
+export function gaEvent(action: string, params: Record<string, unknown> = {}) {
   if (!GA_TRACKING_ID) return;
   if (typeof window === "undefined") return;
-  // @ts-ignore
   if (!window.gtag) return;
-  // @ts-ignore
   window.gtag("event", action, params);
 }
 
@@ -31,9 +33,7 @@ export type ConsentOptions = {
 
 export function setDefaultConsent() {
   if (typeof window === "undefined") return;
-  // @ts-ignore
   if (!window.gtag) return;
-  // @ts-ignore
   window.gtag("consent", "default", {
     ad_storage: "denied",
     analytics_storage: "denied",
@@ -42,8 +42,6 @@ export function setDefaultConsent() {
 
 export function updateConsent(options: ConsentOptions) {
   if (typeof window === "undefined") return;
-  // @ts-ignore
   if (!window.gtag) return;
-  // @ts-ignore
   window.gtag("consent", "update", options);
 }
