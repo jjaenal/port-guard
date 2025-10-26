@@ -175,6 +175,59 @@ export default function DashboardPage() {
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
+  const {
+    data: aaveData,
+    isLoading: isAaveLoading,
+    isError: isAaveError,
+    error: aaveError,
+    refetch: refetchAave,
+    isFetching: isAaveFetching,
+  } = useQuery({
+    queryKey: ["defi-aave", overrideAddress || address],
+    queryFn: async () => {
+      const a = overrideAddress || address;
+      if (!a)
+        return {
+          chains: [],
+          totals: { suppliedCount: 0, borrowedCount: 0 },
+        };
+      const res = await fetch(
+        `/api/defi/aave?address=${a}&chains=ethereum,polygon`,
+      );
+      const bodyText = await res.text();
+      if (!res.ok) {
+        let msg = `Aave API failed: ${res.status}`;
+        try {
+          const parsed = JSON.parse(bodyText);
+          msg = parsed?.error || parsed?.message || msg;
+        } catch {}
+        throw new Error(msg);
+      }
+      try {
+        const json = JSON.parse(bodyText);
+        return (
+          json?.data || {
+            chains: [],
+            totals: { suppliedCount: 0, borrowedCount: 0 },
+          }
+        );
+      } catch {
+        return {
+          chains: [],
+          totals: { suppliedCount: 0, borrowedCount: 0 },
+        };
+      }
+    },
+    enabled: !!(isConnected || !!overrideAddress),
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: (failureCount, error) => {
+      const msg = (error as Error)?.message || "";
+      if (/400|not found|invalid/i.test(msg)) return false;
+      return failureCount < 3;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+  });
   const portfolioChange24hPercent = useMemo(() => {
     if (!portfolioPoints1d || portfolioPoints1d.length < 2) return 0;
     const start = portfolioPoints1d[0].v;
@@ -790,97 +843,93 @@ export default function DashboardPage() {
 
             <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-background">
               <CardHeader>
-                <CardTitle>Uniswap v3 LP</CardTitle>
+                <CardTitle>Aave v3 Positions</CardTitle>
                 <CardDescription>
-                  Summary of your LP positions on ETH & Polygon
+                  Health factor and position counts on ETH & Polygon
                 </CardDescription>
                 <CardAction>
                   <div className="flex items-center gap-2">
-                    {isUniswapFetching && (
+                    {isAaveFetching && (
                       <span className="text-xs text-muted-foreground">
                         Refreshing…
                       </span>
-                    )}
-                    {(overrideAddress || address) && (
-                      <Link
-                        href={`/defi/uniswap?address=${overrideAddress || address}`}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        View details
-                      </Link>
                     )}
                   </div>
                 </CardAction>
               </CardHeader>
               <CardContent>
-                {isUniswapLoading ? (
+                {isAaveLoading ? (
                   <div className="space-y-2 animate-pulse">
                     <div className="h-6 w-64 bg-muted rounded" />
                     <div className="h-6 w-64 bg-muted rounded" />
                   </div>
-                ) : isUniswapError ? (
-                  <Alert
-                    variant="destructive"
-                    closable
-                    autoHide
-                    autoHideDuration={15000}
-                  >
-                    <AlertTitle>Uniswap Positions Unavailable</AlertTitle>
+                ) : isAaveError ? (
+                  <Alert variant="destructive" closable autoHide autoHideDuration={15000}>
+                    <AlertTitle>Aave Positions Unavailable</AlertTitle>
                     <AlertDescription>
                       {(() => {
-                        const msg = (uniswapError as Error)?.message || "";
+                        const msg = (aaveError as Error)?.message || "";
                         if (/fetch|network/i.test(msg))
                           return "Network issue. Check your connection and retry.";
                         if (/429|rate limit/i.test(msg))
                           return "Rate limit exceeded. Please wait before refreshing.";
                         if (/500|server/i.test(msg))
                           return "Service temporarily unavailable. Try again later.";
-                        return (
-                          msg || "Unable to load positions. Please try again."
-                        );
+                        return msg || "Unable to load positions. Please try again.";
                       })()}
                     </AlertDescription>
                     <div className="mt-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => refetchUniswap()}
-                        disabled={isUniswapFetching}
+                        onClick={() => refetchAave()}
+                        disabled={isAaveFetching}
                       >
-                        {isUniswapFetching ? "Retrying..." : "Retry"}
+                        {isAaveFetching ? "Retrying..." : "Retry"}
                       </Button>
                     </div>
                   </Alert>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">Positions</p>
+                      <p className="text-sm text-muted-foreground">Supplied Positions (total)</p>
                       <p className="font-medium">
-                        {uniswapData?.positions?.length ?? 0}
+                        {aaveData?.totals?.suppliedCount ?? 0}
                       </p>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">
-                        Estimated Total Value
-                      </p>
+                      <p className="text-sm text-muted-foreground">Borrowed Positions (total)</p>
                       <p className="font-medium">
-                        {formatCurrency(uniswapData?.totalUsd ?? 0)}
+                        {aaveData?.totals?.borrowedCount ?? 0}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">
-                        Avg APR (7d)
-                      </p>
-                      <p className="font-medium">
-                        {formatPercentSigned(uniswapData?.avgApr7d ?? 0)}
-                      </p>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      APR is estimated from 7-day pool volume and fee tier.
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Estimate based on pool TVL share. Actual values may
-                      differ.
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      {aaveData?.chains?.map((c: { chain: "ethereum" | "polygon"; suppliedCount: number; borrowedCount: number; healthFactor: number | null }) => (
+                        <div key={c.chain} className="border rounded p-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground capitalize">
+                              {c.chain}
+                            </p>
+                            <p className={`text-sm ${
+                              (c.healthFactor ?? 0) >= 1.5
+                                ? "text-green-600"
+                                : (c.healthFactor ?? 0) >= 1.0
+                                  ? "text-amber-600"
+                                  : "text-red-600"
+                            }`}>
+                              HF: {c.healthFactor != null ? c.healthFactor.toFixed(2) : "-"}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-muted-foreground">Supplied</p>
+                            <p className="text-xs font-medium">{c.suppliedCount}</p>
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-muted-foreground">Borrowed</p>
+                            <p className="text-xs font-medium">{c.borrowedCount}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

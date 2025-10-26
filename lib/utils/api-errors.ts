@@ -61,13 +61,20 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Creates a standardized error response
+ * Creates a standardized error response for API routes
+ * 
+ * @param code Error code from ErrorCodes
+ * @param message Custom message (optional, will use default if not provided)
+ * @param statusCode HTTP status code (optional, defaults based on error type)
+ * @param details Additional error details (optional)
+ * @param headers Additional headers to include in response (optional)
  */
 export function createErrorResponse(
   code: string,
   message?: string,
   statusCode?: number,
-  details?: unknown
+  details?: unknown,
+  headers?: Record<string, string>
 ): NextResponse {
   const errorMessage = message || ERROR_MESSAGES[code] || "An error occurred";
   const status = statusCode || getStatusCodeForError(code);
@@ -82,7 +89,13 @@ export function createErrorResponse(
     errorResponse.details = details;
   }
 
-  return NextResponse.json({ error: errorResponse }, { status });
+  return NextResponse.json(
+    { error: errorResponse }, 
+    { 
+      status,
+      headers: headers || {}
+    }
+  );
 }
 
 /**

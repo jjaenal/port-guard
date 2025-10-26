@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
+import { rateLimit, getClientKey, tooManyResponse } from "@/lib/utils/rate-limit";
+import { createErrorResponse, ErrorCodes } from "@/lib/utils/api-errors";
 
 const prisma = new PrismaClient();
 
 // GET /api/snapshots?address=0x...&limit=5
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting: 60 requests per minute per IP+address+path
+    const rlKey = getClientKey(request, "snapshots");
+    const { allowed, remaining, resetAt } = await rateLimit(rlKey, 60, 60);
+    if (!allowed) {
+      return tooManyResponse();
+    }
+
     const { searchParams } = new URL(request.url);
     const address = searchParams.get("address");
     const limitParam = searchParams.get("limit");
@@ -16,9 +25,10 @@ export async function GET(request: NextRequest) {
     const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
 
     if (!address) {
-      return NextResponse.json(
-        { error: "Address parameter is required" },
-        { status: 400 },
+      return createErrorResponse(
+        ErrorCodes.MISSING_PARAMETER,
+        "Address parameter is required",
+        400,
       );
     }
 
@@ -42,7 +52,15 @@ export async function GET(request: NextRequest) {
         where: { address: address.toLowerCase() },
       });
 
-      return NextResponse.json({ data: snapshots, total });
+      return NextResponse.json(
+        { data: snapshots, total },
+        {
+          headers: {
+            "X-RateLimit-Remaining": String(remaining),
+            "X-RateLimit-Reset": String(resetAt),
+          },
+        },
+      );
     }
 
     // Get latest snapshot for the address
@@ -59,21 +77,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      id: snapshot.id,
-      address: snapshot.address,
-      totalValue: snapshot.totalValue,
-      createdAt: snapshot.createdAt,
-      tokens: snapshot.tokens.map((token) => ({
-        chain: token.chain,
-        address: token.address,
-        symbol: token.symbol,
-        name: token.name,
-        balance: token.balance,
-        price: token.price,
-        value: token.value,
-      })),
-    });
+    return NextResponse.json(
+      {
+        id: snapshot.id,
+        address: snapshot.address,
+        totalValue: snapshot.totalValue,
+        createdAt: snapshot.createdAt,
+        tokens: snapshot.tokens.map((token) => ({
+          chain: token.chain,
+          address: token.address,
+          symbol: token.symbol,
+          name: token.name,
+          balance: token.balance,
+          price: token.price,
+          value: token.value,
+        })),
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": String(remaining),
+          "X-RateLimit-Reset": String(resetAt),
+        },
+      },
+    );
   } catch (error) {
     console.error("Error fetching snapshot:", error);
     return NextResponse.json(
@@ -98,13 +124,22 @@ interface TokenInput {
 // POST /api/snapshots
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 20 requests per minute per IP+address+path
+    // More strict for POST to prevent snapshot spam
+    const rlKey = getClientKey(request, "snapshots:post");
+    const { allowed, remaining, resetAt } = await rateLimit(rlKey, 20, 60);
+    if (!allowed) {
+      return tooManyResponse();
+    }
+
     const body = await request.json();
     const { address, tokens } = body;
 
     if (!address || !Array.isArray(tokens)) {
-      return NextResponse.json(
-        { error: "Address and tokens array are required" },
-        { status: 400 },
+      return createErrorResponse(
+        ErrorCodes.MISSING_PARAMETER,
+        "Address and tokens array are required",
+        400,
       );
     }
 
@@ -154,13 +189,21 @@ export async function POST(request: NextRequest) {
       include: { tokens: true },
     });
 
-    return NextResponse.json({
-      id: snapshot.id,
-      address: snapshot.address,
-      totalValue: snapshot.totalValue,
-      createdAt: snapshot.createdAt,
-      tokenCount: snapshot.tokens.length,
-    });
+    return NextResponse.json(
+      {
+        id: snapshot.id,
+        address: snapshot.address,
+        totalValue: snapshot.totalValue,
+        createdAt: snapshot.createdAt,
+        tokenCount: snapshot.tokens.length,
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": String(remaining),
+          "X-RateLimit-Reset": String(resetAt),
+        },
+      },
+    );
   } catch (error) {
     console.error("Error creating snapshot:", error);
     return NextResponse.json(

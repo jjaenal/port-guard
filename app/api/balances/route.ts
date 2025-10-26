@@ -12,6 +12,7 @@ import {
   validateEthereumAddress,
   validateChains,
 } from "@/lib/utils/api-errors";
+import { rateLimit, getClientKey, tooManyResponse } from "@/lib/utils/rate-limit";
 
 // Do not cache; balances depend on wallet and change frequently
 export const revalidate = 0;
@@ -32,9 +33,19 @@ export async function GET(req: Request) {
     const address = (searchParams.get("address") || "").toLowerCase();
     const chainsParam = searchParams.get("chains") || "ethereum,polygon";
 
+    // Rate limiting: 60 requests per minute per IP+address+path
+    const rlKey = getClientKey(req, "balances");
+    const { allowed, remaining, resetAt } = await rateLimit(rlKey, 60, 60);
+    if (!allowed) {
+      return tooManyResponse();
+    }
+
     // Validate address
     if (!address) {
-      return createErrorResponse(ErrorCodes.MISSING_PARAMETER, "Address parameter is required");
+      return createErrorResponse(
+        ErrorCodes.MISSING_PARAMETER,
+        "Address parameter is required",
+      );
     }
 
     if (!validateEthereumAddress(address)) {
@@ -44,65 +55,75 @@ export async function GET(req: Request) {
     // Validate and sanitize chains
     const chains = validateChains(chainsParam);
 
-  const doEth = chains.includes("ethereum");
-  const doPolygon = chains.includes("polygon");
+    const doEth = chains.includes("ethereum");
+    const doPolygon = chains.includes("polygon");
 
-  const cacheKey = `balances:${address}:${[...chains].sort().join(",")}`;
-  const cached = await cacheGet<{
-    address: string;
-    chains: { ethereum: boolean; polygon: boolean };
-    tokens: TokenHoldingDTO[];
-    errors: Record<string, string>;
-  }>(cacheKey);
-  if (cached) {
-    return NextResponse.json(cached);
+    const cacheKey = `balances:${address}:${[...chains].sort().join(",")}`;
+    const cached = await cacheGet<{
+      address: string;
+      chains: { ethereum: boolean; polygon: boolean };
+      tokens: TokenHoldingDTO[];
+      errors: Record<string, string>;
+    }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: {
+          "X-RateLimit-Remaining": String(remaining),
+          "X-RateLimit-Reset": String(resetAt),
+        },
+      });
+    }
+
+    const results = await Promise.allSettled<TokenHolding[]>([
+      doEth ? getTokenBalances(address, 1) : Promise.resolve([]),
+      doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
+    ]);
+
+    const ethRes = results[0];
+    const polygonRes = results[1];
+
+    const errors: Record<string, string> = {};
+    const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
+    const polygonTokens =
+      polygonRes.status === "fulfilled" ? polygonRes.value : [];
+
+    if (ethRes.status === "rejected") {
+      errors.ethereum =
+        ethRes.reason instanceof Error
+          ? ethRes.reason.message
+          : String(ethRes.reason);
+    }
+    if (polygonRes.status === "rejected") {
+      errors.polygon =
+        polygonRes.reason instanceof Error
+          ? polygonRes.reason.message
+          : String(polygonRes.reason);
+    }
+
+    const tokens = [...ethTokens, ...polygonTokens].sort(
+      (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
+    );
+
+    // Convert BigInt to string for JSON serialization
+    const serializedTokens = prepareBigIntForJson(tokens);
+
+    const payload = {
+      address,
+      chains: { ethereum: doEth, polygon: doPolygon },
+      tokens: serializedTokens,
+      errors,
+    };
+
+    // Cache for 3 minutes to reduce RPC pressure
+    await cacheSet(cacheKey, payload, 180);
+
+    return NextResponse.json(payload, {
+      headers: {
+        "X-RateLimit-Remaining": String(remaining),
+        "X-RateLimit-Reset": String(resetAt),
+      },
+    });
+  } catch (err: unknown) {
+    return handleUnknownError(err);
   }
-
-  const results = await Promise.allSettled<TokenHolding[]>([
-    doEth ? getTokenBalances(address, 1) : Promise.resolve([]),
-    doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
-  ]);
-
-  const ethRes = results[0];
-  const polygonRes = results[1];
-
-  const errors: Record<string, string> = {};
-  const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
-  const polygonTokens =
-    polygonRes.status === "fulfilled" ? polygonRes.value : [];
-
-  if (ethRes.status === "rejected") {
-    errors.ethereum =
-      ethRes.reason instanceof Error
-        ? ethRes.reason.message
-        : String(ethRes.reason);
-  }
-  if (polygonRes.status === "rejected") {
-    errors.polygon =
-      polygonRes.reason instanceof Error
-        ? polygonRes.reason.message
-        : String(polygonRes.reason);
-  }
-
-  const tokens = [...ethTokens, ...polygonTokens].sort(
-    (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
-  );
-
-  // Convert BigInt to string for JSON serialization
-  const serializedTokens = prepareBigIntForJson(tokens);
-
-  const payload = {
-    address,
-    chains: { ethereum: doEth, polygon: doPolygon },
-    tokens: serializedTokens,
-    errors,
-  };
-
-  // Cache for 3 minutes to reduce RPC pressure
-  await cacheSet(cacheKey, payload, 180);
-
-  return NextResponse.json(payload);
-} catch (err: unknown) {
-  return handleUnknownError(err);
-}
 }

@@ -209,8 +209,8 @@
 
 ### Day 22-25: Lending Protocols (Aave)
 
-- [ ] Research The Graph subgraphs for Aave
-- [ ] Create Aave position fetcher
+- [x] Research The Graph subgraphs for Aave
+- [x] Create Aave position fetcher
   ```typescript
   // lib/protocols/aave.ts
   async function getAavePositions(address: string) {
@@ -218,11 +218,11 @@
     // Return supplied, borrowed, health factor
   }
   ```
-- [ ] Fetch supplied assets
-- [ ] Fetch borrowed assets
-- [ ] Calculate health factor
+- [x] Fetch supplied assets
+- [x] Fetch borrowed assets
+- [x] Calculate health factor
 - [ ] Get current APY rates
-- [ ] Create Aave position card UI
+- [x] Create Aave position card UI
 - [ ] Show liquidation risk indicator
 - [ ] Add protocol logos
 - [ ] Test with real positions
