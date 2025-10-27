@@ -894,7 +894,7 @@ export default function DashboardPage() {
                   </div>
                   {!isAaveLoading && !isAaveError && (
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${riskClass}`}>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${riskClass}`} title="Risk levels: Low ≥ 1.5, Medium ≥ 1.2, High ≥ 1.0, Liquidation < 1.0">
                         {riskLabel}
                       </span>
                       {minHealthFactor != null && (
@@ -939,48 +939,58 @@ export default function DashboardPage() {
                     </div>
                   </Alert>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">Supplied Positions (total)</p>
-                      <p className="font-medium">
-                        {aaveData?.totals?.suppliedCount ?? 0}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">Borrowed Positions (total)</p>
-                      <p className="font-medium">
-                        {aaveData?.totals?.borrowedCount ?? 0}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                      {aaveData?.chains?.map((c: { chain: "ethereum" | "polygon"; suppliedCount: number; borrowedCount: number; healthFactor: number | null }) => (
-                        <div key={c.chain} className="border rounded p-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground capitalize">
-                              {c.chain}
-                            </p>
-                            <p className={`text-sm ${
-                              (c.healthFactor ?? 0) >= 1.5
-                                ? "text-green-600"
-                                : (c.healthFactor ?? 0) >= 1.0
-                                  ? "text-amber-600"
-                                  : "text-red-600"
-                            }`}>
-                              HF: {c.healthFactor != null ? c.healthFactor.toFixed(2) : "-"}
-                            </p>
+                  <>
+                    {minHealthFactor != null && minHealthFactor < 1.2 && (
+                      <Alert variant="destructive" closable autoHide autoHideDuration={15000}>
+                        <AlertTitle>Health Factor is low ({minHealthFactor.toFixed(2)})</AlertTitle>
+                        <AlertDescription>
+                          Consider repaying debt or adding collateral to reduce liquidation risk.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">Supplied Positions (total)</p>
+                        <p className="font-medium">
+                          {aaveData?.totals?.suppliedCount ?? 0}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">Borrowed Positions (total)</p>
+                        <p className="font-medium">
+                          {aaveData?.totals?.borrowedCount ?? 0}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        {aaveData?.chains?.map((c: { chain: "ethereum" | "polygon"; suppliedCount: number; borrowedCount: number; healthFactor: number | null }) => (
+                          <div key={c.chain} className="border rounded p-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-muted-foreground capitalize">
+                                {c.chain}
+                              </p>
+                              <p className={`text-sm ${
+                                (c.healthFactor ?? 0) >= 1.5
+                                  ? "text-green-600"
+                                  : (c.healthFactor ?? 0) >= 1.0
+                                    ? "text-amber-600"
+                                    : "text-red-600"
+                              }`}>
+                                HF: {c.healthFactor != null ? c.healthFactor.toFixed(2) : "-"}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <p className="text-xs text-muted-foreground">Supplied</p>
+                              <p className="text-xs font-medium">{c.suppliedCount}</p>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-muted-foreground">Borrowed</p>
+                              <p className="text-xs font-medium">{c.borrowedCount}</p>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-xs text-muted-foreground">Supplied</p>
-                            <p className="text-xs font-medium">{c.suppliedCount}</p>
-                          </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-xs text-muted-foreground">Borrowed</p>
-                            <p className="text-xs font-medium">{c.borrowedCount}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>

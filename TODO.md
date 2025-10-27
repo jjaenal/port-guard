@@ -224,6 +224,8 @@
 - [ ] Get current APY rates
 - [x] Create Aave position card UI
 - [x] Show liquidation risk indicator
+- [x] Add tooltip for liquidation risk levels
+- [x] Show alert when Health Factor < 1.2
 - [ ] Add protocol logos
 - [ ] Test with real positions
 
