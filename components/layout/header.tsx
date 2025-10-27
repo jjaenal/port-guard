@@ -33,6 +33,12 @@ export function Header() {
             >
               Analytics
             </Link>
+            <Link
+              href="/defi/lido"
+              className="text-sm font-medium transition-colors hover:text-primary"
+            >
+              Lido
+            </Link>
           </nav>
 
           <div className="flex items-center space-x-2">
