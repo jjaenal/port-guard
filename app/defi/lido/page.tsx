@@ -223,6 +223,9 @@ function LidoContent() {
                 <p className="text-xs text-muted-foreground">
                   Balance: {Number(data?.balance || 0).toFixed(6)}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Price: {typeof data?.priceUsd === "number" ? formatCurrency(data.priceUsd) : "-"}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">APR</p>
@@ -233,9 +236,35 @@ function LidoContent() {
                   Est. daily rewards:{" "}
                   {formatCurrency(data?.estimatedDailyRewardsUsd || 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Est. monthly rewards:{" "}
+                  {typeof data?.estimatedDailyRewardsUsd === "number"
+                    ? formatCurrency((data.estimatedDailyRewardsUsd || 0) * 30)
+                    : "-"}
+                </p>
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Context Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Context</CardTitle>
+          <CardDescription>Request details</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Address</p>
+              <p className="font-mono break-all">{targetAddress || "-"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Data Source</p>
+              <p>API: /api/defi/lido</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
