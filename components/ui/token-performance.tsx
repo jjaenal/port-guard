@@ -66,14 +66,14 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
       performances.length > 0
         ? performances.reduce((best, current) =>
             !best || current.change24hUsd > best.change24hUsd ? current : best,
-          )
+          performances[0])
         : null;
 
     const worstPerformer =
       performances.length > 0
         ? performances.reduce((worst, current) =>
             !worst || current.change24hUsd < worst.change24hUsd ? current : worst,
-          )
+          performances[0])
         : null;
 
     return {
