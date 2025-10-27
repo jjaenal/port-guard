@@ -49,7 +49,7 @@ async function getStethBalance(address: Address): Promise<{
   raw: bigint;
 }> {
   const endpoint = await getAlchemyEndpoint();
-  if (!endpoint) return { raw: 0n };
+  if (!endpoint) return { raw: BigInt(0) };
   // Use alchemy_getTokenBalances with specific contract to minimize payload
   const result = await rpcFetch<{
     tokenBalances: Array<{ contractAddress: string; tokenBalance: string }>;
@@ -63,7 +63,7 @@ async function getStethBalance(address: Address): Promise<{
     const raw = BigInt(rawStr);
     return { raw };
   } catch {
-    return { raw: 0n };
+    return { raw: BigInt(0) };
   }
 }
 
