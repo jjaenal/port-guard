@@ -2,7 +2,14 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 import { formatCurrencyTiny, formatNumber } from "@/lib/utils";
 
@@ -38,8 +45,11 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
     if (!tokens.length) return [];
 
     // Calculate total portfolio value
-    const totalValue = tokens.reduce((sum, token) => sum + (token.valueUsd ?? 0), 0);
-    
+    const totalValue = tokens.reduce(
+      (sum, token) => sum + (token.valueUsd ?? 0),
+      0,
+    );
+
     if (totalValue === 0) return [];
 
     // Filter tokens with value and sort by value descending
@@ -49,10 +59,17 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
 
     // Group small tokens (< 2% of portfolio) into "Others"
     const threshold = totalValue * 0.02;
-    const significantTokens = validTokens.filter((token) => (token.valueUsd ?? 0) >= threshold);
-    const smallTokens = validTokens.filter((token) => (token.valueUsd ?? 0) < threshold);
-    
-    const othersValue = smallTokens.reduce((sum, token) => sum + (token.valueUsd ?? 0), 0);
+    const significantTokens = validTokens.filter(
+      (token) => (token.valueUsd ?? 0) >= threshold,
+    );
+    const smallTokens = validTokens.filter(
+      (token) => (token.valueUsd ?? 0) < threshold,
+    );
+
+    const othersValue = smallTokens.reduce(
+      (sum, token) => sum + (token.valueUsd ?? 0),
+      0,
+    );
 
     // Create allocation data for significant tokens
     const data: AllocationData[] = significantTokens.map((token, index) => ({
@@ -77,7 +94,10 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
     return data;
   }, [tokens]);
 
-  const totalValue = tokens.reduce((sum, token) => sum + (token.valueUsd ?? 0), 0);
+  const totalValue = tokens.reduce(
+    (sum, token) => sum + (token.valueUsd ?? 0),
+    0,
+  );
 
   if (!tokens.length || totalValue === 0) {
     return (
@@ -87,7 +107,8 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No tokens with value to display allocation. Connect a wallet with token holdings to see the breakdown.
+            No tokens with value to display allocation. Connect a wallet with
+            token holdings to see the breakdown.
           </p>
         </CardContent>
       </Card>
@@ -102,7 +123,9 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
           <p className="font-medium">{data.name}</p>
           <p className="text-sm text-muted-foreground">{data.symbol}</p>
           <p className="text-sm">
-            <span className="font-medium">{formatCurrencyTiny(data.value)}</span>
+            <span className="font-medium">
+              {formatCurrencyTiny(data.value)}
+            </span>
             <span className="text-muted-foreground ml-2">
               ({formatNumber(data.percentage, { maximumFractionDigits: 1 })}%)
             </span>
@@ -124,7 +147,10 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
             />
             <span className="font-medium">{entry.payload.symbol}</span>
             <span className="text-muted-foreground ml-auto">
-              {formatNumber(entry.payload.percentage, { maximumFractionDigits: 1 })}%
+              {formatNumber(entry.payload.percentage, {
+                maximumFractionDigits: 1,
+              })}
+              %
             </span>
           </div>
         ))}
@@ -162,7 +188,7 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        
+
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           <div>
@@ -171,29 +197,37 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
           </div>
           <div>
             <p className="text-2xl font-bold">
-              {allocationData.length > 0 
-                ? formatNumber(allocationData[0].percentage, { maximumFractionDigits: 1 })
-                : "0"
-              }%
+              {allocationData.length > 0
+                ? formatNumber(allocationData[0].percentage, {
+                    maximumFractionDigits: 1,
+                  })
+                : "0"}
+              %
             </p>
             <p className="text-xs text-muted-foreground">Largest Position</p>
           </div>
           <div>
             <p className="text-2xl font-bold">
               {formatNumber(
-                allocationData.reduce((sum, item) => 
-                  item.percentage >= 10 ? sum + 1 : sum, 0
-                )
+                allocationData.reduce(
+                  (sum, item) => (item.percentage >= 10 ? sum + 1 : sum),
+                  0,
+                ),
               )}
             </p>
-            <p className="text-xs text-muted-foreground">Major Holdings (≥10%)</p>
+            <p className="text-xs text-muted-foreground">
+              Major Holdings (≥10%)
+            </p>
           </div>
           <div>
             <p className="text-2xl font-bold">
               {formatNumber(
-                100 - (allocationData.find(item => item.name === "Others")?.percentage ?? 0),
-                { maximumFractionDigits: 1 }
-              )}%
+                100 -
+                  (allocationData.find((item) => item.name === "Others")
+                    ?.percentage ?? 0),
+                { maximumFractionDigits: 1 },
+              )}
+              %
             </p>
             <p className="text-xs text-muted-foreground">Top Holdings</p>
           </div>

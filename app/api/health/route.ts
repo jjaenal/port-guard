@@ -12,22 +12,21 @@ export async function GET(req: Request) {
   // Rate limiting: 300 requests per minute per IP
   const rlKey = getClientKey(req, "health");
   const { remaining, resetAt } = await rateLimit(rlKey, 300, 60);
-  
+
   const now = new Date().toISOString();
   let dbStatus: "ok" | "error" = "ok";
   let dbLatencyMs: number | null = null;
-  
+
   // Check Redis connection
   let redisStatus = "unavailable";
   const redisVersion = null;
-  
+
   if (redis) {
     try {
       // Try to ping Redis
       const pingResult = await redis.ping();
       if (pingResult === "PONG") {
         redisStatus = "connected";
-
       }
     } catch (error) {
       redisStatus = "error";
@@ -60,9 +59,9 @@ export async function GET(req: Request) {
       },
       node: nodeVersion,
       services: {
-        db: { 
-          status: dbStatus, 
-          latency_ms: dbLatencyMs 
+        db: {
+          status: dbStatus,
+          latency_ms: dbLatencyMs,
         },
         redis: {
           status: redisStatus,
@@ -75,6 +74,6 @@ export async function GET(req: Request) {
         "X-RateLimit-Remaining": String(remaining),
         "X-RateLimit-Reset": String(resetAt),
       },
-    }
+    },
   );
 }

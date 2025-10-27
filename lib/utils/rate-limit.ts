@@ -21,7 +21,10 @@ export async function rateLimit(
   try {
     const cacheKey = `ratelimit:${key}`;
     const entry = await cacheGet<{ count: number; resetAt: number }>(cacheKey);
-    const current = entry ?? { count: 0, resetAt: nowSeconds() + windowSeconds };
+    const current = entry ?? {
+      count: 0,
+      resetAt: nowSeconds() + windowSeconds,
+    };
 
     if (nowSeconds() > current.resetAt) {
       // Reset window
@@ -81,16 +84,16 @@ export function getClientKey(req: Request, extra?: string): string {
 
 export function tooManyResponse(resetAt?: number): NextResponse {
   const resetTime = resetAt || Math.floor(Date.now() / 1000) + 60;
-  
+
   return createErrorResponse(
-    ErrorCodes.RATE_LIMITED, 
-    undefined, 
+    ErrorCodes.RATE_LIMITED,
+    undefined,
     429,
     undefined,
     {
       "Retry-After": "60",
       "X-RateLimit-Remaining": "0",
       "X-RateLimit-Reset": String(resetTime),
-    }
+    },
   );
 }

@@ -1,14 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
-import {
-  formatCurrencyTiny,
-  formatPercentSigned,
-  formatNumber,
-} from "@/lib/utils";
+import { formatCurrencyTiny, formatPercentSigned } from "@/lib/utils";
 import Image from "next/image";
 
 interface TokenPerformanceProps {
@@ -64,16 +60,24 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
 
     const bestPerformer =
       performances.length > 0
-        ? performances.reduce((best, current) =>
-            !best || current.change24hUsd > best.change24hUsd ? current : best,
-          performances[0])
+        ? performances.reduce(
+            (best, current) =>
+              !best || current.change24hUsd > best.change24hUsd
+                ? current
+                : best,
+            performances[0],
+          )
         : null;
 
     const worstPerformer =
       performances.length > 0
-        ? performances.reduce((worst, current) =>
-            !worst || current.change24hUsd < worst.change24hUsd ? current : worst,
-          performances[0])
+        ? performances.reduce(
+            (worst, current) =>
+              !worst || current.change24hUsd < worst.change24hUsd
+                ? current
+                : worst,
+            performances[0],
+          )
         : null;
 
     return {
@@ -202,7 +206,7 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
             ) : (
               <div className="space-y-3">
                 {analytics.gainers.slice(0, 5).map((perf, index) => (
-                  <TokenPerformanceRow
+                  <MemoTokenPerformanceRow
                     key={`${perf.token.chain}-${perf.token.contractAddress}`}
                     performance={perf}
                     rank={index + 1}
@@ -229,7 +233,7 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
             ) : (
               <div className="space-y-3">
                 {analytics.losers.slice(0, 5).map((perf, index) => (
-                  <TokenPerformanceRow
+                  <MemoTokenPerformanceRow
                     key={`${perf.token.chain}-${perf.token.contractAddress}`}
                     performance={perf}
                     rank={index + 1}
@@ -302,3 +306,5 @@ function TokenPerformanceRow({
     </div>
   );
 }
+
+const MemoTokenPerformanceRow = memo(TokenPerformanceRow);

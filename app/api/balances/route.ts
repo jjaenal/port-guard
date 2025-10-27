@@ -12,7 +12,11 @@ import {
   validateEthereumAddress,
   validateChains,
 } from "@/lib/utils/api-errors";
-import { rateLimit, getClientKey, tooManyResponse } from "@/lib/utils/rate-limit";
+import {
+  rateLimit,
+  getClientKey,
+  tooManyResponse,
+} from "@/lib/utils/rate-limit";
 
 // Do not cache; balances depend on wallet and change frequently
 export const revalidate = 0;

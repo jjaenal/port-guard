@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/lib/generated/prisma";
-import { rateLimit, getClientKey, tooManyResponse } from "@/lib/utils/rate-limit";
+import {
+  rateLimit,
+  getClientKey,
+  tooManyResponse,
+} from "@/lib/utils/rate-limit";
 import { createErrorResponse, ErrorCodes } from "@/lib/utils/api-errors";
 
 const prisma = new PrismaClient();

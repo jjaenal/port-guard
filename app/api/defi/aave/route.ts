@@ -7,7 +7,11 @@ import {
   validateEthereumAddress,
   validateChains,
 } from "@/lib/utils/api-errors";
-import { rateLimit, getClientKey, tooManyResponse } from "@/lib/utils/rate-limit";
+import {
+  rateLimit,
+  getClientKey,
+  tooManyResponse,
+} from "@/lib/utils/rate-limit";
 
 // Cache short-lived — The Graph data is fairly fresh; keep 2 minutes
 export const revalidate = 120;
@@ -46,7 +50,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const summary = await getAavePositions(address, chains as ("ethereum" | "polygon")[]);
+    const summary = await getAavePositions(
+      address,
+      chains as ("ethereum" | "polygon")[],
+    );
     return NextResponse.json(
       { source: "thegraph:aave-v3", data: summary },
       {

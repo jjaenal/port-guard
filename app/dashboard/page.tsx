@@ -261,7 +261,12 @@ export default function DashboardPage() {
       if (!a)
         return {
           chain: "ethereum",
-          token: { address: "", symbol: "stETH", name: "Lido Staked Ether", decimals: 18 },
+          token: {
+            address: "",
+            symbol: "stETH",
+            name: "Lido Staked Ether",
+            decimals: 18,
+          },
           balance: "0",
           balanceRaw: "0",
           priceUsd: undefined,
@@ -278,7 +283,12 @@ export default function DashboardPage() {
       return (
         json?.data || {
           chain: "ethereum",
-          token: { address: "", symbol: "stETH", name: "Lido Staked Ether", decimals: 18 },
+          token: {
+            address: "",
+            symbol: "stETH",
+            name: "Lido Staked Ether",
+            decimals: 18,
+          },
           balance: "0",
           balanceRaw: "0",
           priceUsd: undefined,
@@ -308,6 +318,7 @@ export default function DashboardPage() {
       }
     }
   }, [isLidoError, lidoError]);
+
   const minHealthFactor = useMemo(() => {
     const hfs = (aaveData?.chains || [])
       .map((c: { healthFactor: number | null }) => c.healthFactor)
@@ -996,10 +1007,16 @@ export default function DashboardPage() {
             {/* Lido stETH Summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Lido stETH</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Lido stETH
+                </CardTitle>
                 <CardAction>
                   <Link
-                    href={effectiveAddress ? `/defi/lido?address=${effectiveAddress}` : "/defi/lido"}
+                    href={
+                      effectiveAddress
+                        ? `/defi/lido?address=${effectiveAddress}`
+                        : "/defi/lido"
+                    }
                     className="text-xs text-primary hover:underline"
                   >
                     View
@@ -1007,7 +1024,7 @@ export default function DashboardPage() {
                 </CardAction>
               </CardHeader>
               <CardContent>
-                {(!effectiveAddress || isLidoLoading) ? (
+                {!effectiveAddress || isLidoLoading ? (
                   <div className="animate-pulse">
                     <div className="h-7 w-28 bg-muted rounded mb-2" />
                     <div className="h-3 w-40 bg-muted rounded" />
@@ -1022,10 +1039,67 @@ export default function DashboardPage() {
                         : "-"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      APR: {typeof lidoData?.apr === "number" ? `${lidoData.apr.toFixed(2)}%` : "-"}
+                      APR:{" "}
+                      {typeof lidoData?.apr === "number"
+                        ? `${lidoData.apr.toFixed(2)}%`
+                        : "-"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Est. Daily Rewards: {typeof lidoData?.estimatedDailyRewardsUsd === "number" ? formatCurrency(lidoData.estimatedDailyRewardsUsd) : "-"}
+                      Est. Daily Rewards:{" "}
+                      {typeof lidoData?.estimatedDailyRewardsUsd === "number"
+                        ? formatCurrency(lidoData.estimatedDailyRewardsUsd)
+                        : "-"}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Uniswap V3 Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  Uniswap V3
+                </CardTitle>
+                <CardAction>
+                  <Link
+                    href={
+                      effectiveAddress
+                        ? `/defi/uniswap?address=${effectiveAddress}`
+                        : "/defi/uniswap"
+                    }
+                    className="text-xs text-primary hover:underline"
+                  >
+                    View
+                  </Link>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                {!effectiveAddress || isUniswapLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-7 w-28 bg-muted rounded mb-2" />
+                    <div className="h-3 w-40 bg-muted rounded" />
+                  </div>
+                ) : isUniswapError ? (
+                  <div className="text-sm text-muted-foreground">-</div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {typeof uniswapData?.totalUsd === "number"
+                        ? formatCurrency(uniswapData.totalUsd)
+                        : "-"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Avg APR (7d):{" "}
+                      {typeof uniswapData?.avgApr7d === "number"
+                        ? `${uniswapData.avgApr7d.toFixed(2)}%`
+                        : "-"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Positions:{" "}
+                      {Array.isArray(uniswapData?.positions)
+                        ? uniswapData!.positions.length
+                        : 0}
                     </div>
                   </>
                 )}

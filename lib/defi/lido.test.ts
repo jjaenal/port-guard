@@ -45,7 +45,7 @@ describe("Lido stETH util", () => {
     });
 
     const res = await getLidoStethSummary(
-      "0x1234567890123456789012345678901234567890"
+      "0x1234567890123456789012345678901234567890",
     );
 
     expect(res.token.symbol).toBe("stETH");
@@ -60,48 +60,59 @@ describe("Lido stETH util", () => {
   it("computes value and rewards when Alchemy + prices + APR available", async () => {
     process.env.ALCHEMY_API_KEY_ETHEREUM = "test";
 
-    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      // Alchemy RPC: token balances
-      if (url.includes("alchemy.com/v2/test") && init?.method === "POST") {
-        const body = JSON.parse(String(init?.body || "{}"));
-        if (body?.method === "alchemy_getTokenBalances") {
+    global.fetch = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        // Alchemy RPC: token balances
+        if (url.includes("alchemy.com/v2/test") && init?.method === "POST") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          if (body?.method === "alchemy_getTokenBalances") {
+            return {
+              ok: true,
+              json: async () => ({
+                result: {
+                  tokenBalances: [
+                    {
+                      contractAddress: STETH,
+                      tokenBalance: "1000000000000000000",
+                    },
+                  ],
+                },
+              }),
+            } as Response;
+          }
+          if (body?.method === "alchemy_getTokenMetadata") {
+            return {
+              ok: true,
+              json: async () => ({
+                result: {
+                  name: "Lido Staked Ether",
+                  symbol: "stETH",
+                  decimals: 18,
+                },
+              }),
+            } as Response;
+          }
+        }
+        // Prices API
+        if (url.includes("/api/prices")) {
           return {
             ok: true,
             json: async () => ({
-              result: {
-                tokenBalances: [
-                  { contractAddress: STETH, tokenBalance: "1000000000000000000" },
-                ],
-              },
+              data: { [STETH.toLowerCase()]: { usd: 3500 } },
             }),
           } as Response;
         }
-        if (body?.method === "alchemy_getTokenMetadata") {
-          return {
-            ok: true,
-            json: async () => ({
-              result: { name: "Lido Staked Ether", symbol: "stETH", decimals: 18 },
-            }),
-          } as Response;
+        // APR API
+        if (url.includes("eth-api.lido.fi")) {
+          return { ok: true, json: async () => ({ apr: 3.65 }) } as Response;
         }
-      }
-      // Prices API
-      if (url.includes("/api/prices")) {
-        return {
-          ok: true,
-          json: async () => ({ data: { [STETH.toLowerCase()]: { usd: 3500 } } }),
-        } as Response;
-      }
-      // APR API
-      if (url.includes("eth-api.lido.fi")) {
-        return { ok: true, json: async () => ({ apr: 3.65 }) } as Response;
-      }
-      return { ok: false, json: async () => ({}) } as Response;
-    });
+        return { ok: false, json: async () => ({}) } as Response;
+      },
+    );
 
     const res = await getLidoStethSummary(
-      "0x1234567890123456789012345678901234567890"
+      "0x1234567890123456789012345678901234567890",
     );
 
     expect(res.token.address.toLowerCase()).toBe(STETH);

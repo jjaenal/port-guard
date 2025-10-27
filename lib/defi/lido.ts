@@ -22,7 +22,7 @@ const STETH_ADDRESS = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
 
 async function rpcFetch<T>(
   url: string,
-  body: { method: string; params?: unknown[] }
+  body: { method: string; params?: unknown[] },
 ): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
@@ -97,7 +97,7 @@ async function getStethMetadata(): Promise<{
 async function getStethPrice(): Promise<number | undefined> {
   try {
     const res = await fetch(
-      `/api/prices?platform=ethereum&contracts=${STETH_ADDRESS}&vs=usd&include_24hr_change=true`
+      `/api/prices?platform=ethereum&contracts=${STETH_ADDRESS}&vs=usd&include_24hr_change=true`,
     );
     if (!res.ok) return undefined;
     const json = await res.json();
@@ -112,7 +112,7 @@ async function getStethPrice(): Promise<number | undefined> {
 async function getStethApr(): Promise<number | undefined> {
   try {
     const res = await fetch(
-      "https://eth-api.lido.fi/v1/protocol/steth/apr/last"
+      "https://eth-api.lido.fi/v1/protocol/steth/apr/last",
     );
     if (!res.ok) return undefined;
     const json = (await res.json()) as AprLastResponse;
@@ -138,7 +138,7 @@ async function getStethApr(): Promise<number | undefined> {
  * @returns Ringkasan posisi stETH termasuk nilai USD dan estimasi reward harian
  */
 export async function getLidoStethSummary(
-  address: Address
+  address: Address,
 ): Promise<LidoStethSummary> {
   const [{ raw }, meta, priceUsd, apr] = await Promise.all([
     getStethBalance(address),

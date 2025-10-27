@@ -1,6 +1,6 @@
 /**
  * API Error Handling Utilities
- * 
+ *
  * Provides structured error handling for API routes with user-friendly messages
  * and proper HTTP status codes.
  */
@@ -19,7 +19,12 @@ export class AppError extends Error {
   public readonly statusCode: number;
   public readonly details?: unknown;
 
-  constructor(code: string, message: string, statusCode = 500, details?: unknown) {
+  constructor(
+    code: string,
+    message: string,
+    statusCode = 500,
+    details?: unknown,
+  ) {
     super(message);
     this.name = "AppError";
     this.code = code;
@@ -36,7 +41,7 @@ export const ErrorCodes = {
   INVALID_PARAMETER: "INVALID_PARAMETER",
   RATE_LIMITED: "RATE_LIMITED",
   UNAUTHORIZED: "UNAUTHORIZED",
-  
+
   // Server errors (5xx)
   EXTERNAL_API_ERROR: "EXTERNAL_API_ERROR",
   DATABASE_ERROR: "DATABASE_ERROR",
@@ -52,7 +57,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   [ErrorCodes.INVALID_PARAMETER]: "Invalid parameter value provided",
   [ErrorCodes.RATE_LIMITED]: "Too many requests. Please try again later",
   [ErrorCodes.UNAUTHORIZED]: "Authentication required",
-  
+
   [ErrorCodes.EXTERNAL_API_ERROR]: "External service temporarily unavailable",
   [ErrorCodes.DATABASE_ERROR]: "Database connection error",
   [ErrorCodes.CACHE_ERROR]: "Cache service error",
@@ -62,7 +67,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 /**
  * Creates a standardized error response for API routes
- * 
+ *
  * @param code Error code from ErrorCodes
  * @param message Custom message (optional, will use default if not provided)
  * @param statusCode HTTP status code (optional, defaults based on error type)
@@ -74,27 +79,27 @@ export function createErrorResponse(
   message?: string,
   statusCode?: number,
   details?: unknown,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
 ): NextResponse {
   const errorMessage = message || ERROR_MESSAGES[code] || "An error occurred";
   const status = statusCode || getStatusCodeForError(code);
-  
+
   const errorResponse: ApiError = {
     code,
     message: errorMessage,
     statusCode: status,
   };
-  
+
   if (details) {
     errorResponse.details = details;
   }
 
   return NextResponse.json(
-    { error: errorResponse }, 
-    { 
+    { error: errorResponse },
+    {
       status,
-      headers: headers || {}
-    }
+      headers: headers || {},
+    },
   );
 }
 
@@ -127,31 +132,45 @@ function getStatusCodeForError(code: string): number {
  */
 export function handleUnknownError(error: unknown): NextResponse {
   console.error("Unhandled error:", error);
-  
+
   if (error instanceof AppError) {
-    return createErrorResponse(error.code, error.message, error.statusCode, error.details);
+    return createErrorResponse(
+      error.code,
+      error.message,
+      error.statusCode,
+      error.details,
+    );
   }
-  
+
   if (error instanceof Error) {
     // Check for specific error patterns
     if (error.message.includes("fetch")) {
-      return createErrorResponse(ErrorCodes.NETWORK_ERROR, "Network request failed");
+      return createErrorResponse(
+        ErrorCodes.NETWORK_ERROR,
+        "Network request failed",
+      );
     }
-    
+
     if (error.message.includes("timeout")) {
-      return createErrorResponse(ErrorCodes.EXTERNAL_API_ERROR, "Request timeout");
+      return createErrorResponse(
+        ErrorCodes.EXTERNAL_API_ERROR,
+        "Request timeout",
+      );
     }
-    
+
     if (error.message.includes("rate limit")) {
       return createErrorResponse(ErrorCodes.RATE_LIMITED);
     }
-    
+
     // Generic error with original message
     return createErrorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
-  
+
   // Completely unknown error
-  return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "An unexpected error occurred");
+  return createErrorResponse(
+    ErrorCodes.INTERNAL_ERROR,
+    "An unexpected error occurred",
+  );
 }
 
 /**
@@ -159,7 +178,7 @@ export function handleUnknownError(error: unknown): NextResponse {
  */
 export function validateEthereumAddress(address: string): boolean {
   if (!address || typeof address !== "string") return false;
-  
+
   // Basic hex format check (0x + 40 hex characters)
   const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
   return ethAddressRegex.test(address);
@@ -173,19 +192,19 @@ export function validateChains(chainsParam: string): string[] {
   const chains = chainsParam
     .toLowerCase()
     .split(",")
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
-    
-  const validChains = chains.filter(chain => supportedChains.includes(chain));
-  
+
+  const validChains = chains.filter((chain) => supportedChains.includes(chain));
+
   if (validChains.length === 0) {
     throw new AppError(
       ErrorCodes.INVALID_PARAMETER,
       `Unsupported chains. Supported: ${supportedChains.join(", ")}`,
-      400
+      400,
     );
   }
-  
+
   return validChains;
 }
 
@@ -197,25 +216,31 @@ export function validateNumericParam(
   paramName: string,
   min = 0,
   max = Number.MAX_SAFE_INTEGER,
-  defaultValue?: number
+  defaultValue?: number,
 ): number {
   if (!value) {
     if (defaultValue !== undefined) return defaultValue;
-    throw new AppError(ErrorCodes.MISSING_PARAMETER, `${paramName} is required`);
+    throw new AppError(
+      ErrorCodes.MISSING_PARAMETER,
+      `${paramName} is required`,
+    );
   }
-  
+
   const num = Number(value);
-  
+
   if (isNaN(num)) {
-    throw new AppError(ErrorCodes.INVALID_PARAMETER, `${paramName} must be a number`);
+    throw new AppError(
+      ErrorCodes.INVALID_PARAMETER,
+      `${paramName} must be a number`,
+    );
   }
-  
+
   if (num < min || num > max) {
     throw new AppError(
       ErrorCodes.INVALID_PARAMETER,
-      `${paramName} must be between ${min} and ${max}`
+      `${paramName} must be between ${min} and ${max}`,
     );
   }
-  
+
   return num;
 }

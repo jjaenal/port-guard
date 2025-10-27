@@ -88,7 +88,10 @@ describe("useSnapshotHistory - success", () => {
           ({
             ok: true,
             json: vi.fn().mockResolvedValue({ data: mockItems, total: 2 }),
-          }) as { ok: boolean; json: () => Promise<{ data: unknown; total: number }> },
+          }) as {
+            ok: boolean;
+            json: () => Promise<{ data: unknown; total: number }>;
+          },
       ),
     );
 

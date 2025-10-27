@@ -39,13 +39,14 @@ export function useSnapshotDetail(snapshotId?: string) {
             const body = JSON.parse(text) as unknown;
             const specific =
               typeof body === "object" && body !== null
-                ? ("error" in body
-                    ? (body as { error?: unknown }).error
-                    : "message" in body
+                ? "error" in body
+                  ? (body as { error?: unknown }).error
+                  : "message" in body
                     ? (body as { message?: unknown }).message
-                    : undefined)
+                    : undefined
                 : undefined;
-            message = specific != null ? String(specific) : `${message} ${text}`;
+            message =
+              specific != null ? String(specific) : `${message} ${text}`;
           } catch {
             message = `${message} ${text}`;
           }

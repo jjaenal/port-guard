@@ -273,7 +273,6 @@ export async function getTokenBalances(
 
   // Sort by value desc
   tokens.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
-  -console.log(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
-  +console.warn(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
+  console.warn(`✅ Returning ${tokens.length} processed tokens for ${chain}`);
   return tokens;
 }

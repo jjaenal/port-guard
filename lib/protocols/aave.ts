@@ -105,8 +105,12 @@ async function fetchChainPositions(
   const user = json.data?.users?.[0];
   const reserves = json.data?.userReserves || [];
 
-  const suppliedReserves = reserves.filter((r) => isNonZero(r.currentATokenBalance));
-  const borrowedReserves = reserves.filter((r) => isNonZero(r.currentTotalDebt));
+  const suppliedReserves = reserves.filter((r) =>
+    isNonZero(r.currentATokenBalance),
+  );
+  const borrowedReserves = reserves.filter((r) =>
+    isNonZero(r.currentTotalDebt),
+  );
 
   const suppliedCount = suppliedReserves.length;
   const borrowedCount = borrowedReserves.length;
@@ -146,8 +150,8 @@ export async function getAavePositions(
   address: string,
   chains: AaveChain[] = ["ethereum", "polygon"],
 ): Promise<AavePositionsSummary> {
-  const uniqueChains = Array.from(new Set(chains)).filter((c): c is AaveChain =>
-    c === "ethereum" || c === "polygon",
+  const uniqueChains = Array.from(new Set(chains)).filter(
+    (c): c is AaveChain => c === "ethereum" || c === "polygon",
   );
 
   const results = await Promise.all(
