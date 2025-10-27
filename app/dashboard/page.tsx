@@ -441,6 +441,48 @@ export default function DashboardPage() {
                 value={overrideAddress}
                 onChange={(e) => setOverrideAddress(e.target.value.trim())}
               />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setOverrideAddress("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
+                  }
+                  className="text-xs"
+                >
+                  Vitalik
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setOverrideAddress("0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503")
+                  }
+                  className="text-xs"
+                >
+                  Binance Hot Wallet
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setOverrideAddress("0x28C6c06298d514Db089934071355E5743bf21d60")
+                  }
+                  className="text-xs"
+                >
+                  Binance 14
+                </Button>
+                {overrideAddress && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setOverrideAddress("")}
+                    className="text-xs"
+                  >
+                    Use my wallet
+                  </Button>
+                )}
+              </div>
               {overrideAddress && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Testing address override: {overrideAddress}

@@ -135,6 +135,8 @@
 - [x] Create portfolio summary card
   - [x] Total portfolio value
   - [x] 24h change (%) - Basic implementation
+- [x] Add demo address quick-select buttons near override input (connected)
+- [x] Add "Use my wallet" button to clear override address
 
 ### Day 15-16: Snapshot Features
 
