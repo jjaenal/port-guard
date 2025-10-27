@@ -47,9 +47,11 @@ export function useTokenHoldings(addressOverride?: string) {
 
       if (errors) {
         if (errors.ethereum)
-          console.error("❌ ETH balances error:", errors.ethereum);
+-         console.error("❌ ETH balances error:", errors.ethereum);
++         console.warn("⚠️ ETH balances warning:", errors.ethereum);
         if (errors.polygon)
-          console.error("❌ Polygon balances error:", errors.polygon);
+-         console.error("❌ Polygon balances error:", errors.polygon);
++         console.warn("⚠️ Polygon balances warning:", errors.polygon);
       }
 
       if (tokens.length === 0 && errors && errors.ethereum && errors.polygon) {

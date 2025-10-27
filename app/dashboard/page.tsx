@@ -457,7 +457,7 @@ export default function DashboardPage() {
                       toast.error("Failed to resolve ENS");
                     }
                   }
-                />}
+                }}
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
@@ -956,32 +956,41 @@ export default function DashboardPage() {
 
             <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-background">
               <CardHeader>
-                <CardTitle>Aave v3 Positions</CardTitle>
-                <CardDescription>
-                  Health factor and position counts on ETH & Polygon
-                </CardDescription>
-                <CardAction>
-                  <div className="flex items-center gap-2">
-                    {isAaveFetching && (
-                      <span className="text-xs text-muted-foreground">
-                        Refreshing…
-                      </span>
-                    )}
-                  </div>
-                  {!isAaveLoading && !isAaveError && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${riskClass}`} title="Risk levels: Low ≥ 1.5, Medium ≥ 1.2, High ≥ 1.0, Liquidation < 1.0">
-                        {riskLabel}
-                      </span>
-                      {minHealthFactor != null && (
-                        <span className="text-xs text-muted-foreground">
-                          HF min: {minHealthFactor.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </CardAction>
-              </CardHeader>
+                <CardTitle>
+                  <span className="flex items-center gap-2">
+                    <img
+                      src="https://cryptologos.cc/logos/aave-aave-logo.svg?v=029"
+                      alt="Aave"
+                      className="h-5 w-5"
+                    />
+                    <span>Aave v3 Positions</span>
+                  </span>
+                </CardTitle>
+                 <CardDescription>
+                   Health factor and position counts on ETH & Polygon
+                 </CardDescription>
+                 <CardAction>
+                   <div className="flex items-center gap-2">
+                     {isAaveFetching && (
+                       <span className="text-xs text-muted-foreground">
+                         Refreshing…
+                       </span>
+                     )}
+                   </div>
+                   {!isAaveLoading && !isAaveError && (
+                     <div className="flex items-center gap-2 mt-2">
+                       <span className={`px-2 py-1 rounded text-xs font-medium ${riskClass}`} title="Risk levels: Low ≥ 1.5, Medium ≥ 1.2, High ≥ 1.0, Liquidation < 1.0">
+                         {riskLabel}
+                       </span>
+                       {minHealthFactor != null && (
+                         <span className="text-xs text-muted-foreground">
+                           HF min: {minHealthFactor.toFixed(2)}
+                         </span>
+                       )}
+                     </div>
+                   )}
+                 </CardAction>
+               </CardHeader>
               <CardContent>
                 {isAaveLoading ? (
                   <div className="space-y-2 animate-pulse">
@@ -1038,35 +1047,119 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                        {aaveData?.chains?.map((c: { chain: "ethereum" | "polygon"; suppliedCount: number; borrowedCount: number; healthFactor: number | null }) => (
-                          <div key={c.chain} className="border rounded p-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-muted-foreground capitalize">
-                                {c.chain}
-                              </p>
-                              <p className={`text-sm ${
-                                (c.healthFactor ?? 0) >= 1.5
-                                  ? "text-green-600"
-                                  : (c.healthFactor ?? 0) >= 1.0
-                                    ? "text-amber-600"
-                                    : "text-red-600"
-                              }`}>
-                                HF: {c.healthFactor != null ? c.healthFactor.toFixed(2) : "-"}
-                              </p>
-                            </div>
+                        {aaveData?.chains?.map((c: { chain: "ethereum" | "polygon"; suppliedCount: number; borrowedCount: number; healthFactor: number | null; supplyApyMin?: number | null; supplyApyMax?: number | null; borrowApyMin?: number | null; borrowApyMax?: number | null }) => (
+                           <div key={c.chain} className="border rounded p-3">
+                             <div className="flex items-center justify-between">
+                               <p className="text-sm text-muted-foreground capitalize">
+                                 {c.chain}
+                               </p>
+                               <p className={`text-sm ${
+                                 (c.healthFactor ?? 0) >= 1.5
+                                   ? "text-green-600"
+                                   : (c.healthFactor ?? 0) >= 1.0
+                                     ? "text-amber-600"
+                                     : "text-red-600"
+                               }`}>
+                                 HF: {c.healthFactor != null ? c.healthFactor.toFixed(2) : "-"}
+                               </p>
+                             </div>
+                             <div className="flex items-center justify-between mt-1">
+                               <p className="text-xs text-muted-foreground">Supplied</p>
+                               <p className="text-xs font-medium">{c.suppliedCount}</p>
+                             </div>
+                             <div className="flex items-center justify-between">
+                               <p className="text-xs text-muted-foreground">Borrowed</p>
+                               <p className="text-xs font-medium">{c.borrowedCount}</p>
+                             </div>
                             <div className="flex items-center justify-between mt-1">
-                              <p className="text-xs text-muted-foreground">Supplied</p>
-                              <p className="text-xs font-medium">{c.suppliedCount}</p>
+                              <p className="text-xs text-muted-foreground">Supply APY (range)</p>
+                              <p className="text-xs font-medium">
+                                {c.supplyApyMin != null && c.supplyApyMax != null
+                                  ? `${c.supplyApyMin.toFixed(2)}–${c.supplyApyMax.toFixed(2)}%`
+                                  : "-"}
+                              </p>
                             </div>
                             <div className="flex items-center justify-between">
-                              <p className="text-xs text-muted-foreground">Borrowed</p>
-                              <p className="text-xs font-medium">{c.borrowedCount}</p>
+                              <p className="text-xs text-muted-foreground">Borrow APY (range)</p>
+                              <p className="text-xs font-medium">
+                                {c.borrowApyMin != null && c.borrowApyMax != null
+                                  ? `${c.borrowApyMin.toFixed(2)}–${c.borrowApyMax.toFixed(2)}%`
+                                  : "-"}
+                              </p>
                             </div>
-                          </div>
+                           </div>
                         ))}
                       </div>
                     </div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <span className="flex items-center gap-2">
+                    <img
+                      src="https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=029"
+                      alt="Uniswap"
+                      className="h-5 w-5"
+                    />
+                    <span>Uniswap v3 LPs</span>
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  LP positions & estimated value
+                </CardDescription>
+                <CardAction>
+                  <div className="flex items-center gap-2">
+                    {isUniswapFetching && (
+                      <span className="text-xs text-muted-foreground">Refreshing…</span>
+                    )}
+                    <Link href={`/defi/uniswap?address=${overrideAddress || address || ""}`}
+                      className="ml-auto"
+                    >
+                      <Button variant="outline" size="sm">Details</Button>
+                    </Link>
+                  </div>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                {isUniswapLoading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-6 w-64 bg-muted rounded" />
+                    <div className="h-6 w-64 bg-muted rounded" />
+                  </div>
+                ) : isUniswapError ? (
+                  <Alert variant="destructive" closable autoHide autoHideDuration={15000}>
+                    <AlertTitle>Uniswap Positions Unavailable</AlertTitle>
+                    <AlertDescription>
+                      {(() => {
+                        const msg = (uniswapError as Error)?.message || "";
+                        if (/fetch|network/i.test(msg)) return "Network issue. Check your connection and retry.";
+                        if (/429|rate limit/i.test(msg)) return "Rate limit exceeded. Please wait before refreshing.";
+                        if (/500|server/i.test(msg)) return "Service temporarily unavailable. Try again later.";
+                        if (/invalid ethereum address/i.test(msg)) return "Invalid Ethereum address format.";
+                        return msg || "Unable to load positions. Please try again.";
+                      })()}
+                    </AlertDescription>
+                    <div className="mt-2">
+                      <Button variant="outline" size="sm" onClick={() => refetchUniswap()} disabled={isUniswapFetching}>
+                        {isUniswapFetching ? "Retrying..." : "Retry"}
+                      </Button>
+                    </div>
+                  </Alert>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">Positions (total)</p>
+                      <p className="font-medium">{uniswapData?.positions?.length ?? 0}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">Estimated Total Value</p>
+                      <p className="font-medium">{formatCurrency(uniswapData?.totalUsd ?? 0)}</p>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>

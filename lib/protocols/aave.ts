@@ -14,6 +14,9 @@ interface AaveUserReserve {
     id: string;
     symbol: string;
     decimals: number;
+    liquidityRate?: string; // RAY (1e27)
+    variableBorrowRate?: string; // RAY (1e27)
+    stableBorrowRate?: string; // RAY (1e27)
   };
 }
 
@@ -35,6 +38,10 @@ export interface AaveChainSummary {
   suppliedCount: number;
   borrowedCount: number;
   healthFactor: number | null;
+  supplyApyMin?: number | null;
+  supplyApyMax?: number | null;
+  borrowApyMin?: number | null;
+  borrowApyMax?: number | null;
 }
 
 export interface AavePositionsSummary {
@@ -52,6 +59,13 @@ function isNonZero(value?: string): boolean {
   return /[1-9]/.test(digitsOnly);
 }
 
+function rayToPercent(ray?: string): number | null {
+  if (!ray) return null;
+  const num = parseFloat(ray);
+  if (!Number.isFinite(num)) return null;
+  return (num / 1e27) * 100;
+}
+
 async function fetchChainPositions(
   chain: AaveChain,
   address: string,
@@ -63,7 +77,7 @@ async function fetchChainPositions(
       userReserves(where: { user: $user }) {
         currentATokenBalance
         currentTotalDebt
-        reserve { id symbol decimals }
+        reserve { id symbol decimals liquidityRate variableBorrowRate stableBorrowRate }
       }
     }
   `;
@@ -91,8 +105,11 @@ async function fetchChainPositions(
   const user = json.data?.users?.[0];
   const reserves = json.data?.userReserves || [];
 
-  const suppliedCount = reserves.filter((r) => isNonZero(r.currentATokenBalance)).length;
-  const borrowedCount = reserves.filter((r) => isNonZero(r.currentTotalDebt)).length;
+  const suppliedReserves = reserves.filter((r) => isNonZero(r.currentATokenBalance));
+  const borrowedReserves = reserves.filter((r) => isNonZero(r.currentTotalDebt));
+
+  const suppliedCount = suppliedReserves.length;
+  const borrowedCount = borrowedReserves.length;
 
   let hf: number | null = null;
   if (user?.healthFactor) {
@@ -101,7 +118,28 @@ async function fetchChainPositions(
     hf = Number.isFinite(raw) ? raw / 1e18 : null;
   }
 
-  return { chain, suppliedCount, borrowedCount, healthFactor: hf };
+  const supplyApys = suppliedReserves
+    .map((r) => rayToPercent(r.reserve.liquidityRate))
+    .filter((v): v is number => v != null && Number.isFinite(v));
+  const borrowApys = borrowedReserves
+    .map((r) => rayToPercent(r.reserve.variableBorrowRate))
+    .filter((v): v is number => v != null && Number.isFinite(v));
+
+  const supplyApyMin = supplyApys.length ? Math.min(...supplyApys) : null;
+  const supplyApyMax = supplyApys.length ? Math.max(...supplyApys) : null;
+  const borrowApyMin = borrowApys.length ? Math.min(...borrowApys) : null;
+  const borrowApyMax = borrowApys.length ? Math.max(...borrowApys) : null;
+
+  return {
+    chain,
+    suppliedCount,
+    borrowedCount,
+    healthFactor: hf,
+    supplyApyMin,
+    supplyApyMax,
+    borrowApyMin,
+    borrowApyMax,
+  };
 }
 
 export async function getAavePositions(

@@ -224,12 +224,12 @@
 - [x] Fetch supplied assets
 - [x] Fetch borrowed assets
 - [x] Calculate health factor
-- [ ] Get current APY rates
+- [x] Get current APY rates (liquidity & variable borrow ranges)
 - [x] Create Aave position card UI
 - [x] Show liquidation risk indicator
 - [x] Add tooltip for liquidation risk levels
 - [x] Show alert when Health Factor < 1.2
-- [ ] Add protocol logos
+- [x] Add protocol logos (Aave card header)
 - [ ] Test with real positions
 
 ### Day 26-28: Uniswap LP Positions
@@ -241,6 +241,8 @@
 - [x] Fetch unclaimed fees - Basic implementation
 - [x] Calculate impermanent loss - Basic calculation
 - [x] Build LP position card UI - app/defi/uniswap/page.tsx implemented
+- [x] Add protocol logos (Uniswap page header)
+- [x] Add Uniswap dashboard summary card (positions & total value)
 - [x] Show pool composition - Token pair display
 - [x] Add fee tier indicator - Fee tier display
 - [x] Test with various pools - Multi-pool support

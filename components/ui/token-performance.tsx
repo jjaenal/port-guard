@@ -62,13 +62,19 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
     const totalLosses = losers.reduce((sum, p) => sum + p.change24hUsd, 0);
     const netPnL = totalGains + totalLosses;
 
-    const bestPerformer = performances.reduce((best, current) =>
-      !best || current.change24hUsd > best.change24hUsd ? current : best,
-    );
+    const bestPerformer =
+      performances.length > 0
+        ? performances.reduce((best, current) =>
+            !best || current.change24hUsd > best.change24hUsd ? current : best,
+          )
+        : null;
 
-    const worstPerformer = performances.reduce((worst, current) =>
-      !worst || current.change24hUsd < worst.change24hUsd ? current : worst,
-    );
+    const worstPerformer =
+      performances.length > 0
+        ? performances.reduce((worst, current) =>
+            !worst || current.change24hUsd < worst.change24hUsd ? current : worst,
+          )
+        : null;
 
     return {
       totalGains,

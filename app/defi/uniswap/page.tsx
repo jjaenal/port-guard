@@ -124,7 +124,17 @@ function UniswapDetailContent() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Uniswap v3 Positions</h1>
+          {/* Edited: Add Uniswap logo in page header */}
+          <h1 className="text-3xl font-bold mb-1">
+            <span className="inline-flex items-center gap-2">
+              <img
+                src="https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=029"
+                alt="Uniswap"
+                className="h-7 w-7"
+              />
+              <span>Uniswap v3 Positions</span>
+            </span>
+          </h1>
           <p className="text-muted-foreground">
             Detailed view for your LP positions
           </p>
@@ -138,7 +148,17 @@ function UniswapDetailContent() {
 
       <Card className="mb-6 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-background">
         <CardHeader>
-          <CardTitle>Summary</CardTitle>
+          {/* Edited: Add Uniswap logo in summary card header */}
+          <CardTitle>
+            <span className="flex items-center gap-2">
+              <img
+                src="https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=029"
+                alt="Uniswap"
+                className="h-5 w-5"
+              />
+              <span>Summary</span>
+            </span>
+          </CardTitle>
           <CardDescription>Your Uniswap LP overview</CardDescription>
           <CardAction>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
