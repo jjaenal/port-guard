@@ -249,11 +249,11 @@
 
 ### Day 29-30: Staking Positions
 
-- [ ] Integrate Lido positions
-- [ ] Fetch stETH balance
-- [ ] Calculate staking rewards
-- [ ] Show APR
-- [ ] Create staking position card
+- [x] Integrate Lido positions
+- [x] Fetch stETH balance
+- [x] Calculate staking rewards
+- [x] Show APR
+- [x] Create staking position card
 - [ ] Support multiple staking protocols
 - [ ] Add claimable rewards section
 
