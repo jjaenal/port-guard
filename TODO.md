@@ -137,6 +137,7 @@
   - [x] 24h change (%) - Basic implementation
 - [x] Add demo address quick-select buttons near override input (connected)
 - [x] Add "Use my wallet" button to clear override address
+- [x] Add ENS resolution for overrideAddress input onBlur (.eth names)
 
 ### Day 15-16: Snapshot Features
 

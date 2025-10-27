@@ -16,7 +16,7 @@ import {
   Camera,
   Clock,
 } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useNativeBalances } from "@/lib/hooks/useNativeBalances";
 import { useQuery } from "@tanstack/react-query";
@@ -37,6 +37,7 @@ import { PortfolioChart } from "@/components/ui/portfolio-chart";
 import { TokenPerformance } from "@/components/ui/token-performance";
 import { PortfolioAllocation } from "@/components/ui/portfolio-allocation";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { mainnet } from "wagmi/chains";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -50,6 +51,7 @@ export default function DashboardPage() {
     refetch: refetchNative,
   } = useNativeBalances();
   const [overrideAddress, setOverrideAddress] = useState<string>("");
+  const publicClient = usePublicClient({ chainId: mainnet.id });
 
   // Debug logging
   console.log("🔍 Dashboard - Wallet status:", {
@@ -440,6 +442,22 @@ export default function DashboardPage() {
                 placeholder="0x... wallet address"
                 value={overrideAddress}
                 onChange={(e) => setOverrideAddress(e.target.value.trim())}
+                onBlur={async (e) => {
+                  const val = e.target.value.trim();
+                  if (val && val.endsWith(".eth") && publicClient) {
+                    try {
+                      const resolved = await publicClient.getEnsAddress({ name: val });
+                      if (resolved) {
+                        setOverrideAddress(resolved);
+                        toast.success(`ENS resolved: ${resolved}`);
+                      } else {
+                        toast.error("ENS name not found");
+                      }
+                    } catch (err) {
+                      toast.error("Failed to resolve ENS");
+                    }
+                  }
+                />}
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
@@ -520,6 +538,22 @@ export default function DashboardPage() {
                     placeholder="0x... wallet address"
                     value={overrideAddress}
                     onChange={(e) => setOverrideAddress(e.target.value.trim())}
+                    onBlur={async (e) => {
+                      const val = e.target.value.trim();
+                      if (val && val.endsWith(".eth") && publicClient) {
+                        try {
+                          const resolved = await publicClient.getEnsAddress({ name: val });
+                          if (resolved) {
+                            setOverrideAddress(resolved);
+                            toast.success(`ENS resolved: ${resolved}`);
+                          } else {
+                            toast.error("ENS name not found");
+                          }
+                        } catch (err) {
+                          toast.error("Failed to resolve ENS");
+                        }
+                      }
+                    }}
                   />
                   {overrideAddress && (
                     <p className="text-xs text-muted-foreground mt-1">
