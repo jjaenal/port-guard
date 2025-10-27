@@ -53,6 +53,19 @@ export default function DashboardPage() {
   const [overrideAddress, setOverrideAddress] = useState<string>("");
   const publicClient = usePublicClient({ chainId: mainnet.id });
 
+  // Network connectivity
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  useEffect(() => {
+    const update = () => setIsOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
   // Debug logging
   console.log("🔍 Dashboard - Wallet status:", {
     address,
@@ -297,7 +310,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isTokensError && tokensError) {
       const errorMsg = (tokensError as Error)?.message || "";
-      if (errorMsg.includes("Both chains failed")) {
+      if (errorMsg.toLowerCase().includes("network")) {
+        toast.error("Network error. Check your connection.", {
+          id: "tokens-network",
+        });
+      } else if (errorMsg.includes("Both chains failed")) {
         toast.error("Unable to connect to blockchain networks", {
           id: "tokens-chains",
         });
@@ -423,14 +440,22 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      {/* Offline banner */}
+      {!isOnline && (
+        <Alert className="mb-4">
+          <AlertTitle>Offline Mode</AlertTitle>
+          <AlertDescription>
+            You are currently offline. Data may be stale and actions are limited.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">
           Portfolio Dashboard
         </h1>
         <p className="text-muted-foreground">
-          {isConnected
-            ? `Wallet: ${address}`
-            : "Welcome to your DeFi portfolio dashboard. Connect your wallet to get started."}
+          {isConnected ? `Wallet: ${address}` : ""}
         </p>
         {isConnected && (
           <div className="mt-4 grid gap-2 sm:grid-cols-2">

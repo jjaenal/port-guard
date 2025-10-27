@@ -36,32 +36,50 @@ export function useTokenHoldings(addressOverride?: string) {
         effectiveAddress,
       );
 
-      const res = await fetch(`/api/balances?address=${effectiveAddress}`);
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Balances API error: ${res.status} ${text}`);
-      }
-      const json = await res.json();
-      const tokens: TokenHoldingDTO[] = json.tokens ?? [];
-      const errors: Record<string, string> | undefined = json.errors;
+      try {
+        const res = await fetch(`/api/balances?address=${effectiveAddress}`);
+        const bodyText = await res.text();
+        if (!res.ok) {
+          let msg = `Balances API error: ${res.status}`;
+          try {
+            const parsed = JSON.parse(bodyText);
+            const apiErr = parsed?.error;
+            if (apiErr?.message) msg = apiErr.message;
+            if (apiErr?.code) msg = `${msg} (${apiErr.code})`;
+          } catch {
+            msg = `${msg} ${bodyText}`;
+          }
+          throw new Error(msg);
+        }
 
-      if (errors) {
-        if (errors.ethereum)
+        const json = JSON.parse(bodyText);
+        const tokens: TokenHoldingDTO[] = json.tokens ?? [];
+        const errors: Record<string, string> | undefined = json.errors;
+
+        if (errors) {
+          if (errors.ethereum)
 -         console.error("❌ ETH balances error:", errors.ethereum);
 +         console.warn("⚠️ ETH balances warning:", errors.ethereum);
-        if (errors.polygon)
+          if (errors.polygon)
 -         console.error("❌ Polygon balances error:", errors.polygon);
 +         console.warn("⚠️ Polygon balances warning:", errors.polygon);
-      }
+        }
 
-      if (tokens.length === 0 && errors && errors.ethereum && errors.polygon) {
-        throw new Error(
-          `Both chains failed: ETH(${errors.ethereum}), POLYGON(${errors.polygon})`,
-        );
-      }
+        if (tokens.length === 0 && errors && errors.ethereum && errors.polygon) {
+          throw new Error(
+            `Both chains failed: ETH(${errors.ethereum}), POLYGON(${errors.polygon})`,
+          );
+        }
 
-      console.log("✅ Total tokens (server API):", tokens.length);
-      return { tokens, errors };
+        console.log("✅ Total tokens (server API):", tokens.length);
+        return { tokens, errors };
+      } catch (e) {
+        const err = e as Error;
+        if (err?.message?.toLowerCase().includes("fetch")) {
+          throw new Error("Network error fetching balances");
+        }
+        throw err;
+      }
     },
   });
 
