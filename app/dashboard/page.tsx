@@ -320,6 +320,77 @@ export default function DashboardPage() {
     }
   }, [isLidoError, lidoError]);
 
+  // Rocket Pool rETH summary
+  const {
+    data: rocketPoolData,
+    isLoading: isRocketPoolLoading,
+    isError: isRocketPoolError,
+    error: rocketPoolError,
+  } = useQuery({
+    queryKey: ["defi-rocket-pool", effectiveAddress],
+    queryFn: async () => {
+      const a = effectiveAddress;
+      if (!a)
+        return {
+          chain: "ethereum",
+          token: {
+            address: "",
+            symbol: "rETH",
+            name: "Rocket Pool ETH",
+            decimals: 18,
+          },
+          balance: "0",
+          balanceRaw: "0",
+          priceUsd: undefined,
+          valueUsd: 0,
+          apr: undefined,
+          estimatedDailyRewardsUsd: undefined,
+        };
+      const res = await fetch(`/api/defi/rocket-pool?address=${a}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `Rocket Pool API failed: ${res.status}`);
+      }
+      const json = await res.json();
+      return (
+        json?.data || {
+          chain: "ethereum",
+          token: {
+            address: "",
+            symbol: "rETH",
+            name: "Rocket Pool ETH",
+            decimals: 18,
+          },
+          balance: "0",
+          balanceRaw: "0",
+          priceUsd: undefined,
+          valueUsd: 0,
+          apr: undefined,
+          estimatedDailyRewardsUsd: undefined,
+        }
+      );
+    },
+    enabled: !!effectiveAddress,
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: (failureCount, error) => {
+      const msg = (error as Error)?.message || "";
+      if (/400|not found|invalid/i.test(msg)) return false;
+      return failureCount < 3;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+  });
+  useEffect(() => {
+    if (isRocketPoolError && rocketPoolError) {
+      const errorMsg = (rocketPoolError as Error)?.message || "";
+      if (!/not found|400/i.test(errorMsg)) {
+        toast.error("Failed to fetch Rocket Pool rETH summary", {
+          id: "rocket-pool-summary",
+        });
+      }
+    }
+  }, [isRocketPoolError, rocketPoolError]);
+
   const minHealthFactor = useMemo(() => {
     const hfs = (aaveData?.chains || [])
       .map((c: { healthFactor: number | null }) => c.healthFactor)
@@ -1039,7 +1110,9 @@ export default function DashboardPage() {
                     <div className="h-3 w-36 bg-muted rounded" />
                   </div>
                 ) : isLidoError ? (
-                  <div className="text-sm text-muted-foreground">No staking positions found</div>
+                  <div className="text-sm text-muted-foreground">
+                    No staking positions found
+                  </div>
                 ) : (
                   <>
                     <div className="text-2xl font-bold">
@@ -1049,7 +1122,9 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div className="rounded-md bg-muted/50 p-2">
-                        <div className="text-xs text-muted-foreground">Balance</div>
+                        <div className="text-xs text-muted-foreground">
+                          Balance
+                        </div>
                         <div className="font-medium">
                           {typeof lidoData?.balance === "string"
                             ? `${parseFloat(lidoData.balance).toFixed(4)} stETH`
@@ -1066,7 +1141,9 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
-                      <div className="text-muted-foreground">Daily Rewards:</div>
+                      <div className="text-muted-foreground">
+                        Daily Rewards:
+                      </div>
                       <div className="font-medium">
                         {typeof lidoData?.estimatedDailyRewardsUsd === "number"
                           ? formatCurrency(lidoData.estimatedDailyRewardsUsd)
@@ -1077,7 +1154,102 @@ export default function DashboardPage() {
                       <div className="text-muted-foreground">Monthly Est:</div>
                       <div className="font-medium">
                         {typeof lidoData?.estimatedDailyRewardsUsd === "number"
-                          ? formatCurrency(lidoData.estimatedDailyRewardsUsd * 30)
+                          ? formatCurrency(
+                              lidoData.estimatedDailyRewardsUsd * 30,
+                            )
+                          : "-"}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Rocket Pool rETH Staking Position */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-orange-100 p-1.5 dark:bg-orange-900">
+                      <Coins className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <CardTitle className="text-sm font-medium">
+                      Rocket Pool rETH Staking
+                    </CardTitle>
+                  </div>
+                  <CardAction>
+                    <Link
+                      href={
+                        effectiveAddress
+                          ? `/defi/rocket-pool?address=${effectiveAddress}`
+                          : "/defi/rocket-pool"
+                      }
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      Details <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </CardAction>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!effectiveAddress || isRocketPoolLoading ? (
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-7 w-28 bg-muted rounded mb-2" />
+                    <div className="h-3 w-40 bg-muted rounded" />
+                    <div className="h-3 w-36 bg-muted rounded" />
+                  </div>
+                ) : isRocketPoolError ? (
+                  <div className="text-sm text-muted-foreground">
+                    No staking positions found
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {typeof rocketPoolData?.valueUsd === "number"
+                        ? formatCurrency(rocketPoolData.valueUsd)
+                        : "-"}
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <div className="text-xs text-muted-foreground">
+                          Balance
+                        </div>
+                        <div className="font-medium">
+                          {typeof rocketPoolData?.balance === "string"
+                            ? `${parseFloat(rocketPoolData.balance).toFixed(4)} rETH`
+                            : "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <div className="text-xs text-muted-foreground">APR</div>
+                        <div className="font-medium text-green-600">
+                          {typeof rocketPoolData?.apr === "number"
+                            ? `${rocketPoolData.apr.toFixed(2)}%`
+                            : "-"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <div className="text-muted-foreground">
+                        Daily Rewards:
+                      </div>
+                      <div className="font-medium">
+                        {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
+                        "number"
+                          ? formatCurrency(
+                              rocketPoolData.estimatedDailyRewardsUsd,
+                            )
+                          : "-"}
+                      </div>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs">
+                      <div className="text-muted-foreground">Monthly Est:</div>
+                      <div className="font-medium">
+                        {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
+                        "number"
+                          ? formatCurrency(
+                              rocketPoolData.estimatedDailyRewardsUsd * 30,
+                            )
                           : "-"}
                       </div>
                     </div>

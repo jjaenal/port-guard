@@ -11,7 +11,7 @@ interface StakingSummaryRowProps {
 
 /**
  * Reusable component for displaying staking data in a consistent row format
- * 
+ *
  * @param label - Label text for the data point
  * @param value - Value to display (can be string, number, or ReactNode)
  * @param icon - Optional icon to display before the label

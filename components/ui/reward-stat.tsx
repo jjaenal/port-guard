@@ -12,7 +12,7 @@ interface RewardStatProps {
 
 /**
  * Component for displaying staking reward statistics in a card format
- * 
+ *
  * @param title - Title of the reward stat
  * @param value - Main value to display
  * @param subtitle - Optional subtitle or description

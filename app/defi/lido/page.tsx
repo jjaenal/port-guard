@@ -211,49 +211,57 @@ function LidoContent() {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
-                <StakingSummaryRow 
+                <StakingSummaryRow
                   label="Token"
-                  icon={<Image
-                    src="https://cryptologos.cc/logos/lido-dao-ldo-logo.svg?v=029"
-                    alt="Lido"
-                    width={16}
-                    height={16}
-                    loading="lazy"
-                  />}
+                  icon={
+                    <Image
+                      src="https://cryptologos.cc/logos/lido-dao-ldo-logo.svg?v=029"
+                      alt="Lido"
+                      width={16}
+                      height={16}
+                      loading="lazy"
+                    />
+                  }
                   value={
                     <div>
-                      <span className="font-medium">{data?.token?.symbol || "stETH"}</span>
+                      <span className="font-medium">
+                        {data?.token?.symbol || "stETH"}
+                      </span>
                       <span className="text-xs text-muted-foreground ml-2">
                         {data?.token?.name || "Lido Staked Ether"}
                       </span>
                     </div>
                   }
                 />
-                
-                <StakingSummaryRow 
+
+                <StakingSummaryRow
                   label="Estimated Value"
                   icon={<Coins className="h-4 w-4" />}
                   value={formatCurrency(data?.valueUsd || 0)}
                 />
-                
-                <StakingSummaryRow 
+
+                <StakingSummaryRow
                   label="Balance"
                   value={`${Number(data?.balance || 0).toFixed(6)} stETH`}
                 />
-                
-                <StakingSummaryRow 
+
+                <StakingSummaryRow
                   label="Price"
-                  value={typeof data?.priceUsd === "number" ? formatCurrency(data.priceUsd) : "-"}
+                  value={
+                    typeof data?.priceUsd === "number"
+                      ? formatCurrency(data.priceUsd)
+                      : "-"
+                  }
                 />
-                
-                <StakingSummaryRow 
+
+                <StakingSummaryRow
                   label="APR"
                   icon={<Percent className="h-4 w-4" />}
                   value={formatPercentSigned(data?.apr || 0)}
                   valueClassName={data?.apr > 0 ? "text-green-500" : ""}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                 <RewardStat
                   title="Daily Rewards"
@@ -261,12 +269,16 @@ function LidoContent() {
                   subtitle="Estimated based on current APR"
                   icon={<Calendar className="h-5 w-5" />}
                 />
-                
+
                 <RewardStat
                   title="Monthly Rewards"
-                  value={typeof data?.estimatedDailyRewardsUsd === "number"
-                    ? formatCurrency((data.estimatedDailyRewardsUsd || 0) * 30)
-                    : "-"}
+                  value={
+                    typeof data?.estimatedDailyRewardsUsd === "number"
+                      ? formatCurrency(
+                          (data.estimatedDailyRewardsUsd || 0) * 30,
+                        )
+                      : "-"
+                  }
                   subtitle="Projected over 30 days"
                   icon={<Calendar className="h-5 w-5" />}
                 />
