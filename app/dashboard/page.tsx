@@ -15,6 +15,7 @@ import {
   DollarSign,
   Camera,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 import { useAccount, usePublicClient } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -1004,33 +1005,41 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Lido stETH Summary */}
+            {/* Lido stETH Staking Position */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Lido stETH
-                </CardTitle>
-                <CardAction>
-                  <Link
-                    href={
-                      effectiveAddress
-                        ? `/defi/lido?address=${effectiveAddress}`
-                        : "/defi/lido"
-                    }
-                    className="text-xs text-primary hover:underline"
-                  >
-                    View
-                  </Link>
-                </CardAction>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-blue-100 p-1.5 dark:bg-blue-900">
+                      <Coins className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <CardTitle className="text-sm font-medium">
+                      Lido stETH Staking
+                    </CardTitle>
+                  </div>
+                  <CardAction>
+                    <Link
+                      href={
+                        effectiveAddress
+                          ? `/defi/lido?address=${effectiveAddress}`
+                          : "/defi/lido"
+                      }
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      Details <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </CardAction>
+                </div>
               </CardHeader>
               <CardContent>
                 {!effectiveAddress || isLidoLoading ? (
-                  <div className="animate-pulse">
+                  <div className="animate-pulse space-y-2">
                     <div className="h-7 w-28 bg-muted rounded mb-2" />
                     <div className="h-3 w-40 bg-muted rounded" />
+                    <div className="h-3 w-36 bg-muted rounded" />
                   </div>
                 ) : isLidoError ? (
-                  <div className="text-sm text-muted-foreground">-</div>
+                  <div className="text-sm text-muted-foreground">No staking positions found</div>
                 ) : (
                   <>
                     <div className="text-2xl font-bold">
@@ -1038,17 +1047,39 @@ export default function DashboardPage() {
                         ? formatCurrency(lidoData.valueUsd)
                         : "-"}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      APR:{" "}
-                      {typeof lidoData?.apr === "number"
-                        ? `${lidoData.apr.toFixed(2)}%`
-                        : "-"}
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <div className="text-xs text-muted-foreground">Balance</div>
+                        <div className="font-medium">
+                          {typeof lidoData?.balance === "string"
+                            ? `${parseFloat(lidoData.balance).toFixed(4)} stETH`
+                            : "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <div className="text-xs text-muted-foreground">APR</div>
+                        <div className="font-medium text-green-600">
+                          {typeof lidoData?.apr === "number"
+                            ? `${lidoData.apr.toFixed(2)}%`
+                            : "-"}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Est. Daily Rewards:{" "}
-                      {typeof lidoData?.estimatedDailyRewardsUsd === "number"
-                        ? formatCurrency(lidoData.estimatedDailyRewardsUsd)
-                        : "-"}
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <div className="text-muted-foreground">Daily Rewards:</div>
+                      <div className="font-medium">
+                        {typeof lidoData?.estimatedDailyRewardsUsd === "number"
+                          ? formatCurrency(lidoData.estimatedDailyRewardsUsd)
+                          : "-"}
+                      </div>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs">
+                      <div className="text-muted-foreground">Monthly Est:</div>
+                      <div className="font-medium">
+                        {typeof lidoData?.estimatedDailyRewardsUsd === "number"
+                          ? formatCurrency(lidoData.estimatedDailyRewardsUsd * 30)
+                          : "-"}
+                      </div>
                     </div>
                   </>
                 )}
