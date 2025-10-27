@@ -15,10 +15,12 @@ import {
   CardAction,
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Coins, Calendar, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatPercentSigned } from "@/lib/utils";
 import { isAddress } from "viem";
+import { StakingSummaryRow } from "@/components/ui/staking-summary-row";
+import { RewardStat } from "@/components/ui/reward-stat";
 
 export const dynamic = "force-dynamic";
 
@@ -207,41 +209,67 @@ function LidoContent() {
               </div>
             </Alert>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Token</p>
-                <p className="font-medium">{data?.token?.symbol || "stETH"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {data?.token?.name || "Lido Staked Ether"}
-                </p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <StakingSummaryRow 
+                  label="Token"
+                  icon={<Image
+                    src="https://cryptologos.cc/logos/lido-dao-ldo-logo.svg?v=029"
+                    alt="Lido"
+                    width={16}
+                    height={16}
+                    loading="lazy"
+                  />}
+                  value={
+                    <div>
+                      <span className="font-medium">{data?.token?.symbol || "stETH"}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {data?.token?.name || "Lido Staked Ether"}
+                      </span>
+                    </div>
+                  }
+                />
+                
+                <StakingSummaryRow 
+                  label="Estimated Value"
+                  icon={<Coins className="h-4 w-4" />}
+                  value={formatCurrency(data?.valueUsd || 0)}
+                />
+                
+                <StakingSummaryRow 
+                  label="Balance"
+                  value={`${Number(data?.balance || 0).toFixed(6)} stETH`}
+                />
+                
+                <StakingSummaryRow 
+                  label="Price"
+                  value={typeof data?.priceUsd === "number" ? formatCurrency(data.priceUsd) : "-"}
+                />
+                
+                <StakingSummaryRow 
+                  label="APR"
+                  icon={<Percent className="h-4 w-4" />}
+                  value={formatPercentSigned(data?.apr || 0)}
+                  valueClassName={data?.apr > 0 ? "text-green-500" : ""}
+                />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Estimated Value</p>
-                <p className="font-medium">
-                  {formatCurrency(data?.valueUsd || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Balance: {Number(data?.balance || 0).toFixed(6)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Price: {typeof data?.priceUsd === "number" ? formatCurrency(data.priceUsd) : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">APR</p>
-                <p className="font-medium">
-                  {formatPercentSigned(data?.apr || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Est. daily rewards:{" "}
-                  {formatCurrency(data?.estimatedDailyRewardsUsd || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Est. monthly rewards:{" "}
-                  {typeof data?.estimatedDailyRewardsUsd === "number"
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                <RewardStat
+                  title="Daily Rewards"
+                  value={formatCurrency(data?.estimatedDailyRewardsUsd || 0)}
+                  subtitle="Estimated based on current APR"
+                  icon={<Calendar className="h-5 w-5" />}
+                />
+                
+                <RewardStat
+                  title="Monthly Rewards"
+                  value={typeof data?.estimatedDailyRewardsUsd === "number"
                     ? formatCurrency((data.estimatedDailyRewardsUsd || 0) * 30)
                     : "-"}
-                </p>
+                  subtitle="Projected over 30 days"
+                  icon={<Calendar className="h-5 w-5" />}
+                />
               </div>
             </div>
           )}
