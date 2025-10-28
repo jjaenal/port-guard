@@ -10,6 +10,8 @@ import {
   ErrorCodes,
   handleUnknownError,
 } from "@/lib/utils/api-errors";
+import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { validateEthereumAddress } from "@/lib/utils/api-errors";
 
 export const revalidate = 60; // cache for 60s
 
@@ -30,9 +32,33 @@ export async function GET(req: NextRequest) {
       400,
     );
   }
+  if (!validateEthereumAddress(address.toLowerCase())) {
+    return createErrorResponse(ErrorCodes.INVALID_ADDRESS, undefined, 400);
+  }
 
   try {
+    // Try cache first (10 minutes TTL)
+    const cacheKey = `defi:uniswap:${address.toLowerCase()}`;
+    const cached =
+      await cacheGet<ReturnType<typeof getUniswapV3Positions>>(cacheKey);
+    if (cached) {
+      return NextResponse.json(
+        { data: cached },
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+            "X-RateLimit-Remaining": String(remaining),
+            "X-RateLimit-Reset": String(resetAt),
+            "X-Cache": "HIT",
+          },
+        },
+      );
+    }
+
     const data = await getUniswapV3Positions(address as `0x${string}`);
+    // Cache the result for 10 minutes
+    await cacheSet(cacheKey, data, 600);
     return NextResponse.json(
       { data },
       {
@@ -41,6 +67,7 @@ export async function GET(req: NextRequest) {
           "content-type": "application/json",
           "X-RateLimit-Remaining": String(remaining),
           "X-RateLimit-Reset": String(resetAt),
+          "X-Cache": "MISS",
         },
       },
     );

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLidoStethSummary } from "@/lib/defi/lido";
 import { getRocketPoolSummary } from "@/lib/defi/rocket-pool";
 import {
   createErrorResponse,
@@ -15,14 +16,14 @@ import { cacheGet, cacheSet } from "@/lib/cache/redis";
 
 export const revalidate = 120; // cache 2 minutes
 
-// GET /api/defi/rocket-pool?address=0x...
+// GET /api/defi/rewards?address=0x...
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const address = (searchParams.get("address") || "").toLowerCase();
 
     // Rate limiting: 30 requests per minute per IP+address+path
-    const rlKey = getClientKey(req, "rocket-pool");
+    const rlKey = getClientKey(req, "rewards");
     const { allowed, remaining, resetAt } = await rateLimit(rlKey, 30, 60);
     if (!allowed) {
       return tooManyResponse();
@@ -39,14 +40,12 @@ export async function GET(req: Request) {
       return createErrorResponse(ErrorCodes.INVALID_ADDRESS, undefined, 400);
     }
 
-    // Try cache first (10 minutes TTL)
-    const cacheKey = `defi:rocket-pool:${address}`;
-    const cached =
-      await cacheGet<ReturnType<typeof getRocketPoolSummary>>(cacheKey);
-
+    // Try cache first (5 minutes TTL)
+    const cacheKey = `defi:rewards:${address}`;
+    const cached = await cacheGet<typeof data>(cacheKey);
     if (cached) {
       return NextResponse.json(
-        { source: "rocket-pool:cache", data: cached },
+        { data: cached },
         {
           headers: {
             "X-RateLimit-Remaining": String(remaining),
@@ -57,13 +56,46 @@ export async function GET(req: Request) {
       );
     }
 
-    const data = await getRocketPoolSummary(address as `0x${string}`);
+    const [lido, rocket] = await Promise.all([
+      getLidoStethSummary(address as `0x${string}`),
+      getRocketPoolSummary(address as `0x${string}`),
+    ]);
 
-    // Cache the result for 10 minutes
-    await cacheSet(cacheKey, data, 600);
+    const lidoDaily = lido.estimatedDailyRewardsUsd ?? 0;
+    const rocketDaily = rocket.estimatedDailyRewardsUsd ?? 0;
+    const totalDailyUsd = lidoDaily + rocketDaily;
+    const totalMonthlyUsd = totalDailyUsd * 30;
+
+    const data = {
+      totals: {
+        dailyUsd: totalDailyUsd,
+        monthlyUsd: totalMonthlyUsd,
+      },
+      breakdown: {
+        lido: {
+          dailyUsd: lidoDaily,
+          monthlyUsd: lidoDaily * 30,
+          apr: lido.apr ?? null,
+          valueUsd: lido.valueUsd ?? null,
+        },
+        rocketPool: {
+          dailyUsd: rocketDaily,
+          monthlyUsd: rocketDaily * 30,
+          apr: rocket.apr ?? null,
+          valueUsd: rocket.valueUsd ?? null,
+        },
+      },
+      meta: {
+        address,
+        source: "rewards:aggregate(lido+rocket)",
+      },
+    };
+
+    // Store in cache for 5 minutes
+    await cacheSet(cacheKey, data, 300);
 
     return NextResponse.json(
-      { source: "rocket-pool:api+alchemy", data },
+      { data },
       {
         headers: {
           "X-RateLimit-Remaining": String(remaining),
@@ -72,7 +104,7 @@ export async function GET(req: Request) {
         },
       },
     );
-  } catch (error) {
-    return handleUnknownError(error);
+  } catch (err: unknown) {
+    return handleUnknownError(err);
   }
 }

@@ -4,14 +4,17 @@ import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 
+export type TokenHoldingsQueryResult = {
+  tokens: TokenHoldingDTO[];
+  errors?: Record<string, string>;
+  meta?: { source: "balances:cache" | "balances:api" };
+};
+
 export function useTokenHoldings(addressOverride?: string) {
   const { address } = useAccount();
   const effectiveAddress = (addressOverride ?? address)?.toLowerCase();
 
-  const query = useQuery<{
-    tokens: TokenHoldingDTO[];
-    errors?: Record<string, string>;
-  } | null>({
+  const query = useQuery<TokenHoldingsQueryResult | null>({
     queryKey: ["erc20-holdings", effectiveAddress],
     enabled: !!effectiveAddress, // only need an address; server endpoint uses server env keys
     staleTime: 300_000,
@@ -55,14 +58,17 @@ export function useTokenHoldings(addressOverride?: string) {
         const json = JSON.parse(bodyText);
         const tokens: TokenHoldingDTO[] = json.tokens ?? [];
         const errors: Record<string, string> | undefined = json.errors;
+        const cacheHeader = (res.headers.get("X-Cache") || "").toUpperCase();
+        const source: "balances:cache" | "balances:api" =
+          cacheHeader === "HIT" ? "balances:cache" : "balances:api";
 
         if (errors) {
-          if (errors.ethereum)
-            -console.error("❌ ETH balances error:", errors.ethereum);
-          +console.warn("⚠️ ETH balances warning:", errors.ethereum);
-          if (errors.polygon)
-            -console.error("❌ Polygon balances error:", errors.polygon);
-          +console.warn("⚠️ Polygon balances warning:", errors.polygon);
+          if (errors.ethereum) {
+            console.warn("⚠️ ETH balances warning:", errors.ethereum);
+          }
+          if (errors.polygon) {
+            console.warn("⚠️ Polygon balances warning:", errors.polygon);
+          }
         }
 
         if (
@@ -77,7 +83,7 @@ export function useTokenHoldings(addressOverride?: string) {
         }
 
         console.log("✅ Total tokens (server API):", tokens.length);
-        return { tokens, errors };
+        return { tokens, errors, meta: { source } };
       } catch (e) {
         const err = e as Error;
         if (err?.message?.toLowerCase().includes("fetch")) {
@@ -90,6 +96,7 @@ export function useTokenHoldings(addressOverride?: string) {
 
   return {
     tokens: query.data?.tokens ?? [],
+    meta: query.data?.meta,
     isLoading: query.isLoading,
     isError: query.isError,
     isFetching: query.isFetching,

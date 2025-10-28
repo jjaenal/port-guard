@@ -47,3 +47,15 @@ export function formatCurrencyTiny(value: number, threshold = 0.01) {
   }
   return formatCurrency(value);
 }
+
+export function formatPercent(
+  value: number | null,
+  options: Intl.NumberFormatOptions = {},
+) {
+  if (value === null) return "-";
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    maximumFractionDigits: 2,
+    ...options,
+  }).format(value / 100);
+}

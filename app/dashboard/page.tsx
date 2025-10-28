@@ -24,7 +24,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { formatUnits } from "viem";
 import { useTokenHoldings } from "@/lib/hooks/useTokenHoldings";
-import { formatCurrency, formatNumber, formatPercentSigned } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercent,
+  formatPercentSigned,
+} from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useCallback, useMemo, useEffect } from "react";
@@ -40,6 +45,9 @@ import { TokenPerformance } from "@/components/ui/token-performance";
 import { PortfolioAllocation } from "@/components/ui/portfolio-allocation";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { mainnet } from "wagmi/chains";
+import { CacheBadge } from "@/components/ui/cache-badge";
+import { CACHE_TTLS } from "@/lib/config/cache";
+import { cacheTitle } from "@/lib/utils/cache";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -80,6 +88,7 @@ export default function DashboardPage() {
 
   const {
     tokens,
+    meta: holdingsMeta,
     isLoading: isTokensLoading,
     isError: isTokensError,
     isFetching: isTokensFetching,
@@ -99,7 +108,7 @@ export default function DashboardPage() {
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
       const response = await fetch(
-        "/api/prices?ids=ethereum,matic-network&vs=usd",
+        "/api/prices?ids=ethereum,matic-network&vs=usd"
       );
       const json = await response.json();
       return json.data || {};
@@ -150,7 +159,7 @@ export default function DashboardPage() {
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
-      rangeDays,
+      rangeDays
     );
 
   // Series khusus 24 jam untuk kalkulasi perubahan keseluruhan portofolio
@@ -160,7 +169,7 @@ export default function DashboardPage() {
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
-      1,
+      1
     );
 
   // Uniswap LP summary
@@ -182,7 +191,14 @@ export default function DashboardPage() {
         throw new Error(body?.error || `Uniswap API failed: ${res.status}`);
       }
       const json = await res.json();
-      return json.data || { positions: [], totalUsd: 0 };
+      const xcache = (res.headers.get("X-Cache") || "").toUpperCase();
+      const base = json.data || { positions: [], totalUsd: 0 };
+      return {
+        ...base,
+        meta: {
+          source: xcache === "HIT" ? "uniswap:cache" : "uniswap:api",
+        },
+      };
     },
     enabled: !!(isConnected || !!overrideAddress),
     staleTime: 60_000,
@@ -211,7 +227,7 @@ export default function DashboardPage() {
           totals: { suppliedCount: 0, borrowedCount: 0 },
         };
       const res = await fetch(
-        `/api/defi/aave?address=${a}&chains=ethereum,polygon`,
+        `/api/defi/aave?address=${a}&chains=ethereum,polygon`
       );
       const bodyText = await res.text();
       if (!res.ok) {
@@ -281,23 +297,28 @@ export default function DashboardPage() {
         throw new Error(body?.error || `Lido API failed: ${res.status}`);
       }
       const json = await res.json();
-      return (
-        json?.data || {
-          chain: "ethereum",
-          token: {
-            address: "",
-            symbol: "stETH",
-            name: "Lido Staked Ether",
-            decimals: 18,
-          },
-          balance: "0",
-          balanceRaw: "0",
-          priceUsd: undefined,
-          valueUsd: 0,
-          apr: undefined,
-          estimatedDailyRewardsUsd: undefined,
-        }
-      );
+      const xcache = (res.headers.get("X-Cache") || "").toUpperCase();
+      const base = json?.data || {
+        chain: "ethereum",
+        token: {
+          address: "",
+          symbol: "stETH",
+          name: "Lido Staked Ether",
+          decimals: 18,
+        },
+        balance: "0",
+        balanceRaw: "0",
+        priceUsd: undefined,
+        valueUsd: 0,
+        apr: undefined,
+        estimatedDailyRewardsUsd: undefined,
+      };
+      return {
+        ...base,
+        meta: {
+          source: xcache === "HIT" ? "lido:cache" : "lido:api",
+        },
+      };
     },
     enabled: !!effectiveAddress,
     staleTime: 60_000,
@@ -352,23 +373,28 @@ export default function DashboardPage() {
         throw new Error(body?.error || `Rocket Pool API failed: ${res.status}`);
       }
       const json = await res.json();
-      return (
-        json?.data || {
-          chain: "ethereum",
-          token: {
-            address: "",
-            symbol: "rETH",
-            name: "Rocket Pool ETH",
-            decimals: 18,
-          },
-          balance: "0",
-          balanceRaw: "0",
-          priceUsd: undefined,
-          valueUsd: 0,
-          apr: undefined,
-          estimatedDailyRewardsUsd: undefined,
-        }
-      );
+      const xcache = (res.headers.get("X-Cache") || "").toUpperCase();
+      const base = json?.data || {
+        chain: "ethereum",
+        token: {
+          address: "",
+          symbol: "rETH",
+          name: "Rocket Pool ETH",
+          decimals: 18,
+        },
+        balance: "0",
+        balanceRaw: "0",
+        priceUsd: undefined,
+        valueUsd: 0,
+        apr: undefined,
+        estimatedDailyRewardsUsd: undefined,
+      };
+      return {
+        ...base,
+        meta: {
+          source: xcache === "HIT" ? "rocket:cache" : "rocket:api",
+        },
+      };
     },
     enabled: !!effectiveAddress,
     staleTime: 60_000,
@@ -390,6 +416,88 @@ export default function DashboardPage() {
       }
     }
   }, [isRocketPoolError, rocketPoolError]);
+
+  // Fallback rewards calculation in client (if aggregate API fails)
+  const fallbackDailyRewardsUsd =
+    (lidoData?.estimatedDailyRewardsUsd ?? 0) +
+    (rocketPoolData?.estimatedDailyRewardsUsd ?? 0);
+  const fallbackMonthlyRewardsUsd = fallbackDailyRewardsUsd * 30;
+
+  // Aggregated rewards (Lido + Rocket Pool)
+  const {
+    data: rewardsData,
+    isLoading: isRewardsLoading,
+    isError: isRewardsError,
+    error: rewardsError,
+  } = useQuery({
+    queryKey: ["defi-rewards", effectiveAddress],
+    queryFn: async () => {
+      const a = effectiveAddress;
+      if (!a)
+        return {
+          totals: { dailyUsd: 0, monthlyUsd: 0 },
+          breakdown: {
+            lido: { dailyUsd: 0, monthlyUsd: 0, apr: null, valueUsd: null },
+            rocketPool: {
+              dailyUsd: 0,
+              monthlyUsd: 0,
+              apr: null,
+              valueUsd: null,
+            },
+          },
+          meta: { address: "", source: "rewards:aggregate(lido+rocket)" },
+        };
+      const res = await fetch(`/api/defi/rewards?address=${a}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `Rewards API failed: ${res.status}`);
+      }
+      const json = await res.json();
+      const xcache = (res.headers.get("X-Cache") || "").toUpperCase();
+      const base = json?.data || {
+        totals: { dailyUsd: 0, monthlyUsd: 0 },
+        breakdown: {
+          lido: { dailyUsd: 0, monthlyUsd: 0, apr: null, valueUsd: null },
+          rocketPool: {
+            dailyUsd: 0,
+            monthlyUsd: 0,
+            apr: null,
+            valueUsd: null,
+          },
+        },
+        meta: { address: a, source: "rewards:aggregate(lido+rocket)" },
+      };
+      return {
+        ...base,
+        meta: {
+          address: a,
+          source:
+            xcache === "HIT"
+              ? "rewards:aggregate(cache)"
+              : "rewards:aggregate(api)",
+        },
+      };
+    },
+    enabled: !!effectiveAddress,
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+    retry: (failureCount, error) => {
+      const msg = (error as Error)?.message || "";
+      if (/400|not found|invalid/i.test(msg)) return false;
+      return failureCount < 3;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+  });
+  useEffect(() => {
+    if (isRewardsError && rewardsError) {
+      const errorMsg = (rewardsError as Error)?.message || "";
+      if (!/not found|400/i.test(errorMsg)) {
+        toast.error("Failed to fetch aggregated rewards", {
+          id: "defi-rewards",
+        });
+      }
+    }
+  }, [isRewardsError, rewardsError]);
 
   const minHealthFactor = useMemo(() => {
     const hfs = (aaveData?.chains || [])
@@ -641,7 +749,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() =>
                     setOverrideAddress(
-                      "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                      "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
                     )
                   }
                   className="text-xs"
@@ -653,7 +761,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() =>
                     setOverrideAddress(
-                      "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+                      "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503"
                     )
                   }
                   className="text-xs"
@@ -665,7 +773,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() =>
                     setOverrideAddress(
-                      "0x28C6c06298d514Db089934071355E5743bf21d60",
+                      "0x28C6c06298d514Db089934071355E5743bf21d60"
                     )
                   }
                   className="text-xs"
@@ -752,7 +860,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
                       )
                     }
                     className="text-xs"
@@ -764,7 +872,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503"
                       )
                     }
                     className="text-xs"
@@ -776,7 +884,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x28C6c06298d514Db089934071355E5743bf21d60",
+                        "0x28C6c06298d514Db089934071355E5743bf21d60"
                       )
                     }
                     className="text-xs"
@@ -983,7 +1091,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.ethereum?.usd_24h_change ?? 0,
+                        prices?.ethereum?.usd_24h_change ?? 0
                       )}
                     </span>
                   </div>
@@ -1016,7 +1124,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.["matic-network"]?.usd_24h_change ?? 0,
+                        prices?.["matic-network"]?.usd_24h_change ?? 0
                       )}
                     </span>
                   </div>
@@ -1067,7 +1175,7 @@ export default function DashboardPage() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          },
+                          }
                         )}
                       </span>
                     </div>
@@ -1089,6 +1197,13 @@ export default function DashboardPage() {
                     </CardTitle>
                   </div>
                   <CardAction>
+                    <CacheBadge
+                      visible={
+                        !isLidoLoading &&
+                        lidoData?.meta?.source === "lido:cache"
+                      }
+                      title={cacheTitle(CACHE_TTLS.DEFI_POSITIONS)}
+                    />
                     <Link
                       href={
                         effectiveAddress
@@ -1155,7 +1270,7 @@ export default function DashboardPage() {
                       <div className="font-medium">
                         {typeof lidoData?.estimatedDailyRewardsUsd === "number"
                           ? formatCurrency(
-                              lidoData.estimatedDailyRewardsUsd * 30,
+                              lidoData.estimatedDailyRewardsUsd * 30
                             )
                           : "-"}
                       </div>
@@ -1178,6 +1293,13 @@ export default function DashboardPage() {
                     </CardTitle>
                   </div>
                   <CardAction>
+                    <CacheBadge
+                      visible={
+                        !isRocketPoolLoading &&
+                        rocketPoolData?.meta?.source === "rocket:cache"
+                      }
+                      title={cacheTitle(CACHE_TTLS.DEFI_POSITIONS)}
+                    />
                     <Link
                       href={
                         effectiveAddress
@@ -1237,7 +1359,7 @@ export default function DashboardPage() {
                         {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
                         "number"
                           ? formatCurrency(
-                              rocketPoolData.estimatedDailyRewardsUsd,
+                              rocketPoolData.estimatedDailyRewardsUsd
                             )
                           : "-"}
                       </div>
@@ -1248,7 +1370,7 @@ export default function DashboardPage() {
                         {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
                         "number"
                           ? formatCurrency(
-                              rocketPoolData.estimatedDailyRewardsUsd * 30,
+                              rocketPoolData.estimatedDailyRewardsUsd * 30
                             )
                           : "-"}
                       </div>
@@ -1270,6 +1392,13 @@ export default function DashboardPage() {
                       Claimable Rewards (Estimate)
                     </CardTitle>
                   </div>
+                  <CacheBadge
+                    visible={
+                      !isRewardsLoading &&
+                      !!rewardsData?.meta?.source?.includes("cache")
+                    }
+                    title={cacheTitle(CACHE_TTLS.REWARDS)}
+                  />
                 </div>
               </CardHeader>
               <CardContent>
@@ -1282,10 +1411,13 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     <div className="text-2xl font-bold">
-                      {formatCurrency(
-                        (lidoData?.estimatedDailyRewardsUsd ?? 0) +
-                          (rocketPoolData?.estimatedDailyRewardsUsd ?? 0) || 0,
-                      )}
+                      {isRewardsLoading
+                        ? "-"
+                        : formatCurrency(
+                            (rewardsData?.totals?.dailyUsd ??
+                              fallbackDailyRewardsUsd) ||
+                              0
+                          )}
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div className="rounded-md bg-muted/50 p-2">
@@ -1293,10 +1425,13 @@ export default function DashboardPage() {
                           Daily Total
                         </div>
                         <div className="font-medium">
-                          {formatCurrency(
-                            (lidoData?.estimatedDailyRewardsUsd ?? 0) +
-                              (rocketPoolData?.estimatedDailyRewardsUsd ?? 0),
-                          )}
+                          {isRewardsLoading
+                            ? "-"
+                            : formatCurrency(
+                                (rewardsData?.totals?.dailyUsd ??
+                                  fallbackDailyRewardsUsd) ||
+                                  0
+                              )}
                         </div>
                       </div>
                       <div className="rounded-md bg-muted/50 p-2">
@@ -1304,38 +1439,81 @@ export default function DashboardPage() {
                           Monthly Est
                         </div>
                         <div className="font-medium">
-                          {formatCurrency(
-                            ((lidoData?.estimatedDailyRewardsUsd ?? 0) +
-                              (rocketPoolData?.estimatedDailyRewardsUsd ?? 0)) *
-                              30,
-                          )}
+                          {isRewardsLoading
+                            ? "-"
+                            : formatCurrency(
+                                (rewardsData?.totals?.monthlyUsd ??
+                                  fallbackMonthlyRewardsUsd) ||
+                                  0
+                              )}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Lido (Auto-compounding)
-                        </span>
-                        <span className="font-medium">
-                          {typeof lidoData?.estimatedDailyRewardsUsd ===
-                          "number"
-                            ? formatCurrency(lidoData.estimatedDailyRewardsUsd)
-                            : "-"}
-                        </span>
+                    <div className="mt-3 space-y-2">
+                      <div className="rounded-md bg-muted/30 p-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            Lido (Auto-compounding)
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(
+                              rewardsData?.breakdown?.lido?.dailyUsd ??
+                                lidoData?.estimatedDailyRewardsUsd ??
+                                0
+                            )}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-xs">
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            {formatPercent(
+                              rewardsData?.breakdown?.lido?.apr ??
+                                lidoData?.apr ??
+                                0
+                            )}
+                            <span className="text-muted-foreground"> APR</span>
+                          </span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(
+                              rewardsData?.breakdown?.lido?.valueUsd ??
+                                lidoData?.valueUsd ??
+                                0
+                            )}{" "}
+                            staked
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Rocket Pool (Auto-compounding)
-                        </span>
-                        <span className="font-medium">
-                          {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
-                          "number"
-                            ? formatCurrency(
-                                rocketPoolData.estimatedDailyRewardsUsd,
-                              )
-                            : "-"}
-                        </span>
+
+                      <div className="rounded-md bg-muted/30 p-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            Rocket Pool (Auto-compounding)
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(
+                              rewardsData?.breakdown?.rocketPool?.dailyUsd ??
+                                rocketPoolData?.estimatedDailyRewardsUsd ??
+                                0
+                            )}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-xs">
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            {formatPercent(
+                              rewardsData?.breakdown?.rocketPool?.apr ??
+                                rocketPoolData?.apr ??
+                                0
+                            )}
+                            <span className="text-muted-foreground"> APR</span>
+                          </span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(
+                              rewardsData?.breakdown?.rocketPool?.valueUsd ??
+                                rocketPoolData?.valueUsd ??
+                                0
+                            )}{" "}
+                            staked
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -1350,16 +1528,25 @@ export default function DashboardPage() {
                   Uniswap V3
                 </CardTitle>
                 <CardAction>
-                  <Link
-                    href={
-                      effectiveAddress
-                        ? `/defi/uniswap?address=${effectiveAddress}`
-                        : "/defi/uniswap"
-                    }
-                    className="text-xs text-primary hover:underline"
-                  >
-                    View
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <CacheBadge
+                      visible={
+                        !isUniswapLoading &&
+                        uniswapData?.meta?.source === "uniswap:cache"
+                      }
+                      title={cacheTitle(CACHE_TTLS.DEFI_POSITIONS)}
+                    />
+                    <Link
+                      href={
+                        effectiveAddress
+                          ? `/defi/uniswap?address=${effectiveAddress}`
+                          : "/defi/uniswap"
+                      }
+                      className="text-xs text-primary hover:underline"
+                    >
+                      View
+                    </Link>
+                  </div>
                 </CardAction>
               </CardHeader>
               <CardContent>
@@ -1643,7 +1830,7 @@ export default function DashboardPage() {
                                 </p>
                               </div>
                             </div>
-                          ),
+                          )
                         )}
                       </div>
                     </div>
@@ -1760,11 +1947,20 @@ export default function DashboardPage() {
                   Your current token balances and values
                 </CardDescription>
                 <CardAction>
-                  {(isPricesFetching || isLoading || isNativeFetching) && (
-                    <span className="text-xs text-muted-foreground">
-                      Refreshing…
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <CacheBadge
+                      visible={
+                        !isTokensLoading &&
+                        holdingsMeta?.source === "balances:cache"
+                      }
+                      title={cacheTitle(CACHE_TTLS.BALANCES)}
+                    />
+                    {(isPricesFetching || isLoading || isNativeFetching) && (
+                      <span className="text-xs text-muted-foreground">
+                        Refreshing…
+                      </span>
+                    )}
+                  </div>
                 </CardAction>
               </CardHeader>
               <CardContent>
@@ -1798,7 +1994,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.ethereum?.usd_24h_change ?? 0,
+                            prices?.ethereum?.usd_24h_change ?? 0
                           )}
                         </p>
                       </div>
@@ -1827,7 +2023,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.["matic-network"]?.usd_24h_change ?? 0,
+                            prices?.["matic-network"]?.usd_24h_change ?? 0
                           )}
                         </p>
                       </div>
@@ -1844,6 +2040,13 @@ export default function DashboardPage() {
                   Your ERC-20 balances and USD values
                 </CardDescription>
                 <CardAction>
+                  <CacheBadge
+                    visible={
+                      !isTokensLoading &&
+                      holdingsMeta?.source === "balances:cache"
+                    }
+                    title={cacheTitle(CACHE_TTLS.BALANCES)}
+                  />
                   {isTokensFetching && (
                     <span className="text-xs text-muted-foreground">
                       Refreshing…
@@ -1888,7 +2091,7 @@ export default function DashboardPage() {
                         size="sm"
                         onClick={() =>
                           setOverrideAddress(
-                            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
                           )
                         }
                       >

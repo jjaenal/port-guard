@@ -122,6 +122,9 @@
 - [x] Add token logos (TrustWallet assets fallback)
 - [x] Implement balance caching (In-memory + Next.js API cache)
 - [x] Test with multiple wallets (via address override on dashboard)
+- [x] Add "Cached" badge in Token Holdings header with tooltip (TTL 3m)
+- [x] Implement `meta.source` in `useTokenHoldings` based on `X-Cache` header
+- [x] Show badge only when cache HIT (consistent across dashboard)
 
 ### Day 11-14: Portfolio Dashboard UI
 
@@ -256,7 +259,28 @@
 - [x] Create staking position card
 - [x] Support multiple staking protocols
 - [x] Add claimable rewards section
-- [ ] Add claimable rewards section
+- [x] Aggregate rewards API (Lido + Rocket Pool)
+- [x] Dashboard integration: daily & monthly totals
+- [x] Rewards breakdown per protocol with APR & staked value
+- [x] Client-side fallback when aggregate API fails
+
+---
+
+## ⚙️ Week 53-56: Performance Optimization (Updates)
+
+- [x] Implement React.memo where needed - Applied to key components
+- [x] Add useMemo/useCallback - Implemented in hooks and components
+- [x] Optimize images (Next.js Image) - Using Next.js Image component
+- [x] Code splitting - Next.js automatic code splitting
+- [x] Lazy load components - Dynamic imports implemented
+- [x] Cache rewards aggregation (5 min, Redis)
+- [x] Setup Redis caching properly
+  - [x] Cache token prices (5 min)
+  - [x] Cache balances (3 min)
+  - [x] Cache DeFi positions (10 min)
+- [ ] Add service worker (PWA)
+- [x] Optimize bundle size - Webpack optimizations applied
+- [x] Test Lighthouse score (aim for 90+) - Good performance achieved
 
 ---
 
@@ -372,6 +396,11 @@
 
 ### Day 50-52: UI/UX Improvements
 
+- [x] Create reusable CacheBadge component - Implemented with consistent styling
+- [x] Refactor all inline cache badges to use CacheBadge component
+- [x] Standardize TTL display format with cacheTitle() utility
+- [x] Implement centralized CACHE_TTLS configuration object
+- [x] Add unit tests for CacheBadge component and cacheTitle utility
 - [ ] Refine color scheme
 - [ ] Improve typography
 - [ ] Add micro-interactions
@@ -454,7 +483,10 @@
 - [ ] Test alert logic - Not yet implemented
 - [x] Component testing (key components) - Multiple component tests implemented
 - [x] Integration tests (API routes) - API route tests implemented
-- [ ] E2E testing with Playwright
+- [x] Hook tests: `useTokenHoldings` Cache HIT/MISS scenarios
+- [x] Fix test mocks to match `TokenHoldingDTO` (balance as string, `contractAddress`)
+- [x] Remove unused imports; ensure lint and all tests pass (58 tests)
+      [ ] E2E testing with Playwright
   ```bash
   npm install -D @playwright/test
   ```
