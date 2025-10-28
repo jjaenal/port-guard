@@ -270,7 +270,7 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
               </TableHead>
               <TableHead>Value (USD)</TableHead>
               <TableHead className="hidden md:table-cell">24h Change</TableHead>
-              <TableHead className="w-[120px]">Portfolio %</TableHead>
+              <TableHead className="w-[88px] sm:w-[120px]">Portfolio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -289,11 +289,11 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
               return (
                 <TableRow key={`${t.chain}-${t.contractAddress}`}>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <TokenAvatar token={t} />
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-medium">{t.symbol ?? "?"}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground break-words">
                           {t.name ?? t.contractAddress.slice(0, 6) + "..."}
                         </div>
                       </div>

@@ -46,7 +46,10 @@ export function PortfolioChart({ points, height = 200 }: PortfolioChartProps) {
   const formatYTick = (val: number) => formatCurrencyTiny(val);
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div
+      className="min-h-[220px] sm:min-h-[260px] touch-pan-y"
+      style={{ width: "100%", height }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}
@@ -60,7 +63,7 @@ export function PortfolioChart({ points, height = 200 }: PortfolioChartProps) {
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="t" tickFormatter={formatXTick} stroke="#6b7280" />
-          <YAxis tickFormatter={formatYTick} stroke="#6b7280" width={80} />
+          <YAxis tickFormatter={formatYTick} stroke="#6b7280" width={64} />
           <Tooltip
             formatter={(value) => [formatCurrencyTiny(Number(value)), "Value"]}
             labelFormatter={(label) => formatXLabel(Number(label))}

@@ -26,7 +26,7 @@ export function StakingSummaryRow({
   valueClassName,
 }: StakingSummaryRowProps) {
   return (
-    <div className={cn("flex items-center justify-between py-2", className)}>
+    <div className={cn("flex items-center justify-between py-3 sm:py-2", className)}>
       <div className="flex items-center gap-2 text-muted-foreground">
         {icon && <span className="text-foreground">{icon}</span>}
         <span>{label}</span>

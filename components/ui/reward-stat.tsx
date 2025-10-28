@@ -28,11 +28,11 @@ export function RewardStat({
 }: RewardStatProps) {
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-xl sm:text-2xl font-bold">{value}</p>
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
