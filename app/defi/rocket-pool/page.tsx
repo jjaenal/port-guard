@@ -17,7 +17,7 @@ import {
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { TrendingUp, Coins, Calendar, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, formatPercentSigned } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { isAddress } from "viem";
 import { StakingSummaryRow } from "@/components/ui/staking-summary-row";
 import { RewardStat } from "@/components/ui/reward-stat";

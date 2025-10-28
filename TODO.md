@@ -254,7 +254,8 @@
 - [x] Calculate staking rewards
 - [x] Show APR
 - [x] Create staking position card
-- [ ] Support multiple staking protocols
+- [x] Support multiple staking protocols
+- [x] Add claimable rewards section
 - [ ] Add claimable rewards section
 
 ---

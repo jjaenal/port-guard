@@ -1258,6 +1258,91 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
+            {/* Claimable Rewards */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-emerald-100 p-1.5 dark:bg-emerald-900">
+                      <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <CardTitle className="text-sm font-medium">
+                      Claimable Rewards (Estimate)
+                    </CardTitle>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!effectiveAddress ? (
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-7 w-28 bg-muted rounded mb-2" />
+                    <div className="h-3 w-40 bg-muted rounded" />
+                    <div className="h-3 w-36 bg-muted rounded" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(
+                        (lidoData?.estimatedDailyRewardsUsd ?? 0) +
+                          (rocketPoolData?.estimatedDailyRewardsUsd ?? 0) || 0,
+                      )}
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <div className="text-xs text-muted-foreground">
+                          Daily Total
+                        </div>
+                        <div className="font-medium">
+                          {formatCurrency(
+                            (lidoData?.estimatedDailyRewardsUsd ?? 0) +
+                              (rocketPoolData?.estimatedDailyRewardsUsd ?? 0),
+                          )}
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <div className="text-xs text-muted-foreground">
+                          Monthly Est
+                        </div>
+                        <div className="font-medium">
+                          {formatCurrency(
+                            ((lidoData?.estimatedDailyRewardsUsd ?? 0) +
+                              (rocketPoolData?.estimatedDailyRewardsUsd ?? 0)) *
+                              30,
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Lido (Auto-compounding)
+                        </span>
+                        <span className="font-medium">
+                          {typeof lidoData?.estimatedDailyRewardsUsd ===
+                          "number"
+                            ? formatCurrency(lidoData.estimatedDailyRewardsUsd)
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Rocket Pool (Auto-compounding)
+                        </span>
+                        <span className="font-medium">
+                          {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
+                          "number"
+                            ? formatCurrency(
+                                rocketPoolData.estimatedDailyRewardsUsd,
+                              )
+                            : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Uniswap V3 Summary */}
             <Card>
               <CardHeader>

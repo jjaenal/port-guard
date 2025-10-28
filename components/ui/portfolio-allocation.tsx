@@ -23,7 +23,21 @@ interface AllocationData {
   value: number;
   percentage: number;
   color: string;
-  [key: string]: any; // Index signature for Recharts compatibility
+  [key: string]: unknown; // Index signature for Recharts compatibility
+}
+
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: AllocationData }>;
+}
+
+interface LegendEntry {
+  payload: AllocationData;
+  color?: string;
+}
+
+interface LegendProps {
+  payload?: LegendEntry[];
 }
 
 // Color palette for the pie chart
@@ -39,6 +53,50 @@ const COLORS = [
   "#EC4899", // Pink
   "#6B7280", // Gray
 ];
+
+function CustomTooltip({ active, payload }: TooltipProps) {
+  if (active && Array.isArray(payload) && payload.length > 0) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-background border rounded-lg p-3 shadow-lg">
+        <p className="font-medium">{data.name}</p>
+        <p className="text-sm text-muted-foreground">{data.symbol}</p>
+        <p className="text-sm">
+          <span className="font-medium">{formatCurrencyTiny(data.value)}</span>
+          <span className="text-muted-foreground ml-2">
+            ({formatNumber(data.percentage, { maximumFractionDigits: 1 })}%)
+          </span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
+function CustomLegend({ payload }: LegendProps) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+      {payload?.map((entry, index) => (
+        <div key={index} className="flex items-center gap-2 text-sm">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="font-medium">{entry.payload.symbol}</span>
+          <span className="text-muted-foreground ml-auto">
+            {formatNumber(entry.payload.percentage, {
+              maximumFractionDigits: 1,
+            })}
+            %
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const TooltipContentElement = <CustomTooltip />;
+const LegendContentElement = <CustomLegend />;
 
 export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
   const allocationData = useMemo(() => {
@@ -115,49 +173,6 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
     );
   }
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-background border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">{data.symbol}</p>
-          <p className="text-sm">
-            <span className="font-medium">
-              {formatCurrencyTiny(data.value)}
-            </span>
-            <span className="text-muted-foreground ml-2">
-              ({formatNumber(data.percentage, { maximumFractionDigits: 1 })}%)
-            </span>
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const CustomLegend = ({ payload }: any) => {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-        {payload?.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="font-medium">{entry.payload.symbol}</span>
-            <span className="text-muted-foreground ml-auto">
-              {formatNumber(entry.payload.percentage, {
-                maximumFractionDigits: 1,
-              })}
-              %
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -183,8 +198,8 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend content={<CustomLegend />} />
+              <Tooltip content={TooltipContentElement} />
+              <Legend content={LegendContentElement} />
             </PieChart>
           </ResponsiveContainer>
         </div>

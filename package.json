@@ -41,6 +41,7 @@
     "axios": "^1.12.2",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
+    "eslint-formatter-unix": "^9.0.1",
     "happy-dom": "^20.0.8",
     "lucide-react": "^0.546.0",
     "prettier": "^3.6.2",

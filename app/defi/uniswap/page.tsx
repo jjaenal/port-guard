@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardHeader,
@@ -127,9 +128,11 @@ function UniswapDetailContent() {
           {/* Edited: Add Uniswap logo in page header */}
           <h1 className="text-3xl font-bold mb-1">
             <span className="inline-flex items-center gap-2">
-              <img
+              <Image
                 src="https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=029"
                 alt="Uniswap"
+                width={28}
+                height={28}
                 className="h-7 w-7"
               />
               <span>Uniswap v3 Positions</span>
@@ -151,9 +154,11 @@ function UniswapDetailContent() {
           {/* Edited: Add Uniswap logo in summary card header */}
           <CardTitle>
             <span className="flex items-center gap-2">
-              <img
+              <Image
                 src="https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=029"
                 alt="Uniswap"
+                width={20}
+                height={20}
                 className="h-5 w-5"
               />
               <span>Summary</span>
