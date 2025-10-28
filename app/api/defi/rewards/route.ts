@@ -13,6 +13,7 @@ import {
   tooManyResponse,
 } from "@/lib/utils/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { CACHE_TTLS } from "@/lib/config/cache";
 
 export const revalidate = 120; // cache 2 minutes
 
@@ -92,7 +93,7 @@ export async function GET(req: Request) {
     };
 
     // Store in cache for 5 minutes
-    await cacheSet(cacheKey, data, 300);
+    await cacheSet(cacheKey, data, CACHE_TTLS.DEFI_POSITIONS);
 
     return NextResponse.json(
       { data },

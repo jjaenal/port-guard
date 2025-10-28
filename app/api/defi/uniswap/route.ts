@@ -9,9 +9,10 @@ import {
   createErrorResponse,
   ErrorCodes,
   handleUnknownError,
+  validateEthereumAddress,
 } from "@/lib/utils/api-errors";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
-import { validateEthereumAddress } from "@/lib/utils/api-errors";
+import { CACHE_TTLS } from "@/lib/config/cache";
 
 export const revalidate = 60; // cache for 60s
 
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
     const cached =
       await cacheGet<ReturnType<typeof getUniswapV3Positions>>(cacheKey);
     if (cached) {
+      console.log(`[CACHE HIT] Uniswap data for ${address.toLowerCase()}`);
       return NextResponse.json(
         { data: cached },
         {
@@ -58,7 +60,7 @@ export async function GET(req: NextRequest) {
 
     const data = await getUniswapV3Positions(address as `0x${string}`);
     // Cache the result for 10 minutes
-    await cacheSet(cacheKey, data, 600);
+    await cacheSet(cacheKey, data, CACHE_TTLS.DEFI_POSITIONS);
     return NextResponse.json(
       { data },
       {

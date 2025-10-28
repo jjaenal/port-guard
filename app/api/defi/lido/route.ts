@@ -12,6 +12,7 @@ import {
   tooManyResponse,
 } from "@/lib/utils/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { CACHE_TTLS } from "@/lib/config/cache";
 
 export const revalidate = 120; // cache 2 minutes
 
@@ -41,12 +42,11 @@ export async function GET(req: Request) {
 
     // Try cache first (10 minutes TTL)
     const cacheKey = `defi:lido:${address}`;
-    const cached =
-      await cacheGet<ReturnType<typeof getLidoStethSummary>>(cacheKey);
-
+    const cached = await cacheGet<ReturnType<typeof getLidoStethSummary>>(cacheKey);
     if (cached) {
+      console.log(`[CACHE HIT] Lido data for ${address}`);
       return NextResponse.json(
-        { source: "lido:cache", data: cached },
+        { data: cached },
         {
           headers: {
             "X-RateLimit-Remaining": String(remaining),
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
     const data = await getLidoStethSummary(address as `0x${string}`);
 
     // Cache the result for 10 minutes
-    await cacheSet(cacheKey, data, 600);
+    await cacheSet(cacheKey, data, CACHE_TTLS.DEFI_POSITIONS);
 
     return NextResponse.json(
       { source: "lido:api+alchemy", data },

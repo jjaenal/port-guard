@@ -12,6 +12,7 @@ import {
   tooManyResponse,
 } from "@/lib/utils/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { CACHE_TTLS } from "@/lib/config/cache";
 
 export const revalidate = 120; // cache 2 minutes
 
@@ -41,12 +42,11 @@ export async function GET(req: Request) {
 
     // Try cache first (10 minutes TTL)
     const cacheKey = `defi:rocket-pool:${address}`;
-    const cached =
-      await cacheGet<ReturnType<typeof getRocketPoolSummary>>(cacheKey);
-
+    const cached = await cacheGet<ReturnType<typeof getRocketPoolSummary>>(cacheKey);
     if (cached) {
+      console.log(`[CACHE HIT] Rocket Pool data for ${address}`);
       return NextResponse.json(
-        { source: "rocket-pool:cache", data: cached },
+        { data: cached },
         {
           headers: {
             "X-RateLimit-Remaining": String(remaining),
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
     const data = await getRocketPoolSummary(address as `0x${string}`);
 
     // Cache the result for 10 minutes
-    await cacheSet(cacheKey, data, 600);
+    await cacheSet(cacheKey, data, CACHE_TTLS.DEFI_POSITIONS);
 
     return NextResponse.json(
       { source: "rocket-pool:api+alchemy", data },
