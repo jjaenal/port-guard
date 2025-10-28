@@ -143,6 +143,28 @@ export function handleUnknownError(error: unknown): NextResponse {
   }
 
   if (error instanceof Error) {
+    // CoinGecko-specific error mapping
+    if (error.message.includes("CoinGecko")) {
+      const match = error.message.match(/(\d{3})/);
+      const status = match ? Number(match[1]) : undefined;
+      if (status === 429) {
+        return createErrorResponse(ErrorCodes.RATE_LIMITED, "CoinGecko rate limit exceeded", 429);
+      }
+      if (status && status >= 500) {
+        return createErrorResponse(
+          ErrorCodes.EXTERNAL_API_ERROR,
+          `CoinGecko service error (${status})`,
+          status,
+        );
+      }
+      if (status && status >= 400 && status < 500) {
+        return createErrorResponse(
+          ErrorCodes.INVALID_PARAMETER,
+          `Invalid request to CoinGecko (${status})`,
+          status,
+        );
+      }
+    }
     // Check for specific error patterns
     if (error.message.includes("fetch")) {
       return createErrorResponse(

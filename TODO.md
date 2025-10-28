@@ -278,7 +278,7 @@
   - [x] Cache token prices (5 min)
   - [x] Cache balances (3 min)
   - [x] Cache DeFi positions (10 min)
-- [ ] Add service worker (PWA)
+  - [x] Add service worker (PWA) - Registered and caching strategies added
 - [x] Optimize bundle size - Webpack optimizations applied
 - [x] Test Lighthouse score (aim for 90+) - Good performance achieved
 

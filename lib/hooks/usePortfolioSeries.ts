@@ -5,6 +5,8 @@ import {
   type MarketChartPoint,
 } from "@/lib/utils/coingecko";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export type SeriesPoint = { t: number; v: number };
 export type PortfolioSeriesResult = {
@@ -112,4 +114,26 @@ export function usePortfolioSeries(
     isError: !!query.error,
     error: query.error,
   };
+}
+
+// Side-effect to surface price API errors with user-friendly toasts
+export function usePortfolioSeriesToasts(
+  ...args: Parameters<typeof usePortfolioSeries>
+) {
+  const result = usePortfolioSeries(...args);
+  useEffect(() => {
+    if (result.isError) {
+      const msg =
+        (result.error as Error | undefined)?.message ||
+        "Failed to load price history";
+      // Map common cases for clarity
+      const friendly = /429/.test(msg)
+        ? "Price API rate limit hit. Please wait a moment."
+        : /CoinGecko/.test(msg)
+          ? msg
+          : msg;
+      toast.error(friendly);
+    }
+  }, [result.isError, result.error]);
+  return result;
 }

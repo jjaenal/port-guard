@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { GA_TRACKING_ID, pageview } from "@/lib/analytics/gtag";
 import { SwRegister } from "@/components/sw-register";
+import { NetworkStatusToast } from "@/components/network-status-toast";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={wagmiConfig}>
         <RainbowKitProvider>{children}</RainbowKitProvider>
         <SwRegister />
+        <NetworkStatusToast />
       </WagmiProvider>
     </QueryClientProvider>
   );

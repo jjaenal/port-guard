@@ -9,6 +9,8 @@
  */
 import { useAccount, useBalance } from "wagmi";
 import { mainnet, polygon } from "wagmi/chains";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export type NativeBalance = {
   formatted: string;
@@ -100,4 +102,17 @@ export function useNativeBalances(): NativeBalances {
       matic.refetch();
     },
   };
+}
+
+// Side-effect to surface user-friendly toasts when errors occur
+export function useNativeBalancesToasts() {
+  const { isError, errorMessage, refetch } = useNativeBalances();
+  useEffect(() => {
+    if (isError) {
+      toast.error(errorMessage ?? "Failed to fetch native balances", {
+        description: "We will retry automatically. You can also tap to retry.",
+        action: { label: "Retry", onClick: () => refetch() },
+      });
+    }
+  }, [isError, errorMessage, refetch]);
 }
