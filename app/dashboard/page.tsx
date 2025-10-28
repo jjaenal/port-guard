@@ -39,6 +39,7 @@ import Link from "next/link";
 import { useLatestSnapshot } from "@/lib/hooks/useLatestSnapshot";
 import { useSnapshotHistory } from "@/lib/hooks/useSnapshotHistory";
 import { TokenHoldingsTable } from "@/components/ui/token-holdings-table";
+import { TokenHoldingsList } from "@/components/ui/token-holdings-list";
 import { usePortfolioSeries } from "@/lib/hooks/usePortfolioSeries";
 import { PortfolioChart } from "@/components/ui/portfolio-chart";
 import { TokenPerformance } from "@/components/ui/token-performance";
@@ -2103,7 +2104,14 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 ) : (
-                  <TokenHoldingsTable tokens={tokens} />
+                  <>
+                    <div className="sm:hidden">
+                      <TokenHoldingsList tokens={tokens} />
+                    </div>
+                    <div className="hidden sm:block">
+                      <TokenHoldingsTable tokens={tokens} />
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
