@@ -425,7 +425,7 @@
 - [ ] Setup Redis caching properly
   - [x] Cache token prices (5 min)
   - [x] Cache balances (3 min)
-  - [ ] Cache DeFi positions (10 min)
+  - [x] Cache DeFi positions (10 min) - Done with centralized CACHE_TTLS
 - [ ] Add service worker (PWA)
 - [x] Optimize bundle size - Webpack optimizations applied
 - [x] Test Lighthouse score (aim for 90+) - Good performance achieved

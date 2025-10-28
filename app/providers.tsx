@@ -8,6 +8,7 @@ import { wagmiConfig } from "../config/wagmi";
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { GA_TRACKING_ID, pageview } from "@/lib/analytics/gtag";
+import { SwRegister } from "@/components/sw-register";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={wagmiConfig}>
         <RainbowKitProvider>{children}</RainbowKitProvider>
+        <SwRegister />
       </WagmiProvider>
     </QueryClientProvider>
   );
