@@ -1,7 +1,13 @@
 import { PrismaClient, Alert } from "@/lib/generated/prisma";
 import { fetchTokenPrice } from "@/lib/api/coingecko";
+import { sendEmail, buildAlertEmailHtml } from "./notificationService";
 
-const prisma = new PrismaClient();
+let prisma = new PrismaClient();
+
+// Test-only hook: allow injecting Prisma client for unit tests
+export function __setPrismaClientForTest(client: PrismaClient) {
+  prisma = client;
+}
 
 /**
  * Checks if an alert condition is met based on current token price
@@ -79,8 +85,13 @@ export async function processAlerts(): Promise<void> {
               data: { lastTriggered: new Date() },
             });
 
-            // Here you would implement notification logic
-            // e.g., send email, push notification, etc.
+            // Send email notification if configured
+            await sendAlertNotification(alert, {
+              type: "price",
+              currentValue: price,
+              tokenSymbol: alert.tokenSymbol,
+            });
+
             console.log(
               `Alert triggered: ${alert.tokenSymbol} ${alert.operator} ${alert.value}`,
             );
@@ -112,6 +123,13 @@ export async function processAlerts(): Promise<void> {
             data: { lastTriggered: new Date() },
           });
 
+          // Send email notification if configured
+          await sendAlertNotification(alert, {
+            type: "portfolio",
+            currentValue,
+            address: alert.address,
+          });
+
           console.log(
             `Portfolio alert triggered: ${alert.address} ${alert.operator} ${alert.value} (current ${currentValue})`,
           );
@@ -122,6 +140,64 @@ export async function processAlerts(): Promise<void> {
     }
   } catch (error) {
     console.error("Error processing alerts:", error);
+  }
+}
+
+/**
+ * Sends email notification for triggered alert
+ */
+async function sendAlertNotification(
+  alert: Alert,
+  context: {
+    type: "price" | "portfolio";
+    currentValue: number;
+    tokenSymbol?: string | null;
+    address?: string | null;
+  },
+): Promise<void> {
+  try {
+    // For now, we'll use a placeholder email. In production, this would come from user settings
+    const recipientEmail = process.env.ALERT_NOTIFICATION_EMAIL || "admin@portguard.app";
+
+    let subject: string;
+    let message: string;
+
+    if (context.type === "price" && context.tokenSymbol) {
+      subject = `Price Alert: ${context.tokenSymbol} ${alert.operator} $${alert.value}`;
+      message = `Your ${context.tokenSymbol} price alert has been triggered!
+        
+Current price: $${context.currentValue.toFixed(2)}
+Alert condition: ${alert.operator} $${alert.value}
+        
+This alert was set up for your portfolio tracking.`;
+    } else if (context.type === "portfolio" && context.address) {
+      subject = `Portfolio Alert: ${alert.operator} $${alert.value}`;
+      message = `Your portfolio value alert has been triggered!
+        
+Current portfolio value: $${context.currentValue.toFixed(2)}
+Alert condition: ${alert.operator} $${alert.value}
+Wallet: ${context.address}
+        
+This alert was set up for your portfolio tracking.`;
+    } else {
+      return; // Skip if we don't have enough context
+    }
+
+    const html = buildAlertEmailHtml(subject, message);
+    
+    const result = await sendEmail({
+      to: [recipientEmail],
+      subject,
+      html,
+    });
+
+    if (result.success) {
+      console.log(`Email notification sent for alert ${alert.id}: ${result.id}`);
+    } else {
+      console.warn(`Failed to send email notification for alert ${alert.id}: ${result.error}`);
+    }
+  } catch (error) {
+    console.error(`Error sending alert notification for alert ${alert.id}:`, error);
   }
 }
 

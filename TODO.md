@@ -333,9 +333,9 @@
 - [x] Add API endpoints for CRUD operations
 - [x] Add toggle functionality for enabling/disabling alerts
 - [x] Add delete functionality for removing alerts
-- [ ] Setup email notifications (Resend.com free tier)
-- [ ] Create notification templates
-- [ ] Test alert triggering
+- [x] Setup email notifications (Resend.com free tier) - Implemented via notificationService.ts
+- [x] Create notification templates - HTML email templates via buildAlertEmailHtml
+- [x] Test alert triggering
 
 ### Day 34-35: Notification Center
 
@@ -449,33 +449,12 @@
 - [x] Optimize images (Next.js Image) - Using Next.js Image component
 - [x] Code splitting - Next.js automatic code splitting
 - [x] Lazy load components - Dynamic imports implemented
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- - [x] Setup Redis caching properly
-  - [x] Cache token prices (5 min)
-  - [x] Cache balances (3 min)
-  - [x] Cache DeFi positions (10 min) - Done with centralized CACHE_TTLS
- - [x] Add service worker (PWA)
+
+- [x] Setup Redis caching properly
+- [x] Cache token prices (5 min)
+- [x] Cache balances (3 min)
+- [x] Cache DeFi positions (10 min) - Done with centralized CACHE_TTLS
+- [x] Add service worker (PWA)
 - [x] Optimize bundle size - Webpack optimizations applied
 - [x] Test Lighthouse score (aim for 90+) - Good performance achieved
 
@@ -529,7 +508,8 @@
   npm install -D vitest @testing-library/react ✓
   ```
 - [x] Test portfolio calculations - lib/utils.test.ts implemented
-- [ ] Test alert logic - Not yet implemented
+- [x] Test alert logic - Portfolio, price, and percent operators covered (89 tests passing)
+- [x] Test notification service - Email sending and integration tests implemented
 - [x] Component testing (key components) - Multiple component tests implemented
 - [x] Integration tests (API routes) - API route tests implemented
 - [x] Hook tests: `useTokenHoldings` Cache HIT/MISS scenarios

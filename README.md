@@ -519,3 +519,11 @@ MIT License (keep it open to attract community)
 **Perfect for:** Solo developer, bootstrapped, 3-4 months to launch  
 **Initial Investment:** $500-2k (hosting, APIs, domain)  
 **Revenue Potential:** $5k-50k/month within 12 months
+
+## 🔑 Environment Variables
+
+```env
+# Notifications (server-side)
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=alerts@portguard.app
+```
