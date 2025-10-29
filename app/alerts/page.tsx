@@ -44,6 +44,7 @@ interface Alert {
 export default function AlertsPage() {
   const { address, isConnected } = useAccount();
   const [showForm, setShowForm] = useState(false);
+  const [type, setType] = useState<"price" | "portfolio">("price");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenAddress, setTokenAddress] = useState("");
   const [operator, setOperator] = useState("above");
@@ -149,9 +150,12 @@ export default function AlertsPage() {
   // Placeholder for actual alert creation
   const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!tokenSymbol || !value || !operator) {
+    if (!value || !operator) {
       toast.error("Please fill all required fields");
+      return;
+    }
+    if (type === "price" && !tokenSymbol) {
+      toast.error("Token symbol is required for price alerts");
       return;
     }
 
@@ -163,14 +167,22 @@ export default function AlertsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          type: "price",
-          tokenSymbol,
-          tokenAddress,
-          chain,
-          operator,
-          value,
-        }),
+        body: JSON.stringify(
+          type === "price"
+            ? {
+                type,
+                tokenSymbol,
+                tokenAddress,
+                chain,
+                operator,
+                value,
+              }
+            : {
+                type,
+                operator,
+                value,
+              },
+        ),
       });
 
       if (!response.ok) {
@@ -178,9 +190,17 @@ export default function AlertsPage() {
         throw new Error(error.error || "Failed to create alert");
       }
 
-      toast.success("Price alert created successfully", {
-        description: `You'll be notified when ${tokenSymbol} goes ${operator} $${value}`,
-      });
+      toast.success(
+        type === "price"
+          ? "Price alert created successfully"
+          : "Portfolio alert created successfully",
+        {
+          description:
+            type === "price"
+              ? `You'll be notified when ${tokenSymbol} goes ${operator} $${value}`
+              : `You'll be notified when portfolio value goes ${operator} $${value}`,
+        },
+      );
 
       // Reset form
       setShowForm(false);
@@ -188,6 +208,7 @@ export default function AlertsPage() {
       setTokenAddress("");
       setValue("");
       setOperator("above");
+      setType("price");
 
       // Refresh alerts
       fetchAlerts();
@@ -208,10 +229,10 @@ export default function AlertsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
-              Price Alerts
+              Alerts
             </CardTitle>
             <CardDescription>
-              Get notified when tokens reach your target price
+              Get notified when tokens reach target price or portfolio milestones
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -219,8 +240,7 @@ export default function AlertsPage() {
               <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">Connect your wallet</h3>
               <p className="text-sm text-muted-foreground mt-2 max-w-md">
-                Connect your wallet to create and manage price alerts for your
-                portfolio
+                Connect your wallet to create and manage alerts for your portfolio
               </p>
             </div>
           </CardContent>
@@ -236,10 +256,10 @@ export default function AlertsPage() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
-              Price Alerts
+              Alerts
             </CardTitle>
             <CardDescription>
-              Get notified when tokens reach your target price
+              Get notified when tokens reach target price or portfolio milestones
             </CardDescription>
           </div>
           <Button
@@ -262,31 +282,22 @@ export default function AlertsPage() {
               onSubmit={handleCreateAlert}
               className="space-y-4 border rounded-lg p-4"
             >
-              <h3 className="text-lg font-medium">Create Price Alert</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Token Symbol</label>
-                  <Input
-                    placeholder="ETH"
-                    value={tokenSymbol}
-                    onChange={(e) => setTokenSymbol(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Token Address (Optional)
-                  </label>
-                  <Input
-                    placeholder="0x..."
-                    value={tokenAddress}
-                    onChange={(e) => setTokenAddress(e.target.value)}
-                  />
-                </div>
-              </div>
+              <h3 className="text-lg font-medium">Create Alert</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Alert Type</label>
+                  <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select alert type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="price">Token Price</SelectItem>
+                      <SelectItem value="portfolio">Portfolio Value</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Condition</label>
                   <Select value={operator} onValueChange={setOperator}>
@@ -294,20 +305,18 @@ export default function AlertsPage() {
                       <SelectValue placeholder="Select condition" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="above">Price Above</SelectItem>
-                      <SelectItem value="below">Price Below</SelectItem>
-                      <SelectItem value="percent_increase">
-                        % Increase
-                      </SelectItem>
-                      <SelectItem value="percent_decrease">
-                        % Decrease
-                      </SelectItem>
+                      <SelectItem value="above">Above</SelectItem>
+                      <SelectItem value="below">Below</SelectItem>
+                      <SelectItem value="percent_increase">% Increase</SelectItem>
+                      <SelectItem value="percent_decrease">% Decrease</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Value</label>
+                  <label className="text-sm font-medium">
+                    {type === "portfolio" ? "Portfolio Value (USD)" : "Value"}
+                  </label>
                   <Input
                     type="number"
                     placeholder="1000"
@@ -315,20 +324,47 @@ export default function AlertsPage() {
                     onChange={(e) => setValue(e.target.value)}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Chain</label>
-                  <Select value={chain} onValueChange={setChain}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select chain" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ethereum">Ethereum</SelectItem>
-                      <SelectItem value="polygon">Polygon</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
+              {type === "price" && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Token Symbol</label>
+                      <Input
+                        placeholder="ETH"
+                        value={tokenSymbol}
+                        onChange={(e) => setTokenSymbol(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Token Address (Optional)
+                      </label>
+                      <Input
+                        placeholder="0x..."
+                        value={tokenAddress}
+                        onChange={(e) => setTokenAddress(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Chain</label>
+                      <Select value={chain} onValueChange={setChain}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select chain" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ethereum">Ethereum</SelectItem>
+                          <SelectItem value="polygon">Polygon</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>
@@ -361,7 +397,7 @@ export default function AlertsPage() {
                   >
                     <div>
                       <p className="font-medium">
-                        {alert.tokenSymbol}{" "}
+                        {alert.type === "portfolio" ? "Portfolio" : alert.tokenSymbol}{" "}
                         {alert.operator === "above"
                           ? ">"
                           : alert.operator === "below"
@@ -374,7 +410,7 @@ export default function AlertsPage() {
                           : `$${alert.value}`}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {alert.chain || "All chains"} • Created{" "}
+                        {alert.type === "portfolio" ? "Portfolio" : alert.chain || "All chains"} • Created{" "}
                         {new Date(alert.createdAt).toLocaleDateString()}
                       </p>
                     </div>

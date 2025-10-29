@@ -90,6 +90,36 @@ export async function processAlerts(): Promise<void> {
         console.error(`Error processing alerts for token ${token}:`, error);
       }
     }
+
+    // Process portfolio value alerts using latest snapshots
+    const portfolioAlerts = alerts.filter((a) => a.type === "portfolio");
+    for (const alert of portfolioAlerts) {
+      try {
+        // Get latest snapshot for the alert's address
+        const snapshot = await prisma.portfolioSnapshot.findFirst({
+          where: { address: alert.address },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (!snapshot) continue;
+
+        const currentValue = snapshot.totalValue ?? 0;
+        const isTriggered = await checkAlertCondition(alert, currentValue);
+
+        if (isTriggered) {
+          await prisma.alert.update({
+            where: { id: alert.id },
+            data: { lastTriggered: new Date() },
+          });
+
+          console.log(
+            `Portfolio alert triggered: ${alert.address} ${alert.operator} ${alert.value} (current ${currentValue})`,
+          );
+        }
+      } catch (error) {
+        console.error(`Error processing portfolio alert for ${alert.address}:`, error);
+      }
+    }
   } catch (error) {
     console.error("Error processing alerts:", error);
   }
