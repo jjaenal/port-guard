@@ -51,9 +51,12 @@ export async function sendEmail(params: EmailParams): Promise<EmailResult> {
 
   if (!response.ok) {
     const data = (await response.json()) as unknown;
-    const message = typeof data === "object" && data && "error" in (data as Record<string, unknown>)
-      ? String((data as Record<string, unknown>).error)
-      : `HTTP ${response.status}`;
+    const message =
+      typeof data === "object" &&
+      data &&
+      "error" in (data as Record<string, unknown>)
+        ? String((data as Record<string, unknown>).error)
+        : `HTTP ${response.status}`;
     return { success: false, error: message };
   }
 

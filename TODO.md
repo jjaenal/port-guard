@@ -339,8 +339,8 @@
 
 ### Day 34-35: Notification Center
 
-- [ ] Build notification inbox UI
-- [ ] Show recent notifications
+- [x] Build notification inbox UI
+- [x] Show recent notifications
 - [ ] Mark as read/unread
 - [ ] Add notification preferences
 - [ ] Implement browser notifications (optional)

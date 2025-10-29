@@ -3,18 +3,12 @@ import { categorizeTransaction, formatTimestamp } from "./transactions";
 
 describe("transactions utils", () => {
   it("categorizes send when address is sender", () => {
-    const cat = categorizeTransaction(
-      { from: "0xabc", to: "0xdef" },
-      "0xAbC",
-    );
+    const cat = categorizeTransaction({ from: "0xabc", to: "0xdef" }, "0xAbC");
     expect(cat).toBe("send");
   });
 
   it("categorizes receive when address is recipient", () => {
-    const cat = categorizeTransaction(
-      { from: "0xdef", to: "0xabc" },
-      "0xAbC",
-    );
+    const cat = categorizeTransaction({ from: "0xdef", to: "0xabc" }, "0xAbC");
     expect(cat).toBe("receive");
   });
 

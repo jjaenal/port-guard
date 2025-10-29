@@ -32,7 +32,9 @@ export default function TransactionsPage() {
         const text = await res.text();
         try {
           const j = JSON.parse(text);
-          throw new Error(j?.error?.message || `Transactions API error: ${res.status}`);
+          throw new Error(
+            j?.error?.message || `Transactions API error: ${res.status}`,
+          );
         } catch {
           throw new Error(`Transactions API error: ${res.status} ${text}`);
         }
@@ -80,16 +82,17 @@ export default function TransactionsPage() {
             {isLoading ? "Loading..." : "Fetch"}
           </button>
         </div>
-        {error && (
-          <div className="text-red-600 text-sm">{error}</div>
-        )}
+        {error && <div className="text-red-600 text-sm">{error}</div>}
       </div>
 
       <div className="rounded border">
         <div className="px-3 py-2 border-b text-sm text-gray-600">{header}</div>
         <div>
           {items.map((tx) => (
-            <div key={tx.hash} className="px-3 py-3 border-b flex flex-col gap-1">
+            <div
+              key={tx.hash}
+              className="px-3 py-3 border-b flex flex-col gap-1"
+            >
               <div className="flex gap-2 items-center">
                 <span
                   className={
@@ -102,7 +105,9 @@ export default function TransactionsPage() {
                 >
                   {tx.category.toUpperCase()}
                 </span>
-                <span className="text-xs text-gray-500">{formatTimestamp(tx.timestamp)}</span>
+                <span className="text-xs text-gray-500">
+                  {formatTimestamp(tx.timestamp)}
+                </span>
               </div>
               <div className="text-sm break-all">
                 <div>
@@ -116,7 +121,8 @@ export default function TransactionsPage() {
                 <div className="text-gray-700">
                   {typeof tx.value === "number" && (
                     <span>
-                      {tx.value} {tx.asset || (chain === "polygon" ? "MATIC" : "ETH")}
+                      {tx.value}{" "}
+                      {tx.asset || (chain === "polygon" ? "MATIC" : "ETH")}
                     </span>
                   )}
                 </div>
@@ -124,7 +130,9 @@ export default function TransactionsPage() {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="px-3 py-6 text-center text-sm text-gray-500">No transactions fetched yet</div>
+            <div className="px-3 py-6 text-center text-sm text-gray-500">
+              No transactions fetched yet
+            </div>
           )}
         </div>
       </div>

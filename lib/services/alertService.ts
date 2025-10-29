@@ -135,7 +135,10 @@ export async function processAlerts(): Promise<void> {
           );
         }
       } catch (error) {
-        console.error(`Error processing portfolio alert for ${alert.address}:`, error);
+        console.error(
+          `Error processing portfolio alert for ${alert.address}:`,
+          error,
+        );
       }
     }
   } catch (error) {
@@ -157,7 +160,8 @@ async function sendAlertNotification(
 ): Promise<void> {
   try {
     // For now, we'll use a placeholder email. In production, this would come from user settings
-    const recipientEmail = process.env.ALERT_NOTIFICATION_EMAIL || "admin@portguard.app";
+    const recipientEmail =
+      process.env.ALERT_NOTIFICATION_EMAIL || "admin@portguard.app";
 
     let subject: string;
     let message: string;
@@ -184,7 +188,7 @@ This alert was set up for your portfolio tracking.`;
     }
 
     const html = buildAlertEmailHtml(subject, message);
-    
+
     const result = await sendEmail({
       to: [recipientEmail],
       subject,
@@ -192,12 +196,19 @@ This alert was set up for your portfolio tracking.`;
     });
 
     if (result.success) {
-      console.log(`Email notification sent for alert ${alert.id}: ${result.id}`);
+      console.log(
+        `Email notification sent for alert ${alert.id}: ${result.id}`,
+      );
     } else {
-      console.warn(`Failed to send email notification for alert ${alert.id}: ${result.error}`);
+      console.warn(
+        `Failed to send email notification for alert ${alert.id}: ${result.error}`,
+      );
     }
   } catch (error) {
-    console.error(`Error sending alert notification for alert ${alert.id}:`, error);
+    console.error(
+      `Error sending alert notification for alert ${alert.id}:`,
+      error,
+    );
   }
 }
 

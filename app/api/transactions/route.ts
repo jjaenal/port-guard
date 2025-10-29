@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
-import { validateEthereumAddress, AppError, ErrorCodes, handleUnknownError } from "@/lib/utils/api-errors";
-import { rateLimit, getClientKey, tooManyResponse } from "@/lib/utils/rate-limit";
-import type { TransactionCategory, TransferEvent } from "@/lib/utils/transactions";
+import {
+  validateEthereumAddress,
+  AppError,
+  ErrorCodes,
+  handleUnknownError,
+} from "@/lib/utils/api-errors";
+import {
+  rateLimit,
+  getClientKey,
+  tooManyResponse,
+} from "@/lib/utils/rate-limit";
+import type {
+  TransactionCategory,
+  TransferEvent,
+} from "@/lib/utils/transactions";
 import { categorizeTransaction } from "@/lib/utils/transactions";
 
 type ChainKey = "ethereum" | "polygon";
@@ -18,7 +30,10 @@ type JsonRpcResponse<T> = {
   error?: { code?: number; message?: string; data?: unknown };
 };
 
-async function rpcFetch<T>(url: string, body: { method: string; params?: unknown[] }): Promise<T> {
+async function rpcFetch<T>(
+  url: string,
+  body: { method: string; params?: unknown[] },
+): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -27,7 +42,7 @@ async function rpcFetch<T>(url: string, body: { method: string; params?: unknown
   if (!res.ok) throw new Error(`Alchemy RPC failed: ${res.status}`);
   const json = (await res.json()) as JsonRpcResponse<T>;
   if (json.error) throw new Error(json.error.message || "Alchemy RPC error");
-  return (json.result as T) as T;
+  return json.result as T as T;
 }
 
 function resolveApiKey(chain: ChainKey): string | null {
@@ -59,16 +74,26 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const address = url.searchParams.get("address") || "";
-    const chainParam = (url.searchParams.get("chain") || "ethereum").toLowerCase();
+    const chainParam = (
+      url.searchParams.get("chain") || "ethereum"
+    ).toLowerCase();
     const chain: ChainKey = chainParam === "polygon" ? "polygon" : "ethereum";
 
     if (!validateEthereumAddress(address)) {
-      throw new AppError(ErrorCodes.INVALID_ADDRESS, "Invalid Ethereum address", 400);
+      throw new AppError(
+        ErrorCodes.INVALID_ADDRESS,
+        "Invalid Ethereum address",
+        400,
+      );
     }
 
     const apiKey = resolveApiKey(chain);
     if (!apiKey) {
-      throw new AppError(ErrorCodes.INVALID_PARAMETER, `Missing Alchemy API key for ${chain}`, 400);
+      throw new AppError(
+        ErrorCodes.INVALID_PARAMETER,
+        `Missing Alchemy API key for ${chain}`,
+        400,
+      );
     }
 
     const endpoint = ALCHEMY_ENDPOINTS[chain](apiKey);
@@ -97,7 +122,9 @@ export async function GET(request: Request) {
       ],
     });
 
-    const data: Array<TransferEvent & { category: TransactionCategory }> = (transfers?.transfers || []).map((t) => {
+    const data: Array<TransferEvent & { category: TransactionCategory }> = (
+      transfers?.transfers || []
+    ).map((t) => {
       const ts = t?.metadata?.blockTimestamp
         ? Math.floor(new Date(t.metadata.blockTimestamp).getTime() / 1000)
         : undefined;

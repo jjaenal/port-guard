@@ -41,7 +41,7 @@ const fakeClient: FakePrismaClient = {
 describe("alertService - portfolio alerts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Reset mocks
     findManyMock.mockResolvedValue([]);
     updateMock.mockResolvedValue({} as never);
@@ -53,123 +53,127 @@ describe("alertService - portfolio alerts", () => {
       id: "email_123",
     });
 
-describe("processAlerts - notification integration", () => {
-  it("sends email notification when price alert is triggered", async () => {
-    // Mock price fetch to return 150 (above threshold of 100)
-    vi.mocked(fetchTokenPrice).mockResolvedValue(150);
+    describe("processAlerts - notification integration", () => {
+      it("sends email notification when price alert is triggered", async () => {
+        // Mock price fetch to return 150 (above threshold of 100)
+        vi.mocked(fetchTokenPrice).mockResolvedValue(150);
 
-    // Mock alert that should trigger
-    const mockAlert = {
-      id: "alert_price_above",
-      type: "price",
-      tokenSymbol: "ETH",
-      operator: "above",
-      value: 100,
-      enabled: true,
-      address: null,
-      lastTriggered: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+        // Mock alert that should trigger
+        const mockAlert = {
+          id: "alert_price_above",
+          type: "price",
+          tokenSymbol: "ETH",
+          operator: "above",
+          value: 100,
+          enabled: true,
+          address: null,
+          lastTriggered: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
 
-    findManyMock.mockResolvedValue([mockAlert]);
+        findManyMock.mockResolvedValue([mockAlert]);
 
-    await processAlerts();
+        await processAlerts();
 
-    // Verify email was sent
-    expect(notificationService.sendEmail).toHaveBeenCalledWith({
-      to: ["admin@portguard.app"],
-      subject: "Price Alert: ETH above $100",
-      html: "<html>test</html>",
+        // Verify email was sent
+        expect(notificationService.sendEmail).toHaveBeenCalledWith({
+          to: ["admin@portguard.app"],
+          subject: "Price Alert: ETH above $100",
+          html: "<html>test</html>",
+        });
+
+        expect(notificationService.buildAlertEmailHtml).toHaveBeenCalledWith(
+          "Price Alert: ETH above $100",
+          expect.stringContaining("Current price: $150.00"),
+        );
+      });
+
+      it("sends email notification when portfolio alert is triggered", async () => {
+        // Mock portfolio snapshot with value above threshold
+        const mockSnapshot = {
+          id: "snapshot_1",
+          address: "0x123",
+          totalValue: 5500,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        findFirstSnapshotMock.mockResolvedValue(mockSnapshot);
+
+        // Mock portfolio alert that should trigger
+        const mockAlert = {
+          id: "alert_portfolio_above",
+          type: "portfolio",
+          tokenSymbol: null,
+          operator: "above",
+          value: 5000,
+          enabled: true,
+          address: "0x123",
+          lastTriggered: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        findManyMock.mockResolvedValue([mockAlert]);
+
+        await processAlerts();
+
+        // Verify email was sent
+        expect(notificationService.sendEmail).toHaveBeenCalledWith({
+          to: ["admin@portguard.app"],
+          subject: "Portfolio Alert: above $5000",
+          html: "<html>test</html>",
+        });
+
+        expect(notificationService.buildAlertEmailHtml).toHaveBeenCalledWith(
+          "Portfolio Alert: above $5000",
+          expect.stringContaining("Current portfolio value: $5500.00"),
+        );
+      });
+
+      it("handles notification failure gracefully", async () => {
+        // Mock notification service to fail
+        vi.mocked(notificationService.sendEmail).mockResolvedValue({
+          success: false,
+          error: "API key not configured",
+        });
+
+        // Mock price fetch and alert
+        vi.mocked(fetchTokenPrice).mockResolvedValue(150);
+        const mockAlert = {
+          id: "alert_price_above",
+          type: "price",
+          tokenSymbol: "ETH",
+          operator: "above",
+          value: 100,
+          enabled: true,
+          address: null,
+          lastTriggered: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        findManyMock.mockResolvedValue([mockAlert]);
+
+        // Should not throw error even if notification fails
+        await expect(processAlerts()).resolves.not.toThrow();
+
+        // Alert should still be updated
+        expect(updateMock).toHaveBeenCalledWith({
+          where: { id: "alert_price_above" },
+          data: { lastTriggered: expect.any(Date) },
+        });
+      });
     });
-
-    expect(notificationService.buildAlertEmailHtml).toHaveBeenCalledWith(
-      "Price Alert: ETH above $100",
-      expect.stringContaining("Current price: $150.00"),
+    vi.spyOn(notificationService, "buildAlertEmailHtml").mockReturnValue(
+      "<html>test</html>",
     );
-  });
-
-  it("sends email notification when portfolio alert is triggered", async () => {
-    // Mock portfolio snapshot with value above threshold
-    const mockSnapshot = {
-      id: "snapshot_1",
-      address: "0x123",
-      totalValue: 5500,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    findFirstSnapshotMock.mockResolvedValue(mockSnapshot);
-
-    // Mock portfolio alert that should trigger
-    const mockAlert = {
-      id: "alert_portfolio_above",
-      type: "portfolio",
-      tokenSymbol: null,
-      operator: "above",
-      value: 5000,
-      enabled: true,
-      address: "0x123",
-      lastTriggered: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    findManyMock.mockResolvedValue([mockAlert]);
-
-    await processAlerts();
-
-    // Verify email was sent
-    expect(notificationService.sendEmail).toHaveBeenCalledWith({
-      to: ["admin@portguard.app"],
-      subject: "Portfolio Alert: above $5000",
-      html: "<html>test</html>",
-    });
-
-    expect(notificationService.buildAlertEmailHtml).toHaveBeenCalledWith(
-      "Portfolio Alert: above $5000",
-      expect.stringContaining("Current portfolio value: $5500.00"),
-    );
-  });
-
-  it("handles notification failure gracefully", async () => {
-    // Mock notification service to fail
-    vi.mocked(notificationService.sendEmail).mockResolvedValue({
-      success: false,
-      error: "API key not configured",
-    });
-
-    // Mock price fetch and alert
-    vi.mocked(fetchTokenPrice).mockResolvedValue(150);
-    const mockAlert = {
-      id: "alert_price_above",
-      type: "price",
-      tokenSymbol: "ETH",
-      operator: "above",
-      value: 100,
-      enabled: true,
-      address: null,
-      lastTriggered: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    findManyMock.mockResolvedValue([mockAlert]);
-
-    // Should not throw error even if notification fails
-    await expect(processAlerts()).resolves.not.toThrow();
-
-    // Alert should still be updated
-    expect(updateMock).toHaveBeenCalledWith({
-      where: { id: "alert_price_above" },
-      data: { lastTriggered: expect.any(Date) },
-    });
-  });
-});
-    vi.spyOn(notificationService, "buildAlertEmailHtml").mockReturnValue("<html>test</html>");
 
     // Inject fake client before each test
-    __setPrismaClientForTest(fakeClient as unknown as import("@/lib/generated/prisma").PrismaClient);
+    __setPrismaClientForTest(
+      fakeClient as unknown as import("@/lib/generated/prisma").PrismaClient,
+    );
   });
 
   afterEach(() => {
@@ -280,7 +284,9 @@ describe("processAlerts - notification integration", () => {
 describe("alertService - price alerts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    __setPrismaClientForTest(fakeClient as unknown as import("@/lib/generated/prisma").PrismaClient);
+    __setPrismaClientForTest(
+      fakeClient as unknown as import("@/lib/generated/prisma").PrismaClient,
+    );
   });
 
   it("triggers 'above' price alert when price is greater than threshold", async () => {

@@ -19,6 +19,7 @@ import {
   Loader2,
   BellOff,
   Trash2,
+  BellRing,
 } from "lucide-react";
 import {
   Select,
@@ -53,6 +54,7 @@ export default function AlertsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showRecent, setShowRecent] = useState(true);
 
   // useEffect moved below to avoid using fetchAlerts before declaration
 
@@ -232,7 +234,8 @@ export default function AlertsPage() {
               Alerts
             </CardTitle>
             <CardDescription>
-              Get notified when tokens reach target price or portfolio milestones
+              Get notified when tokens reach target price or portfolio
+              milestones
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -240,7 +243,8 @@ export default function AlertsPage() {
               <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">Connect your wallet</h3>
               <p className="text-sm text-muted-foreground mt-2 max-w-md">
-                Connect your wallet to create and manage alerts for your portfolio
+                Connect your wallet to create and manage alerts for your
+                portfolio
               </p>
             </div>
           </CardContent>
@@ -259,7 +263,8 @@ export default function AlertsPage() {
               Alerts
             </CardTitle>
             <CardDescription>
-              Get notified when tokens reach target price or portfolio milestones
+              Get notified when tokens reach target price or portfolio
+              milestones
             </CardDescription>
           </div>
           <Button
@@ -287,7 +292,10 @@ export default function AlertsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Alert Type</label>
-                  <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+                  <Select
+                    value={type}
+                    onValueChange={(v) => setType(v as typeof type)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select alert type" />
                     </SelectTrigger>
@@ -307,8 +315,12 @@ export default function AlertsPage() {
                     <SelectContent>
                       <SelectItem value="above">Above</SelectItem>
                       <SelectItem value="below">Below</SelectItem>
-                      <SelectItem value="percent_increase">% Increase</SelectItem>
-                      <SelectItem value="percent_decrease">% Decrease</SelectItem>
+                      <SelectItem value="percent_increase">
+                        % Increase
+                      </SelectItem>
+                      <SelectItem value="percent_decrease">
+                        % Decrease
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -329,7 +341,9 @@ export default function AlertsPage() {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Token Symbol</label>
+                      <label className="text-sm font-medium">
+                        Token Symbol
+                      </label>
                       <Input
                         placeholder="ETH"
                         value={tokenSymbol}
@@ -387,59 +401,156 @@ export default function AlertsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Your Alerts</h3>
-              <div className="divide-y border rounded-lg">
-                {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="p-4 flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {alert.type === "portfolio" ? "Portfolio" : alert.tokenSymbol}{" "}
-                        {alert.operator === "above"
-                          ? ">"
-                          : alert.operator === "below"
-                            ? "<"
-                            : alert.operator === "percent_increase"
-                              ? "↑"
-                              : "↓"}{" "}
-                        {alert.operator.includes("percent")
-                          ? `${alert.value}%`
-                          : `$${alert.value}`}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {alert.type === "portfolio" ? "Portfolio" : alert.chain || "All chains"} • Created{" "}
-                        {new Date(alert.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={alert.enabled ? "Disable alert" : "Enable alert"}
-                        onClick={() =>
-                          handleToggleAlert(alert.id, !alert.enabled)
-                        }
-                      >
-                        {alert.enabled ? (
-                          <Bell className="h-4 w-4" />
-                        ) : (
-                          <BellOff className="h-4 w-4" />
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Your Alerts</h3>
+                <div className="divide-y border rounded-lg">
+                  {alerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className="p-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {alert.type === "portfolio"
+                            ? "Portfolio"
+                            : alert.tokenSymbol}{" "}
+                          {alert.operator === "above"
+                            ? ">"
+                            : alert.operator === "below"
+                              ? "<"
+                              : alert.operator === "percent_increase"
+                                ? "↑"
+                                : "↓"}{" "}
+                          {alert.operator.includes("percent")
+                            ? `${alert.value}%`
+                            : `$${alert.value}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {alert.type === "portfolio"
+                            ? "Portfolio"
+                            : alert.chain || "All chains"}{" "}
+                          • Created{" "}
+                          {new Date(alert.createdAt).toLocaleDateString()}
+                        </p>
+                        {alert.lastTriggered && (
+                          <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                            <BellRing className="h-3 w-3" />
+                            Triggered{" "}
+                            {new Date(alert.lastTriggered).toLocaleString()}
+                          </p>
                         )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Delete alert"
-                        onClick={() => handleDeleteAlert(alert.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={
+                            alert.enabled ? "Disable alert" : "Enable alert"
+                          }
+                          onClick={() =>
+                            handleToggleAlert(alert.id, !alert.enabled)
+                          }
+                        >
+                          {alert.enabled ? (
+                            <Bell className="h-4 w-4" />
+                          ) : (
+                            <BellOff className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Delete alert"
+                          onClick={() => handleDeleteAlert(alert.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Recent Notifications</h3>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowRecent((v) => !v)}
+                  >
+                    {showRecent ? "Hide" : "Show"}
+                  </Button>
+                </div>
+                {showRecent &&
+                  (() => {
+                    const recent = alerts
+                      .filter((a) => a.lastTriggered)
+                      .sort((a, b) => {
+                        const at = a.lastTriggered
+                          ? new Date(a.lastTriggered).getTime()
+                          : 0;
+                        const bt = b.lastTriggered
+                          ? new Date(b.lastTriggered).getTime()
+                          : 0;
+                        return bt - at;
+                      });
+                    if (recent.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-6 text-center border rounded-lg">
+                          <BellOff className="h-6 w-6 text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            No notifications yet
+                          </p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="divide-y border rounded-lg">
+                        {recent.map((alert) => (
+                          <div
+                            key={`recent-${alert.id}`}
+                            className="p-4 flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-medium flex items-center gap-2">
+                                <BellRing className="h-4 w-4 text-green-600" />
+                                {alert.type === "portfolio"
+                                  ? "Portfolio"
+                                  : alert.tokenSymbol}{" "}
+                                notification
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {alert.operator}{" "}
+                                {alert.operator.includes("percent")
+                                  ? `${alert.value}%`
+                                  : `$${alert.value}`}
+                                {alert.chain ? ` • ${alert.chain}` : ""}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {alert.lastTriggered
+                                  ? new Date(
+                                      alert.lastTriggered,
+                                    ).toLocaleString()
+                                  : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  toast.info("Notification acknowledged")
+                                }
+                              >
+                                Acknowledge
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
               </div>
             </div>
           )}
