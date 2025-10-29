@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { TokenPerformance } from "./token-performance";
 import { formatCurrencyTiny } from "@/lib/utils";
@@ -159,5 +159,64 @@ describe("TokenPerformance component", () => {
     expect(
       screen.getByText(/No tokens lost value in the last 24 hours/i),
     ).toBeInTheDocument();
+  });
+
+  it("exports CSV for gainers when button clicked", () => {
+    const tokens: TokenHoldingDTO[] = [
+      {
+        chain: "ethereum",
+        contractAddress: "0xeth",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        balance: "1000000000000000000",
+        formatted: "1",
+        priceUsd: 2000,
+        priceChange24h: 5,
+        valueUsd: 1000,
+        change24h: 5,
+      },
+    ];
+
+    const createUrlSpy = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:mock-url");
+
+    render(<TokenPerformance tokens={tokens} />);
+
+    const exportBtn = screen.getAllByRole("button", { name: /Export CSV/i })[0];
+
+    expect(exportBtn).not.toBeDisabled();
+    fireEvent.click(exportBtn);
+
+    expect(createUrlSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables export buttons when no gainers/losers", () => {
+    const tokens: TokenHoldingDTO[] = [
+      {
+        chain: "ethereum",
+        contractAddress: "0xneutral",
+        symbol: "NEU",
+        name: "Neutral",
+        decimals: 18,
+        balance: "1000000000000000000",
+        formatted: "1",
+        priceUsd: 10,
+        priceChange24h: 0.005,
+        valueUsd: 10,
+        change24h: 0.005, // neutral
+      },
+    ];
+
+    render(<TokenPerformance tokens={tokens} />);
+
+    const exportButtons = screen.getAllByRole("button", {
+      name: /Export CSV/i,
+    });
+    const [exportGainersBtn, exportLosersBtn] = exportButtons;
+
+    expect(exportGainersBtn).toBeDisabled();
+    expect(exportLosersBtn).toBeDisabled();
   });
 });

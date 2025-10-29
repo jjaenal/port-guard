@@ -1,19 +1,32 @@
 "use client";
 import React, { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 import { formatCurrencyTiny, formatPercentSigned } from "@/lib/utils";
 
 type Props = { tokens: TokenHoldingDTO[] };
 
 export function TokenHoldingsList({ tokens }: Props) {
+  const params = useSearchParams();
+  const chainParam = params?.get("chain") ?? "all";
+  const hideTinyParam = params?.get("hideTiny") ?? null;
+  const filtered = useMemo(() => {
+    const hideTiny = hideTinyParam === "1";
+    return tokens.filter((t) => {
+      const chainOk = chainParam === "all" ? true : t.chain === chainParam;
+      const smallOk = hideTiny ? (t.valueUsd ?? Infinity) >= 1 : true;
+      return chainOk && smallOk;
+    });
+  }, [tokens, chainParam, hideTinyParam]);
+
   const totalValue = useMemo(
-    () => tokens.reduce((sum, t) => sum + (t.valueUsd ?? 0), 0),
-    [tokens],
+    () => filtered.reduce((sum, t) => sum + (t.valueUsd ?? 0), 0),
+    [filtered],
   );
 
   return (
     <div className="sm:hidden space-y-2">
-      {tokens.map((t) => {
+      {filtered.map((t) => {
         const value = t.valueUsd ?? 0;
         const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
         const change = t.change24h ?? null;
@@ -50,7 +63,9 @@ export function TokenHoldingsList({ tokens }: Props) {
                 className={`text-xs ${change !== null ? (change >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}
               >
                 {change !== null ? formatPercentSigned(change) : "-"}
-                <span className="ml-2 text-muted-foreground">{pct.toFixed(2)}%</span>
+                <span className="ml-2 text-muted-foreground">
+                  {pct.toFixed(2)}%
+                </span>
               </div>
             </div>
           </div>

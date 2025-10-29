@@ -42,7 +42,8 @@ export async function GET(req: Request) {
 
     // Try cache first (10 minutes TTL)
     const cacheKey = `defi:lido:${address}`;
-    const cached = await cacheGet<ReturnType<typeof getLidoStethSummary>>(cacheKey);
+    const cached =
+      await cacheGet<ReturnType<typeof getLidoStethSummary>>(cacheKey);
     if (cached) {
       console.log(`[CACHE HIT] Lido data for ${address}`);
       return NextResponse.json(

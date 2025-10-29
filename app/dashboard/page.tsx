@@ -33,6 +33,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -49,9 +50,11 @@ import { mainnet } from "wagmi/chains";
 import { CacheBadge } from "@/components/ui/cache-badge";
 import { CACHE_TTLS } from "@/lib/config/cache";
 import { cacheTitle } from "@/lib/utils/cache";
+import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
+  const searchParams = useSearchParams();
   const {
     eth,
     matic,
@@ -109,7 +112,7 @@ export default function DashboardPage() {
     queryKey: ["api-prices", "eth-matic"],
     queryFn: async () => {
       const response = await fetch(
-        "/api/prices?ids=ethereum,matic-network&vs=usd"
+        "/api/prices?ids=ethereum,matic-network&vs=usd",
       );
       const json = await response.json();
       return json.data || {};
@@ -160,7 +163,7 @@ export default function DashboardPage() {
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
-      rangeDays
+      rangeDays,
     );
 
   // Series khusus 24 jam untuk kalkulasi perubahan keseluruhan portofolio
@@ -170,7 +173,7 @@ export default function DashboardPage() {
       maticAmount,
       tokens,
       isConnected || !!overrideAddress,
-      1
+      1,
     );
 
   // Uniswap LP summary
@@ -228,7 +231,7 @@ export default function DashboardPage() {
           totals: { suppliedCount: 0, borrowedCount: 0 },
         };
       const res = await fetch(
-        `/api/defi/aave?address=${a}&chains=ethereum,polygon`
+        `/api/defi/aave?address=${a}&chains=ethereum,polygon`,
       );
       const bodyText = await res.text();
       if (!res.ok) {
@@ -750,7 +753,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() =>
                     setOverrideAddress(
-                      "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                      "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                     )
                   }
                   className="text-xs"
@@ -762,7 +765,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() =>
                     setOverrideAddress(
-                      "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503"
+                      "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
                     )
                   }
                   className="text-xs"
@@ -774,7 +777,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() =>
                     setOverrideAddress(
-                      "0x28C6c06298d514Db089934071355E5743bf21d60"
+                      "0x28C6c06298d514Db089934071355E5743bf21d60",
                     )
                   }
                   className="text-xs"
@@ -861,7 +864,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                        "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                       )
                     }
                     className="text-xs"
@@ -873,7 +876,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503"
+                        "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
                       )
                     }
                     className="text-xs"
@@ -885,7 +888,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={() =>
                       setOverrideAddress(
-                        "0x28C6c06298d514Db089934071355E5743bf21d60"
+                        "0x28C6c06298d514Db089934071355E5743bf21d60",
                       )
                     }
                     className="text-xs"
@@ -1092,7 +1095,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.ethereum?.usd_24h_change ?? 0
+                        prices?.ethereum?.usd_24h_change ?? 0,
                       )}
                     </span>
                   </div>
@@ -1125,7 +1128,7 @@ export default function DashboardPage() {
                       className={`$${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
                       {formatPercentSigned(
-                        prices?.["matic-network"]?.usd_24h_change ?? 0
+                        prices?.["matic-network"]?.usd_24h_change ?? 0,
                       )}
                     </span>
                   </div>
@@ -1176,7 +1179,7 @@ export default function DashboardPage() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          }
+                          },
                         )}
                       </span>
                     </div>
@@ -1271,7 +1274,7 @@ export default function DashboardPage() {
                       <div className="font-medium">
                         {typeof lidoData?.estimatedDailyRewardsUsd === "number"
                           ? formatCurrency(
-                              lidoData.estimatedDailyRewardsUsd * 30
+                              lidoData.estimatedDailyRewardsUsd * 30,
                             )
                           : "-"}
                       </div>
@@ -1360,7 +1363,7 @@ export default function DashboardPage() {
                         {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
                         "number"
                           ? formatCurrency(
-                              rocketPoolData.estimatedDailyRewardsUsd
+                              rocketPoolData.estimatedDailyRewardsUsd,
                             )
                           : "-"}
                       </div>
@@ -1371,7 +1374,7 @@ export default function DashboardPage() {
                         {typeof rocketPoolData?.estimatedDailyRewardsUsd ===
                         "number"
                           ? formatCurrency(
-                              rocketPoolData.estimatedDailyRewardsUsd * 30
+                              rocketPoolData.estimatedDailyRewardsUsd * 30,
                             )
                           : "-"}
                       </div>
@@ -1417,7 +1420,7 @@ export default function DashboardPage() {
                         : formatCurrency(
                             (rewardsData?.totals?.dailyUsd ??
                               fallbackDailyRewardsUsd) ||
-                              0
+                              0,
                           )}
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1431,7 +1434,7 @@ export default function DashboardPage() {
                             : formatCurrency(
                                 (rewardsData?.totals?.dailyUsd ??
                                   fallbackDailyRewardsUsd) ||
-                                  0
+                                  0,
                               )}
                         </div>
                       </div>
@@ -1445,7 +1448,7 @@ export default function DashboardPage() {
                             : formatCurrency(
                                 (rewardsData?.totals?.monthlyUsd ??
                                   fallbackMonthlyRewardsUsd) ||
-                                  0
+                                  0,
                               )}
                         </div>
                       </div>
@@ -1460,7 +1463,7 @@ export default function DashboardPage() {
                             {formatCurrency(
                               rewardsData?.breakdown?.lido?.dailyUsd ??
                                 lidoData?.estimatedDailyRewardsUsd ??
-                                0
+                                0,
                             )}
                           </span>
                         </div>
@@ -1469,7 +1472,7 @@ export default function DashboardPage() {
                             {formatPercent(
                               rewardsData?.breakdown?.lido?.apr ??
                                 lidoData?.apr ??
-                                0
+                                0,
                             )}
                             <span className="text-muted-foreground"> APR</span>
                           </span>
@@ -1477,7 +1480,7 @@ export default function DashboardPage() {
                             {formatCurrency(
                               rewardsData?.breakdown?.lido?.valueUsd ??
                                 lidoData?.valueUsd ??
-                                0
+                                0,
                             )}{" "}
                             staked
                           </span>
@@ -1493,7 +1496,7 @@ export default function DashboardPage() {
                             {formatCurrency(
                               rewardsData?.breakdown?.rocketPool?.dailyUsd ??
                                 rocketPoolData?.estimatedDailyRewardsUsd ??
-                                0
+                                0,
                             )}
                           </span>
                         </div>
@@ -1502,7 +1505,7 @@ export default function DashboardPage() {
                             {formatPercent(
                               rewardsData?.breakdown?.rocketPool?.apr ??
                                 rocketPoolData?.apr ??
-                                0
+                                0,
                             )}
                             <span className="text-muted-foreground"> APR</span>
                           </span>
@@ -1510,7 +1513,7 @@ export default function DashboardPage() {
                             {formatCurrency(
                               rewardsData?.breakdown?.rocketPool?.valueUsd ??
                                 rocketPoolData?.valueUsd ??
-                                0
+                                0,
                             )}{" "}
                             staked
                           </span>
@@ -1831,7 +1834,7 @@ export default function DashboardPage() {
                                 </p>
                               </div>
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     </div>
@@ -1995,7 +1998,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.ethereum?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.ethereum?.usd_24h_change ?? 0
+                            prices?.ethereum?.usd_24h_change ?? 0,
                           )}
                         </p>
                       </div>
@@ -2024,7 +2027,7 @@ export default function DashboardPage() {
                           className={`text-sm ${(prices?.["matic-network"]?.usd_24h_change ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {formatPercentSigned(
-                            prices?.["matic-network"]?.usd_24h_change ?? 0
+                            prices?.["matic-network"]?.usd_24h_change ?? 0,
                           )}
                         </p>
                       </div>
@@ -2048,6 +2051,32 @@ export default function DashboardPage() {
                     }
                     title={cacheTitle(CACHE_TTLS.BALANCES)}
                   />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isTokensLoading || tokens.length === 0}
+                    onClick={() => {
+                      const spChain = (
+                        searchParams?.get("chain") ?? "all"
+                      ).toLowerCase();
+                      const chain =
+                        spChain === "ethereum" ||
+                        spChain === "polygon" ||
+                        spChain === "all"
+                          ? (spChain as "ethereum" | "polygon" | "all")
+                          : "all";
+                      const hideTiny =
+                        (searchParams?.get("hideTiny") ?? "0") === "1";
+                      exportHoldingsCsv(
+                        tokens,
+                        address ?? undefined,
+                        chain,
+                        hideTiny,
+                      );
+                    }}
+                  >
+                    Export CSV
+                  </Button>
                   {isTokensFetching && (
                     <span className="text-xs text-muted-foreground">
                       Refreshing…
@@ -2092,7 +2121,7 @@ export default function DashboardPage() {
                         size="sm"
                         onClick={() =>
                           setOverrideAddress(
-                            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                           )
                         }
                       >
@@ -2191,3 +2220,69 @@ export default function DashboardPage() {
     </div>
   );
 }
+const exportHoldingsCsv = (
+  list: TokenHoldingDTO[],
+  addr?: string,
+  chain: "all" | "ethereum" | "polygon" = "all",
+  hideTiny: boolean = false,
+) => {
+  const headers = [
+    "chain",
+    "contractAddress",
+    "symbol",
+    "name",
+    "balance",
+    "decimals",
+    "rawBalance",
+    "priceUsd",
+    "valueUsd",
+    "change24h",
+    "portfolioPercent",
+  ];
+  const filtered = list
+    .filter((t) => (chain === "all" ? true : t.chain === chain))
+    .filter((t) => {
+      if (!hideTiny) return true;
+      const v = t.valueUsd ?? Number(t.formatted || "0") * (t.priceUsd ?? 0);
+      return v >= 1;
+    });
+
+  // Calculate total portfolio value for percentage calculation
+  const totalValue = filtered.reduce((sum, t) => {
+    const v = t.valueUsd ?? Number(t.formatted || "0") * (t.priceUsd ?? 0);
+    return sum + v;
+  }, 0);
+
+  const rows = filtered.map((t) => {
+    const value = t.valueUsd ?? Number(t.formatted || "0") * (t.priceUsd ?? 0);
+    const portfolioPercent =
+      totalValue > 0 ? ((value / totalValue) * 100).toFixed(2) : "0";
+
+    return [
+      t.chain,
+      t.contractAddress,
+      t.symbol ?? "",
+      t.name ?? "",
+      t.formatted ?? "0",
+      String(t.decimals ?? ""),
+      t.balance,
+      String(t.priceUsd ?? 0),
+      String(t.valueUsd ?? 0),
+      String(t.change24h ?? 0),
+      portfolioPercent,
+    ];
+  });
+  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  try {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const date = new Date().toISOString().split("T")[0];
+    a.download = `holdings-${addr ?? "wallet"}-${chain}-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    // no-op
+  }
+};

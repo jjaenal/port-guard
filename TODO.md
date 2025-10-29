@@ -166,9 +166,9 @@
 - [x] Make responsive (mobile-first)
 - [x] Add auto-refresh (every 5 minutes) - Implemented via refetchInterval in React Query
 - [x] Add error handling banner/toast for API failures (sonner toast notifications implemented for all API errors + success cases)
-  - [ ] Price API errors
-  - [ ] Balance fetching errors
-  - [ ] Network connectivity issues
+  - [x] Price API errors
+  - [x] Balance fetching errors
+  - [x] Network connectivity issues
 
 ---
 
@@ -233,7 +233,7 @@
 - [x] Add tooltip for liquidation risk levels
 - [x] Show alert when Health Factor < 1.2
 - [x] Add protocol logos (Aave card header)
-- [ ] Test with real positions
+- [x] Test with real positions
 
 ### Day 26-28: Uniswap LP Positions
 
@@ -288,24 +288,51 @@
 
 ### Day 31-33: Price Alerts System
 
-- [ ] Design alerts database schema
-  ```sql
-  CREATE TABLE alerts (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
-    type VARCHAR(50), -- 'price', 'portfolio', 'liquidation'
-    token_address VARCHAR(42),
-    condition JSONB, -- {operator: 'above', value: 2000}
-    enabled BOOLEAN DEFAULT true,
-    created_at TIMESTAMP
-  );
+- [x] Design alerts database schema
+
+  ```prisma
+  model Alert {
+    id            String    @id @default(cuid())
+    address       String
+    type          AlertType @default(price)
+    tokenAddress  String?
+    tokenSymbol   String?
+    chain         String?
+    operator      AlertOperator
+    value         Float
+    enabled       Boolean   @default(true)
+    createdAt     DateTime  @default(now())
+    lastTriggered DateTime?
+
+    @@index([address])
+    @@index([type])
+  }
+
+  enum AlertType {
+    price
+    portfolio
+    liquidation
+  }
+
+  enum AlertOperator {
+    above
+    below
+    percent_increase
+    percent_decrease
+  }
   ```
-- [ ] Create alert creation UI
-- [ ] Build alert condition builder
-  - [ ] Price above/below
-  - [ ] Percentage change
+
+- [x] Create alert creation UI
+- [x] Build alert condition builder
+  - [x] Price above/below
+  - [x] Percentage change
   - [ ] Portfolio value milestone
-- [ ] Implement alert checking logic (cron job)
+- [x] Implement alert checking logic (cron job)
+- [x] Create CoinGecko API integration for price data
+- [x] Create alert service for condition checking
+- [x] Add API endpoints for CRUD operations
+- [x] Add toggle functionality for enabling/disabling alerts
+- [x] Add delete functionality for removing alerts
 - [ ] Setup email notifications (Resend.com free tier)
 - [ ] Create notification templates
 - [ ] Test alert triggering
@@ -423,10 +450,11 @@
 - [x] Code splitting - Next.js automatic code splitting
 - [x] Lazy load components - Dynamic imports implemented
 - [ ] Setup Redis caching properly
+ - [x] Setup Redis caching properly
   - [x] Cache token prices (5 min)
   - [x] Cache balances (3 min)
   - [x] Cache DeFi positions (10 min) - Done with centralized CACHE_TTLS
-- [ ] Add service worker (PWA)
+ - [x] Add service worker (PWA)
 - [x] Optimize bundle size - Webpack optimizations applied
 - [x] Test Lighthouse score (aim for 90+) - Good performance achieved
 

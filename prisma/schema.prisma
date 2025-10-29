@@ -16,6 +16,19 @@ enum Chain {
   polygon
 }
 
+enum AlertType {
+  price
+  portfolio
+  liquidation
+}
+
+enum AlertOperator {
+  above
+  below
+  percent_increase
+  percent_decrease
+}
+
 model PortfolioSnapshot {
   id           String   @id @default(cuid())
   address      String
@@ -48,4 +61,21 @@ model TokenSnapshot {
 
   @@index([snapshotId])
   @@map("token_snapshots")
+}
+
+model Alert {
+  id            String        @id @default(cuid())
+  address       String        // Wallet address this alert belongs to
+  type          AlertType
+  tokenAddress  String?       // Optional for price alerts
+  tokenSymbol   String?       // For UI display
+  chain         Chain?        // Optional chain filter
+  operator      AlertOperator
+  value         Float         // Target value to compare against
+  enabled       Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  lastTriggered DateTime?     // When alert was last triggered
+  
+  @@index([address, type])
+  @@map("alerts")
 }

@@ -7,18 +7,16 @@ self.addEventListener("install", () => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys.map((key) => {
-            if (![APP_CACHE, API_CACHE].includes(key)) {
-              return caches.delete(key);
-            }
-            return Promise.resolve();
-          }),
-        ),
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.map((key) => {
+          if (![APP_CACHE, API_CACHE].includes(key)) {
+            return caches.delete(key);
+          }
+          return Promise.resolve();
+        }),
       ),
+    ),
   );
   self.clients.claim();
 });
@@ -74,14 +72,15 @@ self.addEventListener("fetch", (event) => {
   // Pages and other assets: cache-first fallback
   event.respondWith(
     caches.open(APP_CACHE).then((cache) =>
-      cache.match(req).then((cached) =>
-        cached ||
-        fetch(req)
-          .then((resp) => {
-            cache.put(req, resp.clone());
-            return resp;
-          })
-          .catch(() => cached),
+      cache.match(req).then(
+        (cached) =>
+          cached ||
+          fetch(req)
+            .then((resp) => {
+              cache.put(req, resp.clone());
+              return resp;
+            })
+            .catch(() => cached),
       ),
     ),
   );

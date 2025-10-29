@@ -8,11 +8,9 @@ export function SwRegister() {
     if (!("serviceWorker" in navigator)) return;
 
     const swUrl = "/sw.js";
-    navigator.serviceWorker
-      .register(swUrl)
-      .catch(() => {
-        // silent fail: do not log to console per lint rules
-      });
+    navigator.serviceWorker.register(swUrl).catch(() => {
+      // silent fail: do not log to console per lint rules
+    });
   }, []);
 
   return null;

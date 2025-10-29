@@ -25,9 +25,7 @@ describe("useTokenHoldings Hook", () => {
     expect(useTokenHoldings).toBeDefined();
   });
 
-  it(
-    "sets meta.source to balances:cache when X-Cache is HIT",
-    async () => {
+  it("sets meta.source to balances:cache when X-Cache is HIT", async () => {
     const mockTokens: TokenHoldingDTO[] = [
       {
         chain: "ethereum",
@@ -62,12 +60,10 @@ describe("useTokenHoldings Hook", () => {
     const { result } = renderHook(() => useTokenHoldings("0xabc"), {
       wrapper: createWrapper(),
     });
-      const res = await result.current.refetch();
-      const meta = (res.data as TokenHoldingsQueryResult | undefined)?.meta;
-      expect(meta?.source).toBe("balances:cache");
-    },
-    15000,
-  );
+    const res = await result.current.refetch();
+    const meta = (res.data as TokenHoldingsQueryResult | undefined)?.meta;
+    expect(meta?.source).toBe("balances:cache");
+  }, 15000);
 
   it("sets meta.source to balances:api when X-Cache is MISS or absent", async () => {
     const mockTokens: TokenHoldingDTO[] = [];

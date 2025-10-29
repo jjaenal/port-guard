@@ -148,7 +148,11 @@ export function handleUnknownError(error: unknown): NextResponse {
       const match = error.message.match(/(\d{3})/);
       const status = match ? Number(match[1]) : undefined;
       if (status === 429) {
-        return createErrorResponse(ErrorCodes.RATE_LIMITED, "CoinGecko rate limit exceeded", 429);
+        return createErrorResponse(
+          ErrorCodes.RATE_LIMITED,
+          "CoinGecko rate limit exceeded",
+          429,
+        );
       }
       if (status && status >= 500) {
         return createErrorResponse(

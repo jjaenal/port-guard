@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState, memo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSearchParams } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardAction,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 import { formatCurrencyTiny, formatPercentSigned } from "@/lib/utils";
@@ -18,6 +26,51 @@ interface TokenPerformance {
 }
 
 export function TokenPerformance({ tokens }: TokenPerformanceProps) {
+  const searchParams = useSearchParams();
+  const exportPerformanceCsv = (
+    data: TokenPerformance[],
+    type: "gainers" | "losers",
+  ) => {
+    if (!data.length) return;
+
+    const headers = [
+      "rank",
+      "chain",
+      "contractAddress",
+      "symbol",
+      "name",
+      "valueUsd",
+      "change24h",
+      "change24hUsd",
+    ];
+    const rows = data.map((perf, index) => [
+      String(index + 1),
+      perf.token.chain,
+      perf.token.contractAddress,
+      perf.token.symbol,
+      perf.token.name,
+      String(perf.token.valueUsd || 0),
+      String(perf.token.change24h || 0),
+      String(perf.change24hUsd),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    const date = new Date().toISOString().split("T")[0];
+    const chain = (searchParams?.get("chain") ?? "all").toLowerCase();
+    link.download = `token-performance-${type}-${chain}-${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const analytics = useMemo(() => {
     if (!tokens.length) {
       return {
@@ -197,6 +250,19 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
               <TrendingUp className="h-5 w-5 text-green-600" />
               Top Gainers (24h)
             </CardTitle>
+            <CardAction>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={analytics.gainers.length === 0}
+                aria-label="Export CSV - Top Gainers"
+                onClick={() =>
+                  exportPerformanceCsv(analytics.gainers, "gainers")
+                }
+              >
+                Export CSV
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
             {analytics.gainers.length === 0 ? (
@@ -224,6 +290,17 @@ export function TokenPerformance({ tokens }: TokenPerformanceProps) {
               <TrendingDown className="h-5 w-5 text-red-600" />
               Top Losers (24h)
             </CardTitle>
+            <CardAction>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={analytics.losers.length === 0}
+                aria-label="Export CSV - Top Losers"
+                onClick={() => exportPerformanceCsv(analytics.losers, "losers")}
+              >
+                Export CSV
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
             {analytics.losers.length === 0 ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PieChart,
@@ -12,6 +13,8 @@ import {
 } from "recharts";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 import { formatCurrencyTiny, formatNumber } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { FileDown } from "lucide-react";
 
 interface PortfolioAllocationProps {
   tokens: TokenHoldingDTO[];
@@ -99,6 +102,14 @@ const TooltipContentElement = <CustomTooltip />;
 const LegendContentElement = <CustomLegend />;
 
 export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
+  const searchParams = useSearchParams();
+  const chain = searchParams.get("chain") as
+    | "all"
+    | "ethereum"
+    | "polygon"
+    | null;
+  const rangeDays = searchParams.get("rangeDays");
+
   const allocationData = useMemo(() => {
     if (!tokens.length) return [];
 
@@ -173,13 +184,50 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
     );
   }
 
+  const exportAllocationCsv = () => {
+    const headers = ["symbol", "name", "value", "percentage"];
+    const rows = allocationData.map((item) => [
+      item.symbol,
+      item.name,
+      String(item.value),
+      String(item.percentage.toFixed(2)),
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    try {
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const date = new Date().toISOString().split("T")[0];
+      a.download = `portfolio-allocation-${chain || "all"}-${rangeDays || "all"}-${date}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // no-op
+    }
+  };
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Portfolio Allocation</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Distribution by value • Total: {formatCurrencyTiny(totalValue)}
-        </p>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Portfolio Allocation</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Distribution by value • Total: {formatCurrencyTiny(totalValue)}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1"
+          onClick={exportAllocationCsv}
+          aria-label="Export allocation as CSV"
+        >
+          <FileDown className="h-4 w-4" />
+          <span className="hidden sm:inline">Export CSV</span>
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="h-[400px]">

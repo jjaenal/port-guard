@@ -65,8 +65,9 @@ export function PortfolioChart({ points, height = 200 }: PortfolioChartProps) {
           <XAxis dataKey="t" tickFormatter={formatXTick} stroke="#6b7280" />
           <YAxis tickFormatter={formatYTick} stroke="#6b7280" width={64} />
           <Tooltip
-            formatter={(value) => [formatCurrencyTiny(Number(value)), "Value"]}
-            labelFormatter={(label) => formatXLabel(Number(label))}
+            content={
+              <PortfolioTooltip data={data} formatXLabel={formatXLabel} />
+            }
           />
           <Area
             type="monotone"
@@ -77,6 +78,47 @@ export function PortfolioChart({ points, height = 200 }: PortfolioChartProps) {
           />
         </AreaChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+type TooltipProps = {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: number;
+  data: { t: number; v: number }[];
+  formatXLabel: (tick: number) => string;
+};
+
+function PortfolioTooltip({
+  active,
+  payload,
+  label,
+  data,
+  formatXLabel,
+}: TooltipProps) {
+  if (!active || !payload || payload.length === 0 || label === undefined) {
+    return null;
+  }
+  const idx = data.findIndex((d) => d.t === label);
+  const curr = Number(payload[0].value ?? 0);
+  const prev = idx > 0 ? Number(data[idx - 1].v ?? 0) : null;
+  const delta = prev !== null ? curr - prev : null;
+  const pct = prev !== null && prev !== 0 ? (delta! / prev) * 100 : null;
+
+  return (
+    <div className="rounded border bg-card/95 backdrop-blur p-2 text-xs shadow-sm">
+      <div className="text-[10px] text-muted-foreground mb-0.5">
+        {formatXLabel(Number(label))}
+      </div>
+      <div className="font-medium">{formatCurrencyTiny(curr)}</div>
+      {delta !== null && (
+        <div
+          className={`mt-0.5 ${delta >= 0 ? "text-green-600" : "text-red-600"}`}
+        >
+          {(delta >= 0 ? "+" : "") + formatCurrencyTiny(Math.abs(delta))}
+          {pct !== null ? ` (${pct.toFixed(2)}%)` : ""}
+        </div>
+      )}
     </div>
   );
 }

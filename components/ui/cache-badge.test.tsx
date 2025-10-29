@@ -22,7 +22,7 @@ describe("CacheBadge", () => {
     render(
       <CacheBadge visible={true} title="TTL" className="test-class">
         Stored
-      </CacheBadge>
+      </CacheBadge>,
     );
 
     const badge = screen.getByText("Stored");

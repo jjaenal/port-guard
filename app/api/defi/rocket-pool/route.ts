@@ -42,7 +42,8 @@ export async function GET(req: Request) {
 
     // Try cache first (10 minutes TTL)
     const cacheKey = `defi:rocket-pool:${address}`;
-    const cached = await cacheGet<ReturnType<typeof getRocketPoolSummary>>(cacheKey);
+    const cached =
+      await cacheGet<ReturnType<typeof getRocketPoolSummary>>(cacheKey);
     if (cached) {
       console.log(`[CACHE HIT] Rocket Pool data for ${address}`);
       return NextResponse.json(

@@ -34,6 +34,12 @@ export function Header() {
               Analytics
             </Link>
             <Link
+              href="/alerts"
+              className="text-sm font-medium transition-colors hover:text-primary"
+            >
+              Alerts
+            </Link>
+            <Link
               href="/defi/lido"
               className="text-sm font-medium transition-colors hover:text-primary"
             >

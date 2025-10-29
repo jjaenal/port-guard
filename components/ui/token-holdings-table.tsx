@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
 import {
@@ -41,6 +42,9 @@ function TokenAvatar({ token }: { token: TokenHoldingDTO }) {
 }
 
 export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   // Sorting state and helpers
   const [sortKey, setSortKey] = useState<
     "valueUsd" | "balance" | "token" | "change24h"
@@ -76,6 +80,11 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
     "all" | "ethereum" | "polygon"
   >(() => {
     try {
+      // Prefer query param first
+      const qp = params?.get("chain") ?? null;
+      if (qp === "all" || qp === "ethereum" || qp === "polygon") {
+        return qp as "all" | "ethereum" | "polygon";
+      }
       const cf =
         typeof window !== "undefined"
           ? localStorage.getItem("tokenChainFilter")
@@ -100,6 +109,10 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
   });
   const [hideSmall, setHideSmall] = useState<boolean>(() => {
     try {
+      // Prefer query param first
+      const qp = params?.get("hideTiny") ?? null;
+      if (qp === "1") return true;
+      if (qp === "0") return false;
       const hs =
         typeof window !== "undefined"
           ? localStorage.getItem("tokenHideSmall")
@@ -140,6 +153,21 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
       localStorage.setItem("tokenHideSmall", String(hideSmall));
     } catch {}
   }, [sortKey, sortDir, chainFilter, change24hFilter, search, hideSmall]);
+
+  // Sync to query params when filters change
+  useEffect(() => {
+    try {
+      const next = new URLSearchParams(params?.toString() ?? "");
+      next.set("chain", chainFilter);
+      if (hideSmall) {
+        next.set("hideTiny", "1");
+      } else {
+        next.delete("hideTiny");
+      }
+      router.replace(`${pathname}?${next.toString()}`);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chainFilter, hideSmall]);
 
   const filtered = tokens.filter((t) => {
     const chainOk = chainFilter === "all" ? true : t.chain === chainFilter;
@@ -270,7 +298,9 @@ export function TokenHoldingsTable({ tokens }: { tokens: TokenHoldingDTO[] }) {
               </TableHead>
               <TableHead>Value (USD)</TableHead>
               <TableHead className="hidden md:table-cell">24h Change</TableHead>
-              <TableHead className="w-[88px] sm:w-[120px]">Portfolio %</TableHead>
+              <TableHead className="w-[88px] sm:w-[120px]">
+                Portfolio %
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
