@@ -371,14 +371,14 @@
 
 ### Day 39-42: Transaction History
 
-- [ ] Fetch transaction history (Alchemy)
-- [ ] Parse transaction data
-- [ ] Categorize transactions
-  - [ ] Send/Receive
+- [x] Fetch transaction history (Alchemy)
+- [x] Parse transaction data (basic)
+- [x] Categorize transactions
+  - [x] Send/Receive
   - [ ] Swap
   - [ ] Approve
   - [ ] Contract interaction
-- [ ] Create transaction list UI
+- [x] Create transaction list UI
 - [ ] Add transaction detail view
 - [ ] Link to Etherscan
 - [ ] Implement infinite scroll
