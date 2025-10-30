@@ -6,6 +6,11 @@ import * as route from "./route";
 vi.mock("@/lib/services/alertService", () => ({
   processAlerts: vi.fn(),
 }));
+vi.mock("@/lib/utils/rate-limit", () => ({
+  rateLimit: vi.fn(async () => ({ allowed: true, remaining: 10, resetAt: Date.now() })),
+  getClientKey: vi.fn(() => "test-key"),
+  tooManyResponse: vi.fn(() => new Response("Rate limit exceeded", { status: 429 })),
+}));
 
 describe("/api/cron/alerts route", () => {
   beforeEach(() => {
@@ -146,6 +151,19 @@ describe("/api/cron/alerts route", () => {
 
       expect(response.status).toBe(401);
       expect(data.error).toBe("Unauthorized");
+    });
+
+    it("should return 429 when rate limited", async () => {
+      process.env.ALERTS_CRON_API_KEY = "test-api-key";
+
+      const rl = await import("@/lib/utils/rate-limit");
+      vi.mocked(rl.rateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, resetAt: Date.now() });
+
+      const req = new NextRequest(
+        "http://localhost:3000/api/cron/alerts?apiKey=test-api-key",
+      );
+      const response = await route.GET(req);
+      expect(response.status).toBe(429);
     });
   });
 });
