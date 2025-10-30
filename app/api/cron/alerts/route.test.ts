@@ -72,6 +72,53 @@ describe("/api/cron/alerts route", () => {
       expect(processAlerts).toHaveBeenCalledOnce();
     });
 
+    it("should process alerts when API key is provided via x-api-key header", async () => {
+      process.env.ALERTS_CRON_API_KEY = "header-key";
+
+      const { processAlerts } = await import("@/lib/services/alertService");
+      vi.mocked(processAlerts).mockResolvedValue();
+
+      const req = new NextRequest("http://localhost:3000/api/cron/alerts", {
+        headers: new Headers({ "x-api-key": "header-key" }),
+      });
+      const response = await route.GET(req);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.message).toBe("Alerts processed successfully");
+      expect(processAlerts).toHaveBeenCalledOnce();
+    });
+
+    it("should process alerts when API key is provided via Authorization Bearer header", async () => {
+      process.env.ALERTS_CRON_API_KEY = "bearer-key";
+
+      const { processAlerts } = await import("@/lib/services/alertService");
+      vi.mocked(processAlerts).mockResolvedValue();
+
+      const req = new NextRequest("http://localhost:3000/api/cron/alerts", {
+        headers: new Headers({ Authorization: "Bearer bearer-key" }),
+      });
+      const response = await route.GET(req);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.message).toBe("Alerts processed successfully");
+      expect(processAlerts).toHaveBeenCalledOnce();
+    });
+
+    it("should return 401 when x-api-key header is invalid", async () => {
+      process.env.ALERTS_CRON_API_KEY = "correct-key";
+
+      const req = new NextRequest("http://localhost:3000/api/cron/alerts", {
+        headers: new Headers({ "x-api-key": "wrong-key" }),
+      });
+      const response = await route.GET(req);
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.error).toBe("Unauthorized");
+    });
+
     it("should handle processAlerts errors gracefully", async () => {
       process.env.ALERTS_CRON_API_KEY = "test-api-key";
 
