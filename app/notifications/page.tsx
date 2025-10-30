@@ -17,7 +17,7 @@ import {
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 type AlertSummary = {
-  type: "price" | "portfolio";
+  type: "price" | "portfolio" | "liquidation";
   tokenSymbol?: string | null;
   operator?: "above" | "below" | null;
   value?: number | null;
@@ -29,7 +29,7 @@ type NotificationItem = {
   address: string;
   title: string;
   message: string;
-  type: "price" | "portfolio" | "system";
+  type: "price" | "portfolio" | "liquidation";
   isRead: boolean;
   triggeredAt: string; // ISO string from API
   readAt: string | null;
@@ -51,12 +51,13 @@ function useNotifications(
   isRead?: boolean,
   limit = 20,
   offset = 0,
+  type?: "price" | "portfolio" | "liquidation",
 ): UseQueryResult<NotificationsResponse, Error> {
   return useQuery<NotificationsResponse, Error>({
     queryKey: [
       "notifications",
       address?.toLowerCase(),
-      { isRead, limit, offset },
+      { isRead, limit, offset, type },
     ],
     enabled: Boolean(address),
     queryFn: async () => {
@@ -65,6 +66,7 @@ function useNotifications(
       params.set("limit", String(limit));
       params.set("offset", String(offset));
       if (typeof isRead === "boolean") params.set("isRead", String(isRead));
+      if (type) params.set("type", type);
 
       const res = await fetch(`/api/notifications?${params.toString()}`);
       if (!res.ok) {
@@ -108,6 +110,33 @@ function useMarkReadUnread() {
   });
 }
 
+function useDeleteNotifications() {
+  const qc = useQueryClient();
+  return useMutation<
+    { deleted: number },
+    Error,
+    { ids: string[]; address: string }
+  >({
+    mutationFn: async ({ ids, address }) => {
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationIds: ids, address }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          body.error || `Failed to delete notifications (${res.status})`,
+        );
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
 function formatDateTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString();
@@ -118,6 +147,9 @@ export default function NotificationsPage() {
   const [isReadFilter, setIsReadFilter] = useState<"all" | "read" | "unread">(
     "all",
   );
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "price" | "portfolio" | "liquidation"
+  >("all");
   const [limit, setLimit] = useState<number>(20);
   const [offset, setOffset] = useState<number>(0);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -133,8 +165,10 @@ export default function NotificationsPage() {
     isRead,
     limit,
     offset,
+    typeFilter === "all" ? undefined : typeFilter,
   );
   const markMutation = useMarkReadUnread();
+  const deleteMutation = useDeleteNotifications();
 
   const total = data?.pagination.total ?? 0;
   const hasMore = data?.pagination.hasMore ?? false;
@@ -155,6 +189,19 @@ export default function NotificationsPage() {
     const targetIds = ids && ids.length ? ids : selectedIds;
     if (!targetIds.length) return;
     await markMutation.mutateAsync({ ids: targetIds, isRead: read, address });
+    clearSelection();
+  };
+
+  const onDelete = async (ids?: string[]) => {
+    if (!address) return;
+    const targetIds = ids && ids.length ? ids : selectedIds;
+    if (!targetIds.length) return;
+    const confirmed =
+      typeof window !== "undefined"
+        ? window.confirm(`Delete ${targetIds.length} notification(s)?`)
+        : true;
+    if (!confirmed) return;
+    await deleteMutation.mutateAsync({ ids: targetIds, address });
     clearSelection();
   };
 
@@ -200,6 +247,20 @@ export default function NotificationsPage() {
                 <option value="read">Read</option>
               </select>
               <select
+                aria-label="Type"
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value as typeof typeFilter);
+                  setOffset(0);
+                }}
+                className="border rounded px-2 py-1"
+              >
+                <option value="all">All types</option>
+                <option value="price">Price</option>
+                <option value="portfolio">Portfolio</option>
+                <option value="liquidation">Liquidation</option>
+              </select>
+              <select
                 aria-label="Page size"
                 value={String(limit)}
                 onChange={(e) => {
@@ -227,6 +288,50 @@ export default function NotificationsPage() {
                 onClick={() => onMark(true)}
               >
                 Mark selected read
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={
+                  markMutation.isPending ||
+                  (data?.notifications?.length ?? 0) === 0
+                }
+                onClick={() => {
+                  const unreadIds = (data?.notifications ?? [])
+                    .filter((n) => !n.isRead)
+                    .map((n) => n.id);
+                  if (unreadIds.length) onMark(true, unreadIds);
+                }}
+                aria-label="Mark all as read"
+              >
+                Mark all read
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!selectedIds.length || deleteMutation.isPending}
+                onClick={() => onDelete()}
+              >
+                Delete selected
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={
+                  (data?.notifications?.length ?? 0) === 0 ||
+                  deleteMutation.isPending
+                }
+                onClick={() => {
+                  const ids = (data?.notifications ?? []).map((n) => n.id);
+                  if (!ids.length) return;
+                  const confirmed =
+                    typeof window !== "undefined"
+                      ? window.confirm(
+                          `Delete ${ids.length} notification(s) in current view?`,
+                        )
+                      : true;
+                  if (!confirmed) return;
+                  onDelete(ids);
+                }}
+              >
+                Delete all in view
               </Button>
             </div>
           </div>
@@ -276,7 +381,20 @@ export default function NotificationsPage() {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{n.title}</TableCell>
+                    <TableCell>
+                      {n.alert?.tokenSymbol ? (
+                        <a
+                          href={`/analytics?symbol=${encodeURIComponent(
+                            n.alert.tokenSymbol,
+                          )}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {n.title}
+                        </a>
+                      ) : (
+                        n.title
+                      )}
+                    </TableCell>
                     <TableCell>{n.message}</TableCell>
                     <TableCell className="capitalize">{n.type}</TableCell>
                     <TableCell>{formatDateTime(n.triggeredAt)}</TableCell>

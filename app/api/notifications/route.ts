@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const address = searchParams.get("address");
     const isReadParam = searchParams.get("isRead");
+    const typeParam = searchParams.get("type");
     const limitParam = searchParams.get("limit");
     const offsetParam = searchParams.get("offset");
 
@@ -73,6 +74,16 @@ export async function GET(request: NextRequest) {
 
     if (isRead !== undefined) {
       where.isRead = isRead;
+    }
+
+    // Optional filter by notification type
+    if (
+      typeParam &&
+      ["price", "portfolio", "liquidation"].includes(typeParam)
+    ) {
+      // Prisma enum AlertType is represented as string in SQLite
+      // Notification.type field stores the same AlertType
+      where.type = typeParam as unknown as typeof where.type;
     }
 
     // Fetch notifications with alert details

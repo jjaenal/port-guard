@@ -146,6 +146,26 @@ describe("/api/notifications", () => {
       );
     });
 
+    it("should filter by type", async () => {
+      __mockPrisma.notification.findMany.mockResolvedValue([]);
+      __mockPrisma.notification.count.mockResolvedValue(0);
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/notifications?address=0x1234567890123456789012345678901234567890&type=price",
+      );
+
+      await GET(request);
+
+      expect(__mockPrisma.notification.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            address: "0x1234567890123456789012345678901234567890",
+            type: "price",
+          },
+        }),
+      );
+    });
+
     it("should handle pagination", async () => {
       __mockPrisma.notification.findMany.mockResolvedValue([]);
       __mockPrisma.notification.count.mockResolvedValue(0);
