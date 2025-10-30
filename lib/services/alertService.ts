@@ -153,11 +153,11 @@ export async function processAlerts(): Promise<void> {
       }
     }
 
-    // Process portfolio value alerts using latest snapshots
+    // Process portfolio value alerts menggunakan snapshot terbaru
     const portfolioAlerts = alerts.filter((a) => a.type === "portfolio");
     for (const alert of portfolioAlerts) {
       try {
-        // Get latest snapshot for the alert's address
+        // Ambil snapshot terbaru untuk alamat terkait
         const snapshot = await prisma.portfolioSnapshot.findFirst({
           where: { address: alert.address },
           orderBy: { createdAt: "desc" },
@@ -166,7 +166,34 @@ export async function processAlerts(): Promise<void> {
         if (!snapshot) continue;
 
         const currentValue = snapshot.totalValue ?? 0;
-        const isTriggered = await checkAlertCondition(alert, currentValue);
+
+        // Ambil snapshot sebelumnya untuk mendeteksi crossing threshold
+        // Catatan: crossing berarti nilai melewati ambang dari sisi sebaliknya
+        const previousSnapshot = await prisma.portfolioSnapshot.findFirst({
+          where: { address: alert.address, createdAt: { lt: snapshot.createdAt } },
+          orderBy: { createdAt: "desc" },
+        });
+
+        // Helper crossing untuk operator above/below
+        const hasCrossedThreshold = (prev: number | null, curr: number): boolean => {
+          // Jika tidak ada snapshot sebelumnya, fallback ke kondisi dasar
+          if (prev === null) return true;
+          if (alert.operator === "above") {
+            return prev <= alert.value && curr > alert.value;
+          }
+          if (alert.operator === "below") {
+            return prev >= alert.value && curr < alert.value;
+          }
+          // Untuk portfolio, kita tidak mendukung percent_* sebagai milestone
+          return false;
+        };
+
+        const basicCondition = await checkAlertCondition(alert, currentValue);
+        const crossed = hasCrossedThreshold(
+          previousSnapshot?.totalValue ?? null,
+          currentValue,
+        );
+        const isTriggered = basicCondition && crossed;
 
         if (isTriggered) {
           await prisma.alert.update({

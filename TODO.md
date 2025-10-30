@@ -346,12 +346,12 @@
 - [ ] Implement browser notifications (optional)
 - [x] Create notification history
 - [x] Test notification flow
-  - [x] Pagination: disabled Prev at offset 0
-  - [x] Pagination: disabled Next when hasMore=false
-  - [x] Pagination: aria-disabled attributes verified
-  - [x] Disable Prev/Next while isFetching=true
-  - [x] Offset reset on page size + filter change
-  - [x] Lint passed and all tests green (126 tests total)
+- [x] Pagination: disabled Prev at offset 0
+- [x] Pagination: disabled Next when hasMore=false
+- [x] Pagination: aria-disabled attributes verified
+- [x] Disable Prev/Next while isFetching=true
+- [x] Offset reset on page size + filter change
+- [x] Lint passed and all tests green (126 tests total)
 
 ---
 

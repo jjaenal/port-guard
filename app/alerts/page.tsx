@@ -313,14 +313,15 @@ export default function AlertsPage() {
                       <SelectValue placeholder="Select condition" />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* Opsi operator: untuk Portfolio hanya dukung above/below sebagai milestone */}
                       <SelectItem value="above">Above</SelectItem>
                       <SelectItem value="below">Below</SelectItem>
-                      <SelectItem value="percent_increase">
-                        % Increase
-                      </SelectItem>
-                      <SelectItem value="percent_decrease">
-                        % Decrease
-                      </SelectItem>
+                      {type === "price" && (
+                        <>
+                          <SelectItem value="percent_increase">% Increase</SelectItem>
+                          <SelectItem value="percent_decrease">% Decrease</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
