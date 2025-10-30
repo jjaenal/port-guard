@@ -426,6 +426,38 @@ Year 2: $50k-100k/month (Scale + Enterprise)
 - Alert creation
 - Subscription upgrade
 
+## 🔔 Alerts Behavior
+
+### Portfolio Value Milestones (Crossing)
+
+- Alert tipe `portfolio` hanya akan trigger saat nilai portofolio MENYEBERANGI ambang (`above`/`below`), bukan sekadar berada di atas/bawah.
+- Implementasi menggunakan dua snapshot: yang terbaru dan yang sebelumnya, untuk mendeteksi crossing dari sisi berlawanan.
+- Notifikasi menggunakan format pesan yang jelas: `Portfolio value crossed above/below $X (current $Y)`.
+
+### Price Alerts
+
+- Alert tipe `price` mendukung operator: `above`, `below`, `percent_increase`, `percent_decrease` (logika persentase disederhanakan pada tahap awal).
+
+### Cooldown (Anti-Spam)
+
+- Semua alert (price & portfolio) menggunakan cooldown untuk mencegah retrigger yang terlalu sering.
+- Default cooldown: `10 menit`.
+- Konfigurasi via environment variable: `ALERT_COOLDOWN_MINUTES`.
+- Perilaku: ketika `lastTriggered` masih dalam jangka waktu cooldown, alert akan di-skip dan tidak membuat notifikasi/email.
+
+### UI
+
+- Pembuatan alert untuk tipe `Portfolio` hanya menampilkan operator `Above` dan `Below` untuk menegaskan konsep milestone.
+- Tipe `Token Price` menampilkan operator lengkap termasuk persen naik/turun.
+
+### Cron Processing
+
+- Endpoint cron (`/api/cron/alerts`) memanggil `processAlerts` setelah verifikasi kunci API.
+- Proses akan:
+  - Mengelompokkan alert price per token untuk mengurangi panggilan API harga.
+  - Mengevaluasi kondisi dan menerapkan cooldown sebelum membuat notifikasi dan email.
+  - Mengambil snapshot portofolio dan mendeteksi crossing threshold untuk alert `portfolio`.
+
 ## 🚀 Go-to-Market Strategy
 
 ### Pre-Launch (Weeks 1-2)

@@ -326,7 +326,7 @@
 - [x] Build alert condition builder
   - [x] Price above/below
   - [x] Percentage change
-  - [ ] Portfolio value milestone
+  - [x] Portfolio value milestone
 - [x] Implement alert checking logic (cron job)
 - [x] Create CoinGecko API integration for price data
 - [x] Create alert service for condition checking
@@ -336,6 +336,9 @@
 - [x] Setup email notifications (Resend.com free tier) - Implemented via notificationService.ts
 - [x] Create notification templates - HTML email templates via buildAlertEmailHtml
 - [x] Test alert triggering
+- [x] Portfolio Value: crossing threshold logic implemented
+- [x] Portfolio Value: improved messaging ("crossed above/below", include current)
+- [x] Alert cooldown: skip retrigger within 10 minutes (configurable via ALERT_COOLDOWN_MINUTES)
 
 ### Day 34-35: Notification Center
 
