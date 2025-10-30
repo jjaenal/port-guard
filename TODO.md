@@ -341,11 +341,11 @@
 
 - [x] Build notification inbox UI
 - [x] Show recent notifications
-- [ ] Mark as read/unread
+- [x] Mark as read/unread
 - [ ] Add notification preferences
 - [ ] Implement browser notifications (optional)
-- [ ] Create notification history
-- [ ] Test notification flow
+- [x] Create notification history
+- [x] Test notification flow
 
 ---
 

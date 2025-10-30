@@ -76,6 +76,26 @@ model Alert {
   createdAt     DateTime      @default(now())
   lastTriggered DateTime?     // When alert was last triggered
   
+  notifications Notification[]
+  
   @@index([address, type])
   @@map("alerts")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  alertId     String   // Reference to the alert that triggered this notification
+  address     String   // Wallet address for quick filtering
+  title       String   // Notification title (e.g., "ETH Price Alert")
+  message     String   // Notification message body
+  type        AlertType // Same as alert type for filtering
+  isRead      Boolean  @default(false)
+  triggeredAt DateTime @default(now())
+  readAt      DateTime? // When user marked as read
+  
+  alert       Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  
+  @@index([address, isRead, triggeredAt])
+  @@index([alertId])
+  @@map("notifications")
 }

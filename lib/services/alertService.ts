@@ -10,6 +10,52 @@ export function __setPrismaClientForTest(client: PrismaClient) {
 }
 
 /**
+ * Creates a notification record when an alert is triggered
+ * @param alert The alert that was triggered
+ * @param context Context information about the trigger
+ */
+async function createNotification(
+  alert: Alert,
+  context: {
+    type: "price" | "portfolio";
+    currentValue: number;
+    tokenSymbol?: string | null;
+    address?: string | null;
+  },
+): Promise<void> {
+  try {
+    let title: string;
+    let message: string;
+
+    if (context.type === "price" && context.tokenSymbol) {
+      title = `${context.tokenSymbol} Price Alert`;
+      message = `${context.tokenSymbol} is now $${context.currentValue.toFixed(2)} (${alert.operator} $${alert.value})`;
+    } else if (context.type === "portfolio" && context.address) {
+      title = "Portfolio Value Alert";
+      message = `Portfolio value is now $${context.currentValue.toFixed(2)} (${alert.operator} $${alert.value})`;
+    } else {
+      return; // Skip if we don't have enough context
+    }
+
+    await prisma.notification.create({
+      data: {
+        alertId: alert.id,
+        address: alert.address,
+        title,
+        message,
+        type: alert.type,
+        isRead: false,
+        triggeredAt: new Date(),
+      },
+    });
+
+    console.log(`Notification created for alert ${alert.id}: ${title}`);
+  } catch (error) {
+    console.error(`Error creating notification for alert ${alert.id}:`, error);
+  }
+}
+
+/**
  * Checks if an alert condition is met based on current token price
  * @param alert The alert to check
  * @param currentPrice Current token price
@@ -85,12 +131,17 @@ export async function processAlerts(): Promise<void> {
               data: { lastTriggered: new Date() },
             });
 
-            // Send email notification if configured
-            await sendAlertNotification(alert, {
-              type: "price",
+            const alertContext = {
+              type: "price" as const,
               currentValue: price,
               tokenSymbol: alert.tokenSymbol,
-            });
+            };
+
+            // Create notification record
+            await createNotification(alert, alertContext);
+
+            // Send email notification if configured
+            await sendAlertNotification(alert, alertContext);
 
             console.log(
               `Alert triggered: ${alert.tokenSymbol} ${alert.operator} ${alert.value}`,
@@ -123,12 +174,17 @@ export async function processAlerts(): Promise<void> {
             data: { lastTriggered: new Date() },
           });
 
-          // Send email notification if configured
-          await sendAlertNotification(alert, {
-            type: "portfolio",
+          const alertContext = {
+            type: "portfolio" as const,
             currentValue,
             address: alert.address,
-          });
+          };
+
+          // Create notification record
+          await createNotification(alert, alertContext);
+
+          // Send email notification if configured
+          await sendAlertNotification(alert, alertContext);
 
           console.log(
             `Portfolio alert triggered: ${alert.address} ${alert.operator} ${alert.value} (current ${currentValue})`,

@@ -13,6 +13,7 @@ import { fetchTokenPrice } from "@/lib/api/coingecko";
 const findManyMock = vi.fn();
 const updateMock = vi.fn();
 const findFirstSnapshotMock = vi.fn();
+const createNotificationMock = vi.fn();
 
 // Narrow interface to match only the methods we use, avoiding `any`
 type MockFn = ReturnType<typeof vi.fn>;
@@ -23,9 +24,13 @@ interface PrismaAlertSubset {
 interface PrismaPortfolioSnapshotSubset {
   findFirst: MockFn;
 }
+interface PrismaNotificationSubset {
+  create: MockFn;
+}
 interface FakePrismaClient {
   alert: PrismaAlertSubset;
   portfolioSnapshot: PrismaPortfolioSnapshotSubset;
+  notification: PrismaNotificationSubset;
 }
 
 const fakeClient: FakePrismaClient = {
@@ -35,6 +40,9 @@ const fakeClient: FakePrismaClient = {
   },
   portfolioSnapshot: {
     findFirst: findFirstSnapshotMock,
+  },
+  notification: {
+    create: createNotificationMock,
   },
 };
 
@@ -46,6 +54,7 @@ describe("alertService - portfolio alerts", () => {
     findManyMock.mockResolvedValue([]);
     updateMock.mockResolvedValue({} as never);
     findFirstSnapshotMock.mockResolvedValue(null);
+    createNotificationMock.mockResolvedValue({} as never);
 
     // Mock notification service
     vi.spyOn(notificationService, "sendEmail").mockResolvedValue({
@@ -130,6 +139,19 @@ describe("alertService - portfolio alerts", () => {
           "Portfolio Alert: above $5000",
           expect.stringContaining("Current portfolio value: $5500.00"),
         );
+
+        // Verify notification was created
+        expect(createNotificationMock).toHaveBeenCalledWith({
+          data: {
+            alertId: "alert_portfolio_above",
+            address: "0x123",
+            title: "Portfolio Value Alert",
+            message: "Portfolio value is now $5500.00 (above $5000)",
+            type: "portfolio",
+            isRead: false,
+            triggeredAt: expect.any(Date),
+          },
+        });
       });
 
       it("handles notification failure gracefully", async () => {
@@ -287,6 +309,9 @@ describe("alertService - price alerts", () => {
     __setPrismaClientForTest(
       fakeClient as unknown as import("@/lib/generated/prisma").PrismaClient,
     );
+
+    // Ensure notification create mock resolves
+    createNotificationMock.mockResolvedValue({} as never);
   });
 
   it("triggers 'above' price alert when price is greater than threshold", async () => {
@@ -317,6 +342,19 @@ describe("alertService - price alerts", () => {
     const args = updateMock.mock.calls[0][0];
     expect(args.where).toEqual({ id: "p1" });
     expect(args.data.lastTriggered).toBeInstanceOf(Date);
+
+    // Verify notification was created for price alert
+    expect(createNotificationMock).toHaveBeenCalledWith({
+      data: {
+        alertId: "p1",
+        address: "0xabc",
+        title: "ETH Price Alert",
+        message: "ETH is now $100.00 (above $50)",
+        type: "price",
+        isRead: false,
+        triggeredAt: expect.any(Date),
+      },
+    });
   });
 
   it("does not trigger 'above' price alert when price is lower than threshold", async () => {
