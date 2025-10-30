@@ -9,6 +9,23 @@ export function __setPrismaClientForTest(client: PrismaClient) {
   prisma = client;
 }
 
+// Cooldown konfigurasi: mencegah retrigger terlalu sering
+// Menggunakan env `ALERT_COOLDOWN_MINUTES` jika tersedia, default 10 menit
+const ALERT_COOLDOWN_MINUTES: number = Number(
+  process.env.ALERT_COOLDOWN_MINUTES ?? 10,
+);
+
+/**
+ * Mengecek apakah alert masih dalam masa cooldown berdasarkan lastTriggered
+ * Jika lastTriggered masih dalam X menit terakhir, kita skip trigger.
+ */
+function isWithinCooldown(lastTriggered: Date | string | null | undefined): boolean {
+  if (!lastTriggered) return false;
+  const last = typeof lastTriggered === "string" ? new Date(lastTriggered) : lastTriggered;
+  const diffMs = Date.now() - last.getTime();
+  return diffMs < ALERT_COOLDOWN_MINUTES * 60_000;
+}
+
 /**
  * Creates a notification record when an alert is triggered
  * @param alert The alert that was triggered
@@ -32,7 +49,9 @@ async function createNotification(
       message = `${context.tokenSymbol} is now $${context.currentValue.toFixed(2)} (${alert.operator} $${alert.value})`;
     } else if (context.type === "portfolio" && context.address) {
       title = "Portfolio Value Alert";
-      message = `Portfolio value is now $${context.currentValue.toFixed(2)} (${alert.operator} $${alert.value})`;
+      // Pesan lebih informatif untuk milestone: gunakan kata "crossed"
+      // sehingga pengguna tahu ini adalah momen melewati ambang.
+      message = `Portfolio value crossed ${alert.operator} $${alert.value} (current $${context.currentValue.toFixed(2)})`;
     } else {
       return; // Skip if we don't have enough context
     }
@@ -124,7 +143,8 @@ export async function processAlerts(): Promise<void> {
         for (const alert of tokenAlertsList) {
           const isTriggered = await checkAlertCondition(alert, price);
 
-          if (isTriggered) {
+          // Terapkan cooldown untuk menghindari spam notifikasi
+          if (isTriggered && !isWithinCooldown(alert.lastTriggered)) {
             // Update the alert's lastTriggered timestamp
             await prisma.alert.update({
               where: { id: alert.id },
@@ -145,6 +165,10 @@ export async function processAlerts(): Promise<void> {
 
             console.log(
               `Alert triggered: ${alert.tokenSymbol} ${alert.operator} ${alert.value}`,
+            );
+          } else if (isTriggered) {
+            console.log(
+              `Alert skipped due to cooldown: ${alert.tokenSymbol} ${alert.operator} ${alert.value}`,
             );
           }
         }
@@ -195,7 +219,8 @@ export async function processAlerts(): Promise<void> {
         );
         const isTriggered = basicCondition && crossed;
 
-        if (isTriggered) {
+        // Terapkan cooldown untuk menghindari spam notifikasi
+        if (isTriggered && !isWithinCooldown(alert.lastTriggered)) {
           await prisma.alert.update({
             where: { id: alert.id },
             data: { lastTriggered: new Date() },
@@ -215,6 +240,10 @@ export async function processAlerts(): Promise<void> {
 
           console.log(
             `Portfolio alert triggered: ${alert.address} ${alert.operator} ${alert.value} (current ${currentValue})`,
+          );
+        } else if (isTriggered) {
+          console.log(
+            `Portfolio alert skipped due to cooldown: ${alert.address} ${alert.operator} ${alert.value} (current ${currentValue})`,
           );
         }
       } catch (error) {
@@ -258,11 +287,12 @@ Alert condition: ${alert.operator} $${alert.value}
         
 This alert was set up for your portfolio tracking.`;
     } else if (context.type === "portfolio" && context.address) {
-      subject = `Portfolio Alert: ${alert.operator} $${alert.value}`;
-      message = `Your portfolio value alert has been triggered!
+      // Subjek dan pesan yang menekankan crossing
+      subject = `Portfolio Alert: crossed ${alert.operator} $${alert.value}`;
+      message = `Your portfolio value milestone has been reached!
         
 Current portfolio value: $${context.currentValue.toFixed(2)}
-Alert condition: ${alert.operator} $${alert.value}
+Milestone: ${alert.operator} $${alert.value}
 Wallet: ${context.address}
         
 This alert was set up for your portfolio tracking.`;

@@ -131,7 +131,7 @@ describe("alertService - portfolio alerts", () => {
         // Verify email was sent
         expect(notificationService.sendEmail).toHaveBeenCalledWith({
           to: ["admin@portguard.app"],
-          subject: "Portfolio Alert: above $5000",
+          subject: "Portfolio Alert: crossed above $5000",
           html: "<html>test</html>",
         });
 
@@ -146,7 +146,7 @@ describe("alertService - portfolio alerts", () => {
             alertId: "alert_portfolio_above",
             address: "0x123",
             title: "Portfolio Value Alert",
-            message: "Portfolio value is now $5500.00 (above $5000)",
+            message: "Portfolio value crossed above $5000 (current $5500.00)",
             type: "portfolio",
             isRead: false,
             triggeredAt: expect.any(Date),
@@ -300,6 +300,75 @@ describe("alertService - portfolio alerts", () => {
     const args = updateMock.mock.calls[0][0];
     expect(args.where).toEqual({ id: "a3" });
     expect(args.data.lastTriggered).toBeInstanceOf(Date);
+  });
+
+  it("skips portfolio alert within cooldown window", async () => {
+    const now = new Date();
+    const prev = new Date(now.getTime() - 60 * 1000);
+
+    findManyMock.mockResolvedValueOnce([
+      {
+        id: "c1",
+        address: "0xabc",
+        type: "portfolio",
+        tokenAddress: null,
+        tokenSymbol: null,
+        chain: null,
+        operator: "above",
+        value: 5000,
+        enabled: true,
+        createdAt: now.toISOString(),
+        lastTriggered: new Date(), // Cooldown aktif
+      },
+    ]);
+
+    // Latest snapshot: 5500 (di atas)
+    findFirstSnapshotMock.mockResolvedValueOnce({
+      id: "sc_latest",
+      address: "0xabc",
+      totalValue: 5500,
+      createdAt: now.toISOString(),
+    });
+    // Previous snapshot: 4500 (crossing dari bawah)
+    findFirstSnapshotMock.mockResolvedValueOnce({
+      id: "sc_prev",
+      address: "0xabc",
+      totalValue: 4500,
+      createdAt: prev.toISOString(),
+    });
+
+    await processAlerts();
+
+    // Karena cooldown aktif, tidak update dan tidak buat notifikasi
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(createNotificationMock).not.toHaveBeenCalled();
+  });
+
+  it("skips price alert within cooldown window", async () => {
+    const now = new Date().toISOString();
+
+    vi.mocked(fetchTokenPrice).mockResolvedValue(200);
+
+    findManyMock.mockResolvedValueOnce([
+      {
+        id: "c2",
+        address: "0xabc",
+        type: "price",
+        tokenAddress: null,
+        tokenSymbol: "ETH",
+        chain: "ethereum",
+        operator: "above",
+        value: 150,
+        enabled: true,
+        createdAt: now,
+        lastTriggered: new Date(), // Cooldown aktif
+      },
+    ]);
+
+    await processAlerts();
+
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(createNotificationMock).not.toHaveBeenCalled();
   });
 
   it("does not retrigger when still above threshold (requires crossing)", async () => {
