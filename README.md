@@ -458,6 +458,60 @@ Year 2: $50k-100k/month (Scale + Enterprise)
   - Mengevaluasi kondisi dan menerapkan cooldown sebelum membuat notifikasi dan email.
   - Mengambil snapshot portofolio dan mendeteksi crossing threshold untuk alert `portfolio`.
 
+#### Cron Configuration
+
+**API Key Authentication**
+- Endpoint: `GET /api/cron/alerts`
+- Mendukung 3 metode autentikasi:
+  - Query parameter: `?apiKey=your_key`
+  - Header `x-api-key`: `your_key`
+  - Header `Authorization`: `Bearer your_key`
+- Environment variable: `ALERTS_CRON_API_KEY`
+
+**Provider Setup Examples**
+
+*Vercel Cron (vercel.json):*
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/alerts?apiKey=your_secure_key",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+```
+
+*GitHub Actions (.github/workflows/cron.yml):*
+```yaml
+name: Alert Processing
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+jobs:
+  process-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Alert Processing
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/cron/alerts" \
+            -H "x-api-key: ${{ secrets.ALERTS_CRON_API_KEY }}"
+```
+
+*Cloudflare Workers (wrangler.toml):*
+```toml
+[triggers]
+crons = ["*/5 * * * *"]
+
+[env.production.vars]
+ALERTS_CRON_API_KEY = "your_secure_key"
+```
+
+**Recommended Schedule**
+- Interval: Setiap 5 menit (`*/5 * * * *`)
+- Alasan: Balance antara responsivitas dan efisiensi API calls
+- Untuk testing: Setiap 1 menit (`* * * * *`)
+
 ## 🚀 Go-to-Market Strategy
 
 ### Pre-Launch (Weeks 1-2)
