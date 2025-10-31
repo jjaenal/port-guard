@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // Tambahkan toast untuk feedback UI
-import { Loader2 } from "lucide-react"; // Ikon spinner untuk loading state
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -19,6 +18,7 @@ import {
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import type { NotificationPreferences } from "@/types/notifications";
 import { BrowserPermission } from "@/components/notifications/browser-permission";
+import { PreferencesModal } from "@/components/notifications/preferences-modal";
 
 // Hook sederhana untuk mengambil preferences
 function usePreferences(address?: string) {
@@ -268,125 +268,6 @@ function formatDateTime(iso: string) {
   return d.toLocaleString();
 }
 
-type PreferencesFormProps = {
-  initial: NotificationPreferences;
-  loading?: boolean;
-  onSave: (prefs: NotificationPreferences) => Promise<unknown> | unknown;
-};
-
-function PreferencesForm({ initial, loading, onSave }: PreferencesFormProps) {
-  // State lokal untuk menyunting preferensi sebelum disimpan
-  const [enabled, setEnabled] = useState<boolean>(initial.enabled);
-  const [email, setEmail] = useState<boolean>(initial.channels.email);
-  const [browser, setBrowser] = useState<boolean>(initial.channels.browser);
-  const [price, setPrice] = useState<boolean>(initial.alerts.price);
-  const [portfolio, setPortfolio] = useState<boolean>(initial.alerts.portfolio);
-  const [liquidation, setLiquidation] = useState<boolean>(
-    initial.alerts.liquidation,
-  );
-
-  // Sinkronisasi state form dengan data initial yang berubah dari server
-  // Ini memastikan form tetap konsisten setelah PUT berhasil
-  useEffect(() => {
-    setEnabled(initial.enabled);
-    setEmail(initial.channels.email);
-    setBrowser(initial.channels.browser);
-    setPrice(initial.alerts.price);
-    setPortfolio(initial.alerts.portfolio);
-    setLiquidation(initial.alerts.liquidation);
-  }, [initial]);
-
-  // Build payload setiap kali save ditekan
-  const buildPayload = (): NotificationPreferences => ({
-    enabled,
-    channels: { email, browser },
-    alerts: { price, portfolio, liquidation },
-    updatedAt: Date.now(),
-  });
-
-  return (
-    <div className="space-y-3">
-      {/* Toggle global enable */}
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) => setEnabled(e.target.checked)}
-        />
-        <span className="font-medium">Aktifkan notifikasi</span>
-      </label>
-
-      {/* Channel selection */}
-      <div className="space-y-2">
-        <div className="font-medium">Channel</div>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={email}
-            onChange={(e) => setEmail(e.target.checked)}
-          />
-          <span>Email</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={browser}
-            onChange={(e) => setBrowser(e.target.checked)}
-          />
-          <span>Browser push</span>
-        </label>
-      </div>
-
-      {/* Alert types */}
-      <div className="space-y-2">
-        <div className="font-medium">Jenis Alert</div>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={price}
-            onChange={(e) => setPrice(e.target.checked)}
-          />
-          <span>Harga</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={portfolio}
-            onChange={(e) => setPortfolio(e.target.checked)}
-          />
-          <span>Portfolio</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={liquidation}
-            onChange={(e) => setLiquidation(e.target.checked)}
-          />
-          <span>Likuidasi</span>
-        </label>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          disabled={Boolean(loading)}
-          aria-busy={Boolean(loading)}
-          onClick={() => onSave(buildPayload())}
-        >
-          {/* Tampilkan spinner saat loading untuk memberi affordance */}
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" />
-              <span>Menyimpan...</span>
-            </>
-          ) : (
-            <span>Simpan</span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function NotificationsPage() {
   const { address } = useAccount();
   const [isReadFilter, setIsReadFilter] = useState<"all" | "read" | "unread">(
@@ -475,13 +356,10 @@ export default function NotificationsPage() {
     <div className="container mx-auto p-6 space-y-4">
       {/* Kartu Preferences untuk mengatur preferensi notifikasi */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>Notification Preferences</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Gunakan state lokal untuk staging perubahan sebelum save */}
-          {prefs.data?.preferences ? (
-            <PreferencesForm
+          {prefs.data?.preferences && (
+            <PreferencesModal
               initial={prefs.data.preferences}
               loading={prefs.isLoading || savePrefs.isPending}
               onSave={(newPrefs) => {
@@ -493,8 +371,44 @@ export default function NotificationsPage() {
                 });
               }}
             />
+          )}
+        </CardHeader>
+        <CardContent>
+          {prefs.data?.preferences ? (
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>
+                <span className="font-medium">Status:</span>{" "}
+                {prefs.data.preferences.enabled ? "Enabled" : "Disabled"}
+              </p>
+              <p>
+                <span className="font-medium">Email:</span>{" "}
+                {prefs.data.preferences.channels.email ? "Enabled" : "Disabled"}
+              </p>
+              <p>
+                <span className="font-medium">Browser:</span>{" "}
+                {prefs.data.preferences.channels.browser
+                  ? "Enabled"
+                  : "Disabled"}
+              </p>
+              <p>
+                <span className="font-medium">Price alerts:</span>{" "}
+                {prefs.data.preferences.alerts.price ? "Enabled" : "Disabled"}
+              </p>
+              <p>
+                <span className="font-medium">Portfolio alerts:</span>{" "}
+                {prefs.data.preferences.alerts.portfolio
+                  ? "Enabled"
+                  : "Disabled"}
+              </p>
+              <p>
+                <span className="font-medium">Liquidation alerts:</span>{" "}
+                {prefs.data.preferences.alerts.liquidation
+                  ? "Enabled"
+                  : "Disabled"}
+              </p>
+            </div>
           ) : (
-            <div>
+            <div className="text-sm text-muted-foreground">
               {prefs.isLoading
                 ? "Loading preferences..."
                 : prefs.error?.message || "No preferences"}
