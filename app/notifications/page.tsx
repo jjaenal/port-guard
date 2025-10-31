@@ -5,6 +5,8 @@ import { useAccount } from "wagmi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner"; // Tambahkan toast untuk feedback UI
+import { Loader2 } from "lucide-react"; // Ikon spinner untuk loading state
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -70,10 +72,45 @@ function useSavePreferences() {
       }
       return res.json();
     },
+    // Sukses: invalidasi cache dan tampilkan toast sukses
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({
         queryKey: ["notification-preferences", vars.address.toLowerCase()],
       });
+      toast.success("Preferensi notifikasi berhasil disimpan", {
+        description: "Pengaturan Anda telah diperbarui.",
+        id: "prefs-save-success",
+      });
+    },
+    // Error: tampilkan toast error dengan deskripsi ramah
+    onError: (error) => {
+      const msg =
+        (error as Error)?.message || "Terjadi kesalahan tidak dikenal";
+      // Heuristik pesan lebih spesifik
+      if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
+        toast.error("Terlalu banyak permintaan", {
+          description: "Silakan coba lagi beberapa saat.",
+          id: "prefs-rate-limit",
+        });
+      } else if (
+        msg.toLowerCase().includes("content-type") ||
+        msg.toLowerCase().includes("json")
+      ) {
+        toast.error("Format data tidak valid", {
+          description: "Pastikan payload bertipe JSON.",
+          id: "prefs-invalid-json",
+        });
+      } else if (msg.toLowerCase().includes("network")) {
+        toast.error("Gangguan jaringan", {
+          description: "Periksa koneksi internet Anda.",
+          id: "prefs-network",
+        });
+      } else {
+        toast.error("Gagal menyimpan preferensi", {
+          description: msg,
+          id: "prefs-save-error",
+        });
+      }
     },
   });
 }
@@ -294,9 +331,18 @@ function PreferencesForm({ initial, loading, onSave }: PreferencesFormProps) {
       <div className="flex items-center gap-2">
         <Button
           disabled={Boolean(loading)}
+          aria-busy={Boolean(loading)}
           onClick={() => onSave(buildPayload())}
         >
-          Simpan
+          {/* Tampilkan spinner saat loading untuk memberi affordance */}
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" />
+              <span>Menyimpan...</span>
+            </>
+          ) : (
+            <span>Simpan</span>
+          )}
         </Button>
       </div>
     </div>
