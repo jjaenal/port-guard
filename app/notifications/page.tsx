@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -203,8 +203,23 @@ function useMarkReadUnread() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
+      // Toast sukses dengan informasi jumlah notifikasi yang diperbarui
+      const action = variables.isRead
+        ? "ditandai sebagai dibaca"
+        : "ditandai sebagai belum dibaca";
+      toast.success(`${data.updated} notifikasi ${action}`, {
+        description: "Status notifikasi berhasil diperbarui.",
+        id: "mark-notifications-success",
+      });
+    },
+    onError: (error) => {
+      const msg = error?.message || "Terjadi kesalahan tidak dikenal";
+      toast.error("Gagal memperbarui notifikasi", {
+        description: msg,
+        id: "mark-notifications-error",
+      });
     },
   });
 }
@@ -230,8 +245,20 @@ function useDeleteNotifications() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
+      // Toast sukses dengan informasi jumlah notifikasi yang dihapus
+      toast.success(`${data.deleted} notifikasi berhasil dihapus`, {
+        description: "Notifikasi telah dihapus secara permanen.",
+        id: "delete-notifications-success",
+      });
+    },
+    onError: (error) => {
+      const msg = error?.message || "Terjadi kesalahan tidak dikenal";
+      toast.error("Gagal menghapus notifikasi", {
+        description: msg,
+        id: "delete-notifications-error",
+      });
     },
   });
 }
@@ -257,6 +284,17 @@ function PreferencesForm({ initial, loading, onSave }: PreferencesFormProps) {
   const [liquidation, setLiquidation] = useState<boolean>(
     initial.alerts.liquidation,
   );
+
+  // Sinkronisasi state form dengan data initial yang berubah dari server
+  // Ini memastikan form tetap konsisten setelah PUT berhasil
+  useEffect(() => {
+    setEnabled(initial.enabled);
+    setEmail(initial.channels.email);
+    setBrowser(initial.channels.browser);
+    setPrice(initial.alerts.price);
+    setPortfolio(initial.alerts.portfolio);
+    setLiquidation(initial.alerts.liquidation);
+  }, [initial]);
 
   // Build payload setiap kali save ditekan
   const buildPayload = (): NotificationPreferences => ({
