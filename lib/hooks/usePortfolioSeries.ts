@@ -5,6 +5,7 @@ import {
   type MarketChartPoint,
 } from "@/lib/utils/coingecko";
 import type { TokenHoldingDTO } from "@/lib/blockchain/balances";
+import { platformIdForChain } from "@/lib/blockchain/balances";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -16,9 +17,8 @@ export type PortfolioSeriesResult = {
   error?: unknown;
 };
 
-function platformIdForChain(chain: "ethereum" | "polygon"): string {
-  return chain === "polygon" ? "polygon-pos" : "ethereum";
-}
+// Gunakan helper terpusat dari balances untuk mapping chain -> platform CoinGecko
+// Menghindari duplikasi dan memastikan dukungan chain baru (mis. Arbitrum)
 
 /**
  * Menghitung seri nilai portofolio (USD) untuk range hari tertentu

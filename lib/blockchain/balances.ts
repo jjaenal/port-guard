@@ -57,7 +57,9 @@ function chainKeyFromId(chainId: number): ChainKey {
   }
 }
 
-function platformIdForChain(chain: ChainKey): string {
+// Mengekspor helper untuk mapping ChainKey -> platform ID CoinGecko
+// Digunakan lintas modul (mis: hooks seri portofolio) agar konsisten
+export function platformIdForChain(chain: ChainKey): string {
   switch (chain) {
     case "ethereum":
       return "ethereum";
