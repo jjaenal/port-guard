@@ -318,8 +318,12 @@ export default function AlertsPage() {
                       <SelectItem value="below">Below</SelectItem>
                       {type === "price" && (
                         <>
-                          <SelectItem value="percent_increase">% Increase</SelectItem>
-                          <SelectItem value="percent_decrease">% Decrease</SelectItem>
+                          <SelectItem value="percent_increase">
+                            % Increase
+                          </SelectItem>
+                          <SelectItem value="percent_decrease">
+                            % Decrease
+                          </SelectItem>
                         </>
                       )}
                     </SelectContent>

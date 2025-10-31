@@ -108,6 +108,59 @@ export function Header() {
     staleTime: 30_000,
   });
 
+  // Hook untuk menampilkan browser notification ketika ada notifikasi baru
+  useEffect(() => {
+    // Hanya jalankan jika ada address dan browser mendukung Notification API
+    if (
+      !address ||
+      typeof window === "undefined" ||
+      !("Notification" in window)
+    ) {
+      return;
+    }
+
+    // Cek apakah izin sudah diberikan
+    if (Notification.permission !== "granted") {
+      return;
+    }
+
+    // Ambil data notifikasi terbaru
+    const latestNotifications = recentQuery.data?.notifications;
+    if (!latestNotifications || latestNotifications.length === 0) {
+      return;
+    }
+
+    // Ambil notifikasi pertama (terbaru) untuk ditampilkan
+    const latestNotification = latestNotifications[0];
+
+    // Cek apakah ini notifikasi baru (dalam 1 menit terakhir)
+    const triggeredTime = new Date(latestNotification.triggeredAt).getTime();
+    const now = Date.now();
+    const oneMinuteAgo = now - 60 * 1000;
+
+    if (triggeredTime > oneMinuteAgo) {
+      // Tampilkan browser notification
+      const notification = new Notification(latestNotification.title, {
+        body: latestNotification.message,
+        icon: "/favicon.ico",
+        tag: latestNotification.id, // Prevent duplicate notifications
+        requireInteraction: false,
+      });
+
+      // Auto close setelah 5 detik
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+
+      // Handle klik notifikasi - buka halaman notifications
+      notification.onclick = () => {
+        window.focus();
+        window.location.href = "/notifications";
+        notification.close();
+      };
+    }
+  }, [address, recentQuery.data?.notifications]);
+
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">

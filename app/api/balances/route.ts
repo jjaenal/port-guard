@@ -35,6 +35,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const address = (searchParams.get("address") || "").toLowerCase();
+    // Default tetap ETH+Polygon; Arbitrum akan aktif ketika dipilih di param
     const chainsParam = searchParams.get("chains") || "ethereum,polygon";
 
     // Rate limiting: 60 requests per minute per IP+address+path
@@ -61,11 +62,12 @@ export async function GET(req: Request) {
 
     const doEth = chains.includes("ethereum");
     const doPolygon = chains.includes("polygon");
+    const doArbitrum = chains.includes("arbitrum");
 
     const cacheKey = `balances:${address}:${[...chains].sort().join(",")}`;
     const cached = await cacheGet<{
       address: string;
-      chains: { ethereum: boolean; polygon: boolean };
+      chains: { ethereum: boolean; polygon: boolean; arbitrum: boolean };
       tokens: TokenHoldingDTO[];
       errors: Record<string, string>;
     }>(cacheKey);
@@ -81,15 +83,19 @@ export async function GET(req: Request) {
     const results = await Promise.allSettled<TokenHolding[]>([
       doEth ? getTokenBalances(address, 1) : Promise.resolve([]),
       doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
+      doArbitrum ? getTokenBalances(address, 42161) : Promise.resolve([]),
     ]);
 
     const ethRes = results[0];
     const polygonRes = results[1];
+    const arbitrumRes = results[2];
 
     const errors: Record<string, string> = {};
     const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
     const polygonTokens =
       polygonRes.status === "fulfilled" ? polygonRes.value : [];
+    const arbitrumTokens =
+      arbitrumRes?.status === "fulfilled" ? arbitrumRes.value : [];
 
     if (ethRes.status === "rejected") {
       errors.ethereum =
@@ -103,8 +109,14 @@ export async function GET(req: Request) {
           ? polygonRes.reason.message
           : String(polygonRes.reason);
     }
+    if (arbitrumRes && arbitrumRes.status === "rejected") {
+      errors.arbitrum =
+        arbitrumRes.reason instanceof Error
+          ? arbitrumRes.reason.message
+          : String(arbitrumRes.reason);
+    }
 
-    const tokens = [...ethTokens, ...polygonTokens].sort(
+    const tokens = [...ethTokens, ...polygonTokens, ...arbitrumTokens].sort(
       (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
     );
 
@@ -113,7 +125,7 @@ export async function GET(req: Request) {
 
     const payload = {
       address,
-      chains: { ethereum: doEth, polygon: doPolygon },
+      chains: { ethereum: doEth, polygon: doPolygon, arbitrum: doArbitrum },
       tokens: serializedTokens,
       errors,
     };

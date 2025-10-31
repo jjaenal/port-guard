@@ -1,6 +1,6 @@
 import { formatUnits } from "viem";
 
-export type ChainKey = "ethereum" | "polygon";
+export type ChainKey = "ethereum" | "polygon" | "arbitrum";
 
 export type TokenHolding = {
   chain: ChainKey;
@@ -39,6 +39,8 @@ type TokenMetadata = {
 const ALCHEMY_ENDPOINTS: Record<ChainKey, (apiKey: string) => string> = {
   ethereum: (k) => `https://eth-mainnet.g.alchemy.com/v2/${k}`,
   polygon: (k) => `https://polygon-mainnet.g.alchemy.com/v2/${k}`,
+  // Endpoint Arbitrum One di Alchemy
+  arbitrum: (k) => `https://arb-mainnet.g.alchemy.com/v2/${k}`,
 };
 
 function chainKeyFromId(chainId: number): ChainKey {
@@ -47,6 +49,9 @@ function chainKeyFromId(chainId: number): ChainKey {
       return "ethereum";
     case 137:
       return "polygon";
+    case 42161:
+      // ChainId Arbitrum One
+      return "arbitrum";
     default:
       throw new Error(`Unsupported chainId: ${chainId}`);
   }
@@ -58,6 +63,9 @@ function platformIdForChain(chain: ChainKey): string {
       return "ethereum";
     case "polygon":
       return "polygon-pos";
+    case "arbitrum":
+      // Platform ID CoinGecko untuk Arbitrum One
+      return "arbitrum-one";
     default:
       return "ethereum";
   }
@@ -160,7 +168,12 @@ export async function getTokenBalances(
           process.env.NEXT_PUBLIC_ALCHEMY_API_KEY_POLYGON ||
           process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ||
           ""
-        : process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+        : chainId === 42161
+          ? process.env.ALCHEMY_API_KEY_ARBITRUM ||
+            process.env.NEXT_PUBLIC_ALCHEMY_API_KEY_ARBITRUM ||
+            process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ||
+            ""
+          : process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
 
   if (!apiKey) {
     console.warn("⚠️ No Alchemy API key found for chain", chainId);

@@ -9,6 +9,7 @@ import { PortfolioChart } from "@/components/ui/portfolio-chart";
 import { PortfolioAllocation } from "@/components/ui/portfolio-allocation";
 import { ChartSkeleton } from "@/components/ui/chart-skeleton";
 import { AllocationSkeleton } from "@/components/ui/allocation-skeleton";
+import { CronStatsPanel } from "@/components/ui/cron-stats-panel";
 import { formatUnits } from "viem";
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -39,18 +40,23 @@ export default function AnalyticsPage() {
   });
 
   const [chainFilter, setChainFilter] = useState<
-    "all" | "ethereum" | "polygon"
+    "all" | "ethereum" | "polygon" | "arbitrum"
   >(() => {
     const urlChain = searchParams.get("chain") as
       | "all"
       | "ethereum"
-      | "polygon";
-    if (urlChain && ["all", "ethereum", "polygon"].includes(urlChain))
+      | "polygon"
+      | "arbitrum";
+    // Validasi nilai chain dari URL, dukung 'arbitrum'
+    if (
+      urlChain &&
+      ["all", "ethereum", "polygon", "arbitrum"].includes(urlChain)
+    )
       return urlChain;
 
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("analytics-chain");
-      return (saved as "all" | "ethereum" | "polygon") || "all";
+      return (saved as "all" | "ethereum" | "polygon" | "arbitrum") || "all";
     }
     return "all";
   });
@@ -148,6 +154,9 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+        {/* Cron Statistics Panel */}
+        <CronStatsPanel />
+
         <Card>
           <CardHeader>
             <CardTitle>Portfolio Value</CardTitle>
@@ -156,7 +165,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm text-muted-foreground">Filters</div>
               <div className="flex flex-wrap gap-2 items-center">
-                {["all", "ethereum", "polygon"].map((c) => (
+                {["all", "ethereum", "polygon", "arbitrum"].map((c) => (
                   <button
                     key={c}
                     className={`px-2 py-1 rounded border text-xs ${chainFilter === c ? "bg-muted" : ""}`}
@@ -212,7 +221,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm text-muted-foreground">Filters</div>
               <div className="flex flex-wrap gap-2 items-center">
-                {["all", "ethereum", "polygon"].map((c) => (
+                {["all", "ethereum", "polygon", "arbitrum"].map((c) => (
                   <button
                     key={c}
                     className={`px-2 py-1 rounded border text-xs ${chainFilter === c ? "bg-muted" : ""}`}
@@ -226,7 +235,9 @@ export default function AnalyticsPage() {
                       ? "All"
                       : c === "ethereum"
                         ? "Ethereum"
-                        : "Polygon"}
+                        : c === "polygon"
+                          ? "Polygon"
+                          : "Arbitrum"}
                   </button>
                 ))}
                 <label className="inline-flex items-center gap-2 text-xs">

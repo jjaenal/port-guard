@@ -15,6 +15,68 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import type { NotificationPreferences } from "@/types/notifications";
+import { BrowserPermission } from "@/components/notifications/browser-permission";
+
+// Hook sederhana untuk mengambil preferences
+function usePreferences(address?: string) {
+  return useQuery<{ preferences: NotificationPreferences }, Error>({
+    queryKey: ["notification-preferences", address?.toLowerCase()],
+    enabled: Boolean(address),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("address", address!.toLowerCase());
+      const res = await fetch(
+        `/api/notifications/preferences?${params.toString()}`,
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          body.error?.message || `Gagal mengambil preferences (${res.status})`,
+        );
+      }
+      return res.json();
+    },
+    staleTime: 60_000,
+    placeholderData: (prev) =>
+      prev as { preferences: NotificationPreferences } | undefined,
+  });
+}
+
+// Hook untuk menyimpan preferences
+function useSavePreferences() {
+  const qc = useQueryClient();
+  return useMutation<
+    { success: boolean; preferences: NotificationPreferences },
+    Error,
+    { address: string; preferences: NotificationPreferences }
+  >({
+    mutationFn: async ({ address, preferences }) => {
+      const params = new URLSearchParams();
+      params.set("address", address.toLowerCase());
+      const res = await fetch(
+        `/api/notifications/preferences?${params.toString()}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(preferences),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          body.error?.message || `Gagal menyimpan preferences (${res.status})`,
+        );
+      }
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["notification-preferences", vars.address.toLowerCase()],
+      });
+    },
+  });
+}
 
 type AlertSummary = {
   type: "price" | "portfolio" | "liquidation";
@@ -142,6 +204,105 @@ function formatDateTime(iso: string) {
   return d.toLocaleString();
 }
 
+type PreferencesFormProps = {
+  initial: NotificationPreferences;
+  loading?: boolean;
+  onSave: (prefs: NotificationPreferences) => Promise<unknown> | unknown;
+};
+
+function PreferencesForm({ initial, loading, onSave }: PreferencesFormProps) {
+  // State lokal untuk menyunting preferensi sebelum disimpan
+  const [enabled, setEnabled] = useState<boolean>(initial.enabled);
+  const [email, setEmail] = useState<boolean>(initial.channels.email);
+  const [browser, setBrowser] = useState<boolean>(initial.channels.browser);
+  const [price, setPrice] = useState<boolean>(initial.alerts.price);
+  const [portfolio, setPortfolio] = useState<boolean>(initial.alerts.portfolio);
+  const [liquidation, setLiquidation] = useState<boolean>(
+    initial.alerts.liquidation,
+  );
+
+  // Build payload setiap kali save ditekan
+  const buildPayload = (): NotificationPreferences => ({
+    enabled,
+    channels: { email, browser },
+    alerts: { price, portfolio, liquidation },
+    updatedAt: Date.now(),
+  });
+
+  return (
+    <div className="space-y-3">
+      {/* Toggle global enable */}
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+        />
+        <span className="font-medium">Aktifkan notifikasi</span>
+      </label>
+
+      {/* Channel selection */}
+      <div className="space-y-2">
+        <div className="font-medium">Channel</div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={email}
+            onChange={(e) => setEmail(e.target.checked)}
+          />
+          <span>Email</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={browser}
+            onChange={(e) => setBrowser(e.target.checked)}
+          />
+          <span>Browser push</span>
+        </label>
+      </div>
+
+      {/* Alert types */}
+      <div className="space-y-2">
+        <div className="font-medium">Jenis Alert</div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={price}
+            onChange={(e) => setPrice(e.target.checked)}
+          />
+          <span>Harga</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={portfolio}
+            onChange={(e) => setPortfolio(e.target.checked)}
+          />
+          <span>Portfolio</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={liquidation}
+            onChange={(e) => setLiquidation(e.target.checked)}
+          />
+          <span>Likuidasi</span>
+        </label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          disabled={Boolean(loading)}
+          onClick={() => onSave(buildPayload())}
+        >
+          Simpan
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function NotificationsPage() {
   const { address } = useAccount();
   const [isReadFilter, setIsReadFilter] = useState<"all" | "read" | "unread">(
@@ -169,6 +330,8 @@ export default function NotificationsPage() {
   );
   const markMutation = useMarkReadUnread();
   const deleteMutation = useDeleteNotifications();
+  const prefs = usePreferences(address);
+  const savePrefs = useSavePreferences();
 
   const total = data?.pagination.total ?? 0;
   const hasMore = data?.pagination.hasMore ?? false;
@@ -226,6 +389,39 @@ export default function NotificationsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-4">
+      {/* Kartu Preferences untuk mengatur preferensi notifikasi */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification Preferences</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Gunakan state lokal untuk staging perubahan sebelum save */}
+          {prefs.data?.preferences ? (
+            <PreferencesForm
+              initial={prefs.data.preferences}
+              loading={prefs.isLoading || savePrefs.isPending}
+              onSave={(newPrefs) => {
+                if (!address) return;
+                // Simpan ke API; error ditangani oleh hook
+                return savePrefs.mutateAsync({
+                  address,
+                  preferences: newPrefs,
+                });
+              }}
+            />
+          ) : (
+            <div>
+              {prefs.isLoading
+                ? "Loading preferences..."
+                : prefs.error?.message || "No preferences"}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Kartu Browser Notifications untuk mengatur izin browser */}
+      <BrowserPermission />
+
       <Card>
         <CardHeader>
           <CardTitle>Notifications</CardTitle>

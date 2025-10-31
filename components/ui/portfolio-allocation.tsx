@@ -107,6 +107,7 @@ export function PortfolioAllocation({ tokens }: PortfolioAllocationProps) {
     | "all"
     | "ethereum"
     | "polygon"
+    | "arbitrum"
     | null;
   const rangeDays = searchParams.get("rangeDays");
 

@@ -461,6 +461,7 @@ Year 2: $50k-100k/month (Scale + Enterprise)
 #### Cron Configuration
 
 **API Key Authentication**
+
 - Endpoint: `GET /api/cron/alerts`
 - Mendukung 3 metode autentikasi:
   - Query parameter: `?apiKey=your_key`
@@ -470,7 +471,8 @@ Year 2: $50k-100k/month (Scale + Enterprise)
 
 **Provider Setup Examples**
 
-*Vercel Cron (vercel.json):*
+_Vercel Cron (vercel.json):_
+
 ```json
 {
   "crons": [
@@ -482,12 +484,13 @@ Year 2: $50k-100k/month (Scale + Enterprise)
 }
 ```
 
-*GitHub Actions (.github/workflows/cron.yml):*
+_GitHub Actions (.github/workflows/cron.yml):_
+
 ```yaml
 name: Alert Processing
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: "*/5 * * * *"
 jobs:
   process-alerts:
     runs-on: ubuntu-latest
@@ -498,7 +501,8 @@ jobs:
             -H "x-api-key: ${{ secrets.ALERTS_CRON_API_KEY }}"
 ```
 
-*Cloudflare Workers (wrangler.toml):*
+_Cloudflare Workers (wrangler.toml):_
+
 ```toml
 [triggers]
 crons = ["*/5 * * * *"]
@@ -508,6 +512,7 @@ ALERTS_CRON_API_KEY = "your_secure_key"
 ```
 
 **Recommended Schedule**
+
 - Interval: Setiap 5 menit (`*/5 * * * *`)
 - Alasan: Balance antara responsivitas dan efisiensi API calls
 - Untuk testing: Setiap 1 menit (`* * * * *`)

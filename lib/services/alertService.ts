@@ -19,9 +19,12 @@ const ALERT_COOLDOWN_MINUTES: number = Number(
  * Mengecek apakah alert masih dalam masa cooldown berdasarkan lastTriggered
  * Jika lastTriggered masih dalam X menit terakhir, kita skip trigger.
  */
-function isWithinCooldown(lastTriggered: Date | string | null | undefined): boolean {
+function isWithinCooldown(
+  lastTriggered: Date | string | null | undefined,
+): boolean {
   if (!lastTriggered) return false;
-  const last = typeof lastTriggered === "string" ? new Date(lastTriggered) : lastTriggered;
+  const last =
+    typeof lastTriggered === "string" ? new Date(lastTriggered) : lastTriggered;
   const diffMs = Date.now() - last.getTime();
   return diffMs < ALERT_COOLDOWN_MINUTES * 60_000;
 }
@@ -109,7 +112,18 @@ export async function checkAlertCondition(
 /**
  * Processes all active alerts and triggers notifications for conditions that are met
  */
-export async function processAlerts(): Promise<void> {
+/**
+ * Interface untuk metrics hasil processAlerts
+ */
+export interface AlertProcessingMetrics {
+  alertsEvaluated: number;
+  alertsTriggered: number;
+}
+
+export async function processAlerts(): Promise<AlertProcessingMetrics> {
+  let alertsEvaluated = 0;
+  let alertsTriggered = 0;
+
   try {
     // Get all enabled alerts
     const alerts = await prisma.alert.findMany({
@@ -117,6 +131,8 @@ export async function processAlerts(): Promise<void> {
         enabled: true,
       },
     });
+
+    alertsEvaluated = alerts.length;
 
     // Group alerts by token to minimize API calls
     const tokenAlerts = new Map<string, Alert[]>();
@@ -163,6 +179,8 @@ export async function processAlerts(): Promise<void> {
             // Send email notification if configured
             await sendAlertNotification(alert, alertContext);
 
+            alertsTriggered++;
+
             console.log(
               `Alert triggered: ${alert.tokenSymbol} ${alert.operator} ${alert.value}`,
             );
@@ -194,12 +212,18 @@ export async function processAlerts(): Promise<void> {
         // Ambil snapshot sebelumnya untuk mendeteksi crossing threshold
         // Catatan: crossing berarti nilai melewati ambang dari sisi sebaliknya
         const previousSnapshot = await prisma.portfolioSnapshot.findFirst({
-          where: { address: alert.address, createdAt: { lt: snapshot.createdAt } },
+          where: {
+            address: alert.address,
+            createdAt: { lt: snapshot.createdAt },
+          },
           orderBy: { createdAt: "desc" },
         });
 
         // Helper crossing untuk operator above/below
-        const hasCrossedThreshold = (prev: number | null, curr: number): boolean => {
+        const hasCrossedThreshold = (
+          prev: number | null,
+          curr: number,
+        ): boolean => {
           // Jika tidak ada snapshot sebelumnya, fallback ke kondisi dasar
           if (prev === null) return true;
           if (alert.operator === "above") {
@@ -238,6 +262,8 @@ export async function processAlerts(): Promise<void> {
           // Send email notification if configured
           await sendAlertNotification(alert, alertContext);
 
+          alertsTriggered++;
+
           console.log(
             `Portfolio alert triggered: ${alert.address} ${alert.operator} ${alert.value} (current ${currentValue})`,
           );
@@ -256,6 +282,11 @@ export async function processAlerts(): Promise<void> {
   } catch (error) {
     console.error("Error processing alerts:", error);
   }
+
+  return {
+    alertsEvaluated,
+    alertsTriggered,
+  };
 }
 
 /**

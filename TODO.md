@@ -374,7 +374,7 @@
 - [x] Add chain-specific logos/colors - Ethereum/Polygon branding added
 - [x] Test cross-chain portfolio view - Working across both chains
 - [x] Aggregate total across all chains - Portfolio totals include both chains
-- [ ] Add Arbitrum support - Not yet implemented
+- [x] Add Arbitrum support - Implemented (balances API, analytics filters, validator)
 - [ ] Add Optimism support - Not yet implemented
 - [ ] Add Base support - Not yet implemented
 

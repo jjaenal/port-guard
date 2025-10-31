@@ -6,6 +6,7 @@ vi.mock("@/lib/api/coingecko", () => ({
 }));
 
 import { processAlerts, __setPrismaClientForTest } from "./alertService";
+import type { PrismaClient } from "@/lib/generated/prisma";
 import * as notificationService from "./notificationService";
 import { fetchTokenPrice } from "@/lib/api/coingecko";
 
@@ -495,6 +496,221 @@ describe("alertService - portfolio alerts", () => {
     await processAlerts();
 
     expect(updateMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("alertService - metrics functionality", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    __setPrismaClientForTest(fakeClient as unknown as PrismaClient);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should return correct metrics when no alerts exist", async () => {
+    // Mock no active alerts
+    findManyMock.mockResolvedValue([]);
+
+    const metrics = await processAlerts();
+
+    expect(metrics).toEqual({
+      alertsEvaluated: 0,
+      alertsTriggered: 0,
+    });
+  });
+
+  it("should count evaluated alerts correctly", async () => {
+    const mockAlerts = [
+      {
+        id: "1",
+        userId: "user1",
+        type: "price_above",
+        tokenAddress: "0x123",
+        tokenSymbol: "ETH",
+        targetPrice: 2000,
+        isActive: true,
+        lastTriggered: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "2",
+        userId: "user1",
+        type: "price_below",
+        tokenAddress: "0x456",
+        tokenSymbol: "BTC",
+        targetPrice: 30000,
+        isActive: true,
+        lastTriggered: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    findManyMock.mockResolvedValue(mockAlerts);
+    vi.mocked(fetchTokenPrice).mockResolvedValue(1800); // ETH below target
+
+    const metrics = await processAlerts();
+
+    expect(metrics.alertsEvaluated).toBe(2);
+    expect(metrics.alertsTriggered).toBe(0); // Neither condition met
+  });
+
+  it("should count triggered alerts correctly", async () => {
+    const mockAlerts = [
+      {
+        id: "1",
+        userId: "user1",
+        type: "price",
+        tokenSymbol: "ETH",
+        operator: "above",
+        value: 2000,
+        enabled: true,
+        address: null,
+        lastTriggered: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    findManyMock.mockResolvedValue(mockAlerts);
+    vi.mocked(fetchTokenPrice).mockResolvedValue(2500); // ETH above target
+    createNotificationMock.mockResolvedValue({ id: "notif1" });
+    updateMock.mockResolvedValue({});
+
+    // Tidak perlu spy ke fungsi email; kita fokus pada metrics
+
+    const metrics = await processAlerts();
+
+    expect(metrics.alertsEvaluated).toBe(1);
+    expect(metrics.alertsTriggered).toBe(1); // Condition met
+  });
+
+  it("should handle portfolio alerts in metrics", async () => {
+    const mockAlerts = [
+      {
+        id: "1",
+        userId: "user1",
+        type: "portfolio",
+        address: "0xwallet",
+        operator: "above",
+        value: 10000,
+        enabled: true,
+        lastTriggered: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    findManyMock.mockResolvedValue(mockAlerts);
+    // Panggilan pertama (snapshot terbaru)
+    findFirstSnapshotMock.mockResolvedValueOnce({
+      totalValue: 15000, // Di atas target
+      createdAt: new Date(),
+    });
+    // Panggilan kedua (snapshot sebelumnya)
+    findFirstSnapshotMock.mockResolvedValueOnce(null);
+    createNotificationMock.mockResolvedValue({ id: "notif1" });
+    updateMock.mockResolvedValue({});
+
+    // Tidak perlu spy ke fungsi email; kita fokus pada metrics
+
+    const metrics = await processAlerts();
+
+    expect(metrics.alertsEvaluated).toBe(1);
+    expect(metrics.alertsTriggered).toBe(1);
+  });
+
+  it("should not count alerts within cooldown period", async () => {
+    const recentTime = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes ago
+
+    const mockAlerts = [
+      {
+        id: "1",
+        userId: "user1",
+        type: "price_above",
+        tokenAddress: "0x123",
+        tokenSymbol: "ETH",
+        targetPrice: 2000,
+        isActive: true,
+        lastTriggered: recentTime, // Recently triggered
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    findManyMock.mockResolvedValue(mockAlerts);
+    vi.mocked(fetchTokenPrice).mockResolvedValue(2500); // Above target but in cooldown
+
+    const metrics = await processAlerts();
+
+    expect(metrics.alertsEvaluated).toBe(1);
+    expect(metrics.alertsTriggered).toBe(0); // Should not trigger due to cooldown
+  });
+
+  it("should handle mixed alert types correctly", async () => {
+    const oldTime = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
+
+    const mockAlerts = [
+      {
+        id: "1",
+        userId: "user1",
+        type: "price",
+        tokenSymbol: "ETH",
+        operator: "above",
+        value: 2000,
+        enabled: true,
+        address: null,
+        lastTriggered: oldTime, // Outside cooldown
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "2",
+        userId: "user1",
+        type: "portfolio",
+        address: "0xwallet",
+        operator: "below",
+        value: 5000,
+        enabled: true,
+        lastTriggered: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    findManyMock.mockResolvedValue(mockAlerts);
+    vi.mocked(fetchTokenPrice).mockResolvedValue(2500); // ETH above target
+    findFirstSnapshotMock
+      .mockResolvedValueOnce({
+        totalValue: 3000, // Current value below target
+        createdAt: new Date(),
+      })
+      .mockResolvedValueOnce({
+        totalValue: 6000, // Previous value above target to ensure crossing
+        createdAt: new Date(Date.now() - 60 * 60 * 1000),
+      });
+    createNotificationMock.mockResolvedValue({ id: "notif1" });
+    updateMock.mockResolvedValue({});
+
+    // Tidak perlu spy ke fungsi email; kita fokus pada metrics
+
+    const metrics = await processAlerts();
+
+    expect(metrics.alertsEvaluated).toBe(2);
+    expect(metrics.alertsTriggered).toBe(2); // Both should trigger
+  });
+
+  it("should handle errors gracefully and return zero metrics", async () => {
+    findManyMock.mockRejectedValue(new Error("Database error"));
+
+    const metrics = await processAlerts();
+
+    // Should return zero metrics when processing fails
+    expect(metrics.alertsEvaluated).toBe(0);
+    expect(metrics.alertsTriggered).toBe(0);
   });
 });
 
