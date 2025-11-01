@@ -215,8 +215,8 @@ export function validateEthereumAddress(address: string): boolean {
  */
 export function validateChains(chainsParam: string): string[] {
   // Tambahkan dukungan Arbitrum
-  // Tambahkan dukungan Optimism
-  const supportedChains = ["ethereum", "polygon", "arbitrum", "optimism"];
+  // Tambahkan dukungan Optimism & Base
+  const supportedChains = ["ethereum", "polygon", "arbitrum", "optimism", "base"];
   const chains = chainsParam
     .toLowerCase()
     .split(",")

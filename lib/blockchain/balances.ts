@@ -1,7 +1,7 @@
 import { formatUnits } from "viem";
 
-// Tambahkan Optimism sebagai ChainKey yang didukung
-export type ChainKey = "ethereum" | "polygon" | "arbitrum" | "optimism";
+// Tambahkan Optimism & Base sebagai ChainKey yang didukung
+export type ChainKey = "ethereum" | "polygon" | "arbitrum" | "optimism" | "base";
 
 export type TokenHolding = {
   chain: ChainKey;
@@ -44,6 +44,8 @@ const ALCHEMY_ENDPOINTS: Record<ChainKey, (apiKey: string) => string> = {
   arbitrum: (k) => `https://arb-mainnet.g.alchemy.com/v2/${k}`,
   // Endpoint Optimism Mainnet di Alchemy
   optimism: (k) => `https://opt-mainnet.g.alchemy.com/v2/${k}`,
+  // Endpoint Base Mainnet di Alchemy
+  base: (k) => `https://base-mainnet.g.alchemy.com/v2/${k}`,
 };
 
 function chainKeyFromId(chainId: number): ChainKey {
@@ -58,6 +60,9 @@ function chainKeyFromId(chainId: number): ChainKey {
     case 10:
       // ChainId Optimism Mainnet
       return "optimism";
+    case 8453:
+      // ChainId Base Mainnet
+      return "base";
     default:
       throw new Error(`Unsupported chainId: ${chainId}`);
   }
@@ -77,6 +82,9 @@ export function platformIdForChain(chain: ChainKey): string {
     case "optimism":
       // Platform ID CoinGecko untuk Optimism
       return "optimism";
+    case "base":
+      // Platform ID CoinGecko untuk Base
+      return "base";
     default:
       return "ethereum";
   }
@@ -189,6 +197,11 @@ export async function getTokenBalances(
               process.env.NEXT_PUBLIC_ALCHEMY_API_KEY_OPTIMISM ||
               process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ||
               ""
+            : chainId === 8453
+              ? process.env.ALCHEMY_API_KEY_BASE ||
+                process.env.NEXT_PUBLIC_ALCHEMY_API_KEY_BASE ||
+                process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ||
+                ""
           : process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
 
   if (!apiKey) {

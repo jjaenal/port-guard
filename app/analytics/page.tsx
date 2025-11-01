@@ -221,7 +221,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm text-muted-foreground">Filters</div>
               <div className="flex flex-wrap gap-2 items-center">
-                {["all", "ethereum", "polygon", "arbitrum", "optimism"].map((c) => (
+                {["all", "ethereum", "polygon", "arbitrum", "optimism", "base"].map((c) => (
                   <button
                     key={c}
                     className={`px-2 py-1 rounded border text-xs ${chainFilter === c ? "bg-muted" : ""}`}
@@ -239,7 +239,9 @@ export default function AnalyticsPage() {
                           ? "Polygon"
                           : c === "arbitrum"
                             ? "Arbitrum"
-                            : "Optimism"}
+                            : c === "optimism"
+                              ? "Optimism"
+                              : "Base"}
                   </button>
                 ))}
                 <label className="inline-flex items-center gap-2 text-xs">

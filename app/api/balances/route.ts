@@ -64,6 +64,7 @@ export async function GET(req: Request) {
     const doPolygon = chains.includes("polygon");
     const doArbitrum = chains.includes("arbitrum");
     const doOptimism = chains.includes("optimism");
+    const doBase = chains.includes("base");
 
     const cacheKey = `balances:${address}:${[...chains].sort().join(",")}`;
     const cached = await cacheGet<{
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
         polygon: boolean;
         arbitrum: boolean;
         optimism: boolean;
+        base: boolean;
       };
       tokens: TokenHoldingDTO[];
       errors: Record<string, string>;
@@ -92,12 +94,14 @@ export async function GET(req: Request) {
       doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
       doArbitrum ? getTokenBalances(address, 42161) : Promise.resolve([]),
       doOptimism ? getTokenBalances(address, 10) : Promise.resolve([]),
+      doBase ? getTokenBalances(address, 8453) : Promise.resolve([]),
     ]);
 
     const ethRes = results[0];
     const polygonRes = results[1];
     const arbitrumRes = results[2];
     const optimismRes = results[3];
+    const baseRes = results[4];
 
     const errors: Record<string, string> = {};
     const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
@@ -107,6 +111,7 @@ export async function GET(req: Request) {
       arbitrumRes?.status === "fulfilled" ? arbitrumRes.value : [];
     const optimismTokens =
       optimismRes?.status === "fulfilled" ? optimismRes.value : [];
+    const baseTokens = baseRes?.status === "fulfilled" ? baseRes.value : [];
 
     if (ethRes.status === "rejected") {
       errors.ethereum =
@@ -132,12 +137,19 @@ export async function GET(req: Request) {
           ? optimismRes.reason.message
           : String(optimismRes.reason);
     }
+    if (baseRes && baseRes.status === "rejected") {
+      errors.base =
+        baseRes.reason instanceof Error
+          ? baseRes.reason.message
+          : String(baseRes.reason);
+    }
 
     const tokens = [
       ...ethTokens,
       ...polygonTokens,
       ...arbitrumTokens,
       ...optimismTokens,
+      ...baseTokens,
     ].sort(
       (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
     );
@@ -152,6 +164,7 @@ export async function GET(req: Request) {
         polygon: doPolygon,
         arbitrum: doArbitrum,
         optimism: doOptimism,
+        base: doBase,
       },
       tokens: serializedTokens,
       errors,
