@@ -375,7 +375,7 @@
 - [x] Test cross-chain portfolio view - Working across both chains
 - [x] Aggregate total across all chains - Portfolio totals include both chains
 - [x] Add Arbitrum support - Implemented (balances API, analytics filters, validator)
-- [ ] Add Optimism support - Not yet implemented
+- [x] Add Optimism support - Implemented (wagmi config, balances API, analytics filter)
 - [ ] Add Base support - Not yet implemented
 
 ### Day 39-42: Transaction History
