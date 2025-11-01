@@ -1,4 +1,5 @@
 export const GA_TRACKING_ID = process.env.NEXT_PUBLIC_GA_ID || "";
+const IS_PROD = process.env.NODE_ENV === "production";
 
 declare global {
   interface Window {
@@ -8,6 +9,8 @@ declare global {
 
 // Report a pageview to GA4
 export function pageview(url: string) {
+  // Hanya kirim pageview di production dan jika GA tersedia
+  if (!IS_PROD) return;
   if (!GA_TRACKING_ID) return;
   if (typeof window === "undefined") return;
   if (!window.gtag) return;
@@ -16,6 +19,8 @@ export function pageview(url: string) {
 
 // Generic event helper
 export function gaEvent(action: string, params: Record<string, unknown> = {}) {
+  // Hanya kirim event di production dan jika GA tersedia
+  if (!IS_PROD) return;
   if (!GA_TRACKING_ID) return;
   if (typeof window === "undefined") return;
   if (!window.gtag) return;

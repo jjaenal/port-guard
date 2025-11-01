@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type PermissionState = NotificationPermission | "unsupported";
 
@@ -26,6 +27,8 @@ export function BrowserPermission({
   const [permission, setPermission] = useState<PermissionState>("default");
   const [hasSW, setHasSW] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  // Ref untuk mencegah toast readiness tampil berulang kali
+  const readinessToastShown = useRef(false);
 
   // Cek dukungan fitur saat mount
   useEffect(() => {
@@ -76,6 +79,28 @@ export function BrowserPermission({
       // Diamkan error sesuai aturan lint (tidak log console)
     }
   };
+
+  // Ketika izin berubah menjadi 'granted' dan Service Worker tersedia,
+  // pastikan SW siap dan berikan feedback ramah ke pengguna.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasSW) return; // Jika tidak ada SW, tidak ada yang perlu dilakukan
+    if (permission !== "granted") return;
+    if (readinessToastShown.current) return;
+
+    // Tunggu SW siap; jika sudah siap, tampilkan toast satu kali
+    navigator.serviceWorker.ready
+      .then(() => {
+        readinessToastShown.current = true;
+        toast.success("Notifikasi siap di browser", {
+          description: "Service Worker terdaftar dan izin sudah diberikan.",
+          id: "browser-notif-ready",
+        });
+      })
+      .catch(() => {
+        // Diamkan error agar tidak melanggar aturan lint (no-console)
+      });
+  }, [permission, hasSW]);
 
   const isEnabled = permission === "granted";
   const isBlocked = permission === "denied";

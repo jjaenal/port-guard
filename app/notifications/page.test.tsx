@@ -14,6 +14,75 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/notifications",
 }));
 
+describe("Notifications Preferences Modal", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    // Mock endpoint preferences agar tombol modal tersedia
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : String(input);
+        const method = (init?.method || "GET").toUpperCase();
+
+        // Mock GET preferences
+        if (
+          url.includes("/api/notifications/preferences") &&
+          method === "GET"
+        ) {
+          return {
+            ok: true,
+            json: async () => ({
+              preferences: {
+                // Preferensi default sederhana untuk memastikan modal dirender
+                enabled: true,
+                channels: { email: false, browser: true },
+                alerts: { price: true, portfolio: true, liquidation: true },
+                updatedAt: Date.now(),
+              },
+            }),
+          } as unknown as Response;
+        }
+
+        return {
+          ok: false,
+          status: 404,
+          json: async () => ({ error: "Not found" }),
+        } as unknown as Response;
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    global.fetch = originalFetch;
+  });
+
+  const renderWithClient = (ui: React.ReactElement) => {
+    const client = new QueryClient();
+    return render(
+      <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+    );
+  };
+
+  it("menonaktifkan tombol Simpan saat tidak ada perubahan", async () => {
+    renderWithClient(<NotificationsPage />);
+
+    // Buka modal pengaturan
+    const openBtn = await screen.findByRole("button", {
+      name: /Pengaturan Notifikasi/i,
+    });
+    openBtn.click();
+
+    // Tunggu konten modal muncul
+    await screen.findByText(/Pengaturan Notifikasi/i);
+
+    // Tombol Simpan harus nonaktif jika belum ada perubahan
+    const saveBtn = screen.getByRole("button", { name: /Simpan/i });
+    expect(saveBtn).toBeDisabled();
+  });
+});
+
 function renderWithClient(ui: React.ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },

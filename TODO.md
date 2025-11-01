@@ -345,8 +345,8 @@
 - [x] Build notification inbox UI
 - [x] Show recent notifications
 - [x] Mark as read/unread
-- [ ] Add notification preferences
-- [ ] Implement browser notifications (optional)
+- [x] Add notification preferences
+- [x] Implement browser notifications (optional)
 - [x] Create notification history
 - [x] Test notification flow
 - [x] Pagination: disabled Prev at offset 0

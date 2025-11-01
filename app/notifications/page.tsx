@@ -17,8 +17,11 @@ import {
 } from "@/components/ui/table";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import type { NotificationPreferences } from "@/types/notifications";
-import { BrowserPermission } from "@/components/notifications/browser-permission";
 import { PreferencesModal } from "@/components/notifications/preferences-modal";
+import { PermissionBadge } from "@/components/notifications/permission-badge";
+import { PushStatusBadge } from "@/components/notifications/push-status-badge";
+import { BrowserPermission } from "@/components/notifications/browser-permission";
+import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 
 // Hook sederhana untuk mengambil preferences
 function usePreferences(address?: string) {
@@ -270,6 +273,8 @@ function formatDateTime(iso: string) {
 
 export default function NotificationsPage() {
   const { address } = useAccount();
+  // Hook push notifications dipanggil di level komponen (sesuai aturan hooks)
+  const push = usePushNotifications();
   const [isReadFilter, setIsReadFilter] = useState<"all" | "read" | "unread">(
     "all",
   );
@@ -354,77 +359,99 @@ export default function NotificationsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-4">
-      {/* Kartu Preferences untuk mengatur preferensi notifikasi */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Notification Preferences</CardTitle>
-          {prefs.data?.preferences && (
-            <PreferencesModal
-              initial={prefs.data.preferences}
-              loading={prefs.isLoading || savePrefs.isPending}
-              onSave={(newPrefs) => {
-                if (!address) return;
-                // Simpan ke API; error ditangani oleh hook
-                return savePrefs.mutateAsync({
-                  address,
-                  preferences: newPrefs,
-                });
-              }}
-            />
-          )}
-        </CardHeader>
-        <CardContent>
-          {prefs.data?.preferences ? (
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>
-                <span className="font-medium">Status:</span>{" "}
-                {prefs.data.preferences.enabled ? "Enabled" : "Disabled"}
-              </p>
-              <p>
-                <span className="font-medium">Email:</span>{" "}
-                {prefs.data.preferences.channels.email ? "Enabled" : "Disabled"}
-              </p>
-              <p>
-                <span className="font-medium">Browser:</span>{" "}
-                {prefs.data.preferences.channels.browser
-                  ? "Enabled"
-                  : "Disabled"}
-              </p>
-              <p>
-                <span className="font-medium">Price alerts:</span>{" "}
-                {prefs.data.preferences.alerts.price ? "Enabled" : "Disabled"}
-              </p>
-              <p>
-                <span className="font-medium">Portfolio alerts:</span>{" "}
-                {prefs.data.preferences.alerts.portfolio
-                  ? "Enabled"
-                  : "Disabled"}
-              </p>
-              <p>
-                <span className="font-medium">Liquidation alerts:</span>{" "}
-                {prefs.data.preferences.alerts.liquidation
-                  ? "Enabled"
-                  : "Disabled"}
-              </p>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              {prefs.isLoading
-                ? "Loading preferences..."
-                : prefs.error?.message || "No preferences"}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Kartu Browser Notifications untuk mengatur izin browser */}
-      <BrowserPermission />
-
-      <Card>
-        <CardHeader>
           <CardTitle>Notifications</CardTitle>
+          {/* Area kontrol kanan: tampilkan badge status izin + status push + tombol pengaturan */}
+          <div className="flex items-center gap-2">
+            {prefs.data?.preferences?.enabled && <PermissionBadge />}
+            {/* Badge status push subscription (server-driven) */}
+            {prefs.data?.preferences?.enabled && (
+              <PushStatusBadge
+                supported={push.isSupported}
+                subscribed={push.isSubscribed}
+                loading={push.isLoading}
+              />
+            )}
+            {prefs.data?.preferences && (
+              <PreferencesModal
+                initial={prefs.data.preferences}
+                loading={prefs.isLoading || savePrefs.isPending}
+                onSave={(newPrefs) => {
+                  if (!address) return;
+                  // Simpan ke API; error ditangani oleh hook
+                  return savePrefs.mutateAsync({
+                    address,
+                    preferences: newPrefs,
+                  });
+                }}
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Integrasi Push Notifications (server-driven) */}
+          {/* Komponen ini mengelola izin browser (local) dan kontrol subscribe/unsubscribe push */}
+          {prefs.data?.preferences?.enabled && (
+            <div className="mb-4 flex items-center justify-between gap-4">
+              {/* Status izin notifikasi lokal dan tombol uji notifikasi */}
+              <BrowserPermission showTestButton />
+
+              {/* Kontrol push notifications dengan error handling */}
+              <div className="space-y-3">
+                {/* Tampilkan error jika ada */}
+                {push.error && (
+                  <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 text-red-500">⚠️</div>
+                      <span className="text-sm text-red-700">{push.error}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={push.clearError}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                )}
+
+                {/* Kontrol subscribe/unsubscribe push menggunakan hook */}
+                <div className="flex items-center gap-2">
+                  {/* Tombol subscribe push */}
+                  <Button
+                    disabled={!push.isSupported || push.isSubscribed || push.isLoading}
+                    onClick={() => void push.subscribe()}
+                    aria-label="Enable browser push"
+                  >
+                    {push.isLoading ? "Processing..." : "Enable Browser Push"}
+                  </Button>
+
+                  {/* Tombol unsubscribe push */}
+                  <Button
+                    variant="secondary"
+                    disabled={!push.isSupported || !push.isSubscribed || push.isLoading}
+                    onClick={() => void push.unsubscribe()}
+                    aria-label="Disable browser push"
+                  >
+                    {push.isLoading ? "Processing..." : "Disable"}
+                  </Button>
+
+                  {/* Kirim notifikasi uji via server (web push) */}
+                  <Button
+                    variant="ghost"
+                    disabled={!push.isSupported || !push.isSubscribed || push.isLoading}
+                    onClick={() => void push.sendTestNotification()}
+                    aria-label="Send test push"
+                  >
+                    Send test push
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <select

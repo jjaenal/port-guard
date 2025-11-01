@@ -85,3 +85,88 @@ self.addEventListener("fetch", (event) => {
     ),
   );
 });
+
+// Push notification event handler
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const { title, body, icon, badge, tag, url } = data;
+
+    const options = {
+      body: body || "Anda memiliki notifikasi baru",
+      icon: icon || "/favicon.ico",
+      badge: badge || "/favicon.ico",
+      tag: tag || "portguard-notification",
+      requireInteraction: false,
+      actions: [
+        {
+          action: "view",
+          title: "Lihat",
+          icon: "/favicon.ico",
+        },
+        {
+          action: "dismiss",
+          title: "Tutup",
+        },
+      ],
+      data: {
+        url: url || "/notifications",
+        timestamp: Date.now(),
+      },
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(
+        title || "PortGuard Alert",
+        options,
+      ),
+    );
+  } catch (error) {
+    // Log error untuk debugging agar lolos lint (no-unused-vars)
+    // Catatan: console.error diizinkan sesuai aturan ESLint proyek
+    console.error("SW push event error:", error);
+    // Fallback jika parsing JSON gagal
+    event.waitUntil(
+      self.registration.showNotification("PortGuard Alert", {
+        body: "Anda memiliki notifikasi baru",
+        icon: "/favicon.ico",
+        tag: "portguard-fallback",
+      }),
+    );
+  }
+});
+
+// Notification click event handler
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const { action, data } = event;
+  const url = data?.url || "/notifications";
+
+  if (action === "dismiss") {
+    return; // Hanya tutup notifikasi
+  }
+
+  // Default action atau action "view" - buka aplikasi
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Cari tab yang sudah terbuka dengan domain yang sama
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            client.focus();
+            client.navigate(url);
+            return;
+          }
+        }
+
+        // Jika tidak ada tab yang terbuka, buka tab baru
+        if (clients.openWindow) {
+          return clients.openWindow(url);
+        }
+      }),
+  );
+});

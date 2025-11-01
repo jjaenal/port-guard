@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { isPreferencesDirty } from "@/lib/utils/notifications";
 import { Settings, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { BrowserPermission } from "./browser-permission";
+import { PermissionBadge } from "./permission-badge";
 import type { NotificationPreferences } from "@/types/notifications";
+import { toast } from "sonner";
 
 interface PreferencesModalProps {
   initial: NotificationPreferences;
@@ -29,6 +32,8 @@ export function PreferencesModal({
   const [open, setOpen] = useState(false);
   const [preferences, setPreferences] =
     useState<NotificationPreferences>(initial);
+  // Ref untuk memantau perubahan toggle browser agar hanya memicu saat transisi false -> true
+  const prevBrowserEnabled = useRef<boolean>(initial.channels.browser);
 
   // Sinkronisasi state dengan props initial ketika data berubah
   useEffect(() => {
@@ -43,13 +48,24 @@ export function PreferencesModal({
     setOpen(newOpen);
   };
 
+  // Hitung apakah ada perubahan dibanding nilai awal untuk mengaktifkan tombol Simpan
+  // Hindari deep clone: lakukan perbandingan field terstruktur yang relevan.
+  const isDirty = useMemo(
+    () => isPreferencesDirty(preferences, initial),
+    [preferences, initial],
+  );
+
   const handleSave = async () => {
+    // Gunakan toast.promise untuk optimistik feedback selama proses simpan
     try {
-      await onSave(preferences);
-      setOpen(false); // Tutup modal setelah berhasil
-    } catch (error) {
-      // Error sudah ditangani oleh hook di parent component
-      console.error("Error saving preferences:", error);
+      await toast.promise(Promise.resolve(onSave(preferences)), {
+        loading: "Menyimpan preferensi...",
+        success: "Preferensi berhasil disimpan",
+        error: "Gagal menyimpan preferensi",
+      });
+      setOpen(false); // Tutup modal setelah sukses
+    } catch {
+      // Error ditangani oleh toast di atas; tidak perlu console.log
     }
   };
 
@@ -57,6 +73,68 @@ export function PreferencesModal({
     setPreferences(initial); // Reset ke state awal
     setOpen(false);
   };
+
+  // Minta izin notifikasi browser secara otomatis saat channel browser diaktifkan
+  // dan izin belum diberikan. Ini membantu menghindari keadaan preferensi aktif
+  // namun izin browser belum ada.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nowEnabled = preferences.channels.browser && preferences.enabled;
+    const wasEnabled = prevBrowserEnabled.current;
+    prevBrowserEnabled.current = preferences.channels.browser;
+
+    // Hanya minta izin saat transisi dari non-aktif ke aktif
+    if (!wasEnabled && nowEnabled) {
+      // Jika browser tidak mendukung Notification API, tampilkan info ramah
+      if (!("Notification" in window)) {
+        toast.info("Browser tidak mendukung notifikasi.", {
+          description:
+            "Silakan gunakan browser modern seperti Chrome/Edge/Firefox.",
+          id: "browser-notif-unsupported",
+        });
+        return;
+      }
+
+      const current = Notification.permission;
+      if (current === "granted") {
+        toast.success("Notifikasi browser sudah diizinkan", {
+          description: "Anda dapat menerima push dari halaman ini.",
+          id: "browser-notif-granted",
+        });
+        return;
+      }
+
+      // Meminta izin; hasilnya bisa granted/denied/default
+      Notification.requestPermission()
+        .then((result) => {
+          if (result === "granted") {
+            toast.success("Izin notifikasi diberikan", {
+              description: "Pengaturan channel browser aktif.",
+              id: "browser-notif-request-granted",
+            });
+          } else if (result === "denied") {
+            toast.error("Izin notifikasi ditolak", {
+              description:
+                "Aktifkan izin di pengaturan browser untuk menerima notifikasi.",
+              id: "browser-notif-request-denied",
+            });
+          } else {
+            toast.message("Izin notifikasi belum diputuskan", {
+              description:
+                "Anda dapat mengaktifkannya kapan saja dari modal ini.",
+              id: "browser-notif-request-default",
+            });
+          }
+        })
+        .catch(() => {
+          // Diamkan error; tampilkan feedback ramah
+          toast.error("Gagal meminta izin notifikasi", {
+            description: "Coba lagi atau cek pengaturan browser Anda.",
+            id: "browser-notif-request-error",
+          });
+        });
+    }
+  }, [preferences.channels.browser, preferences.enabled]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -123,7 +201,7 @@ export function PreferencesModal({
               </label>
 
               <div className="space-y-2">
-                <label className="flex items-center space-x-3">
+                <label className="flex items-center justify-between gap-3">
                   <input
                     type="checkbox"
                     checked={preferences.channels.browser}
@@ -139,9 +217,17 @@ export function PreferencesModal({
                     className="rounded border-gray-300"
                     disabled={!preferences.enabled}
                   />
-                  <span className="text-sm">Browser Push Notifications</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm">Browser Push Notifications</span>
+                    {/* Badge kecil sebagai indikator izin cepat di dalam modal */}
+                    {preferences.enabled ? <PermissionBadge /> : null}
+                  </div>
                 </label>
-                {preferences.channels.browser && <BrowserPermission />}
+                {/* Selalu tampilkan indikator izin agar status jelas, 
+                    tombol uji hanya muncul jika channel browser diaktifkan */}
+                <BrowserPermission
+                  showTestButton={preferences.channels.browser}
+                />
               </div>
             </div>
           </div>
@@ -229,7 +315,8 @@ export function PreferencesModal({
           <Button variant="outline" onClick={handleCancel} disabled={loading}>
             Batal
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
+          {/* Nonaktifkan Simpan bila tidak ada perubahan atau sedang loading */}
+          <Button onClick={handleSave} disabled={loading || !isDirty}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
