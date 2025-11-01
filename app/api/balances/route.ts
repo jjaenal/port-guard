@@ -63,11 +63,18 @@ export async function GET(req: Request) {
     const doEth = chains.includes("ethereum");
     const doPolygon = chains.includes("polygon");
     const doArbitrum = chains.includes("arbitrum");
+    const doOptimism = chains.includes("optimism");
 
     const cacheKey = `balances:${address}:${[...chains].sort().join(",")}`;
     const cached = await cacheGet<{
       address: string;
-      chains: { ethereum: boolean; polygon: boolean; arbitrum: boolean };
+      // Sertakan Optimism di payload cache untuk konsistensi multi-chain
+      chains: {
+        ethereum: boolean;
+        polygon: boolean;
+        arbitrum: boolean;
+        optimism: boolean;
+      };
       tokens: TokenHoldingDTO[];
       errors: Record<string, string>;
     }>(cacheKey);
@@ -84,11 +91,13 @@ export async function GET(req: Request) {
       doEth ? getTokenBalances(address, 1) : Promise.resolve([]),
       doPolygon ? getTokenBalances(address, 137) : Promise.resolve([]),
       doArbitrum ? getTokenBalances(address, 42161) : Promise.resolve([]),
+      doOptimism ? getTokenBalances(address, 10) : Promise.resolve([]),
     ]);
 
     const ethRes = results[0];
     const polygonRes = results[1];
     const arbitrumRes = results[2];
+    const optimismRes = results[3];
 
     const errors: Record<string, string> = {};
     const ethTokens = ethRes.status === "fulfilled" ? ethRes.value : [];
@@ -96,6 +105,8 @@ export async function GET(req: Request) {
       polygonRes.status === "fulfilled" ? polygonRes.value : [];
     const arbitrumTokens =
       arbitrumRes?.status === "fulfilled" ? arbitrumRes.value : [];
+    const optimismTokens =
+      optimismRes?.status === "fulfilled" ? optimismRes.value : [];
 
     if (ethRes.status === "rejected") {
       errors.ethereum =
@@ -115,8 +126,19 @@ export async function GET(req: Request) {
           ? arbitrumRes.reason.message
           : String(arbitrumRes.reason);
     }
+    if (optimismRes && optimismRes.status === "rejected") {
+      errors.optimism =
+        optimismRes.reason instanceof Error
+          ? optimismRes.reason.message
+          : String(optimismRes.reason);
+    }
 
-    const tokens = [...ethTokens, ...polygonTokens, ...arbitrumTokens].sort(
+    const tokens = [
+      ...ethTokens,
+      ...polygonTokens,
+      ...arbitrumTokens,
+      ...optimismTokens,
+    ].sort(
       (a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0),
     );
 
@@ -125,7 +147,12 @@ export async function GET(req: Request) {
 
     const payload = {
       address,
-      chains: { ethereum: doEth, polygon: doPolygon, arbitrum: doArbitrum },
+      chains: {
+        ethereum: doEth,
+        polygon: doPolygon,
+        arbitrum: doArbitrum,
+        optimism: doOptimism,
+      },
       tokens: serializedTokens,
       errors,
     };

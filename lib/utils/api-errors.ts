@@ -215,7 +215,8 @@ export function validateEthereumAddress(address: string): boolean {
  */
 export function validateChains(chainsParam: string): string[] {
   // Tambahkan dukungan Arbitrum
-  const supportedChains = ["ethereum", "polygon", "arbitrum"];
+  // Tambahkan dukungan Optimism
+  const supportedChains = ["ethereum", "polygon", "arbitrum", "optimism"];
   const chains = chainsParam
     .toLowerCase()
     .split(",")
@@ -227,6 +228,7 @@ export function validateChains(chainsParam: string): string[] {
   if (validChains.length === 0) {
     throw new AppError(
       ErrorCodes.INVALID_PARAMETER,
+      // Pesan error yang menyebut daftar chain yang valid
       `Unsupported chains. Supported: ${supportedChains.join(", ")}`,
       400,
     );
