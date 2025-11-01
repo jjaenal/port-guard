@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useAccount } from "wagmi";
-import { formatTimestamp } from "@/lib/utils/transactions";
+import { formatTimestamp, type TransactionCategory } from "@/lib/utils/transactions";
 
 type TxItem = {
   hash: string;
@@ -11,7 +11,7 @@ type TxItem = {
   value?: number;
   asset?: string;
   timestamp?: number;
-  category: "send" | "receive" | "unknown";
+  category: TransactionCategory;
 };
 
 export default function TransactionsPage() {
@@ -100,10 +100,12 @@ export default function TransactionsPage() {
                       ? "text-red-600"
                       : tx.category === "receive"
                         ? "text-green-600"
-                        : "text-gray-600"
+                        : tx.category === "swap"
+                          ? "text-blue-600"
+                          : "text-gray-600"
                   }
                 >
-                  {tx.category.toUpperCase()}
+                  {tx.category === "swap" ? "🔄 SWAP" : tx.category.toUpperCase()}
                 </span>
                 <span className="text-xs text-gray-500">
                   {formatTimestamp(tx.timestamp)}
