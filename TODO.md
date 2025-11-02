@@ -385,7 +385,7 @@
 - [x] Categorize transactions
   - [x] Send/Receive
   - [x] Swap
-  - [ ] Approve
+  - [x] Approve
   - [ ] Contract interaction
 - [x] Create transaction list UI
 - [ ] Add transaction detail view

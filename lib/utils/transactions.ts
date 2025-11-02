@@ -1,4 +1,4 @@
-export type TransactionCategory = "send" | "receive" | "swap" | "lp_add" | "lp_remove" | "unknown";
+export type TransactionCategory = "send" | "receive" | "swap" | "approve" | "lp_add" | "lp_remove" | "unknown";
 
 export type TransferEvent = {
   hash: string;
@@ -53,6 +53,8 @@ const SWAP_FUNCTION_SELECTORS = new Set([
 
 // Transfer event topic (ERC-20 Transfer event signature)
 const TRANSFER_EVENT_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+// Approval event topic (ERC-20 Approval event signature)
+const APPROVAL_EVENT_TOPIC = "0x8c5be1e5ebec7d5bd14f714f8fcb61fefaa3c4af2a1a0b1b5b5f41e7e81c0b02";
 
 // Event topics untuk Liquidity Provision detection
 const MINT_EVENT_TOPIC = "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f"; // Mint(address,uint256,uint256)
@@ -72,6 +74,11 @@ const LP_FUNCTION_SELECTORS = new Set([
   "0x2195995c", // removeLiquidityWithPermit
   "0x219f5d17", // increaseLiquidity (Uniswap V3)
   "0x0c49ccbe", // decreaseLiquidity (Uniswap V3)
+]);
+
+// Function selector untuk ERC-20 approve
+const APPROVE_FUNCTION_SELECTORS = new Set([
+  "0x095ea7b3", // approve(address spender, uint256 value)
 ]);
 
 /**
@@ -249,7 +256,7 @@ export function categorizeTransactionExtended(
       logs: tx.logs,
     };
     
-    // Prioritas deteksi: LP Add/Remove dulu, baru Swap
+    // Prioritas deteksi: LP Add/Remove dulu, lalu Approve, kemudian Swap
     // Karena LP operations juga bisa mengandung swap patterns
     if (detectLPAdd(swapTx)) {
       return "lp_add";
@@ -259,6 +266,10 @@ export function categorizeTransactionExtended(
       return "lp_remove";
     }
     
+    if (detectApprove(swapTx)) {
+      return "approve";
+    }
+
     if (detectSwap(swapTx)) {
       return "swap";
     }
@@ -266,4 +277,29 @@ export function categorizeTransactionExtended(
   
   // Fallback ke kategorisasi standar
   return categorizeTransaction(tx, address);
+}
+/**
+ * Deteksi apakah transaksi adalah ERC-20 Approve.
+ *
+ * Menggunakan 2 heuristik utama:
+ * 1. Function selector pada `tx.input` adalah `approve` (0x095ea7b3)
+ * 2. Terdapat Approval event pada `tx.logs`
+ *
+ * Catatan: Approve umumnya ditujukan ke alamat kontrak token (bukan router),
+ * namun kita tidak memvalidasi itu di sini untuk menjaga kompatibilitas lintas-chain.
+ */
+export function detectApprove(tx: SwapTransaction): boolean {
+  if (!tx.to) return false;
+
+  // Heuristik 1: Cek function selector
+  const hasApproveSelector = tx.input && tx.input.length >= 10
+    ? APPROVE_FUNCTION_SELECTORS.has(tx.input.slice(0, 10).toLowerCase())
+    : false;
+
+  // Heuristik 2: Cek Approval event di logs
+  const hasApprovalEvent = tx.logs?.some(log =>
+    log.topics.length > 0 && log.topics[0].toLowerCase() === APPROVAL_EVENT_TOPIC
+  ) || false;
+
+  return hasApproveSelector || hasApprovalEvent;
 }

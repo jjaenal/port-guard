@@ -5,6 +5,7 @@ import {
   detectSwap, 
   detectLPAdd,
   detectLPRemove,
+  detectApprove,
   categorizeTransactionExtended,
   type SwapTransaction 
 } from "./transactions";
@@ -159,6 +160,52 @@ describe("transactions utils", () => {
         input: "0x38ed1739", // swapExactTokensForTokens
       };
       expect(detectSwap(tx)).toBe(true); // Known router + valid selector
+    });
+  });
+
+  describe("detectApprove", () => {
+    it("detects approve via function selector", () => {
+      const tx: SwapTransaction = {
+        hash: "0x123",
+        to: "0xTokenContract",
+        input: "0x095ea7b3", // approve
+      };
+      expect(detectApprove(tx)).toBe(true);
+    });
+
+    it("detects approve via Approval event", () => {
+      const tx: SwapTransaction = {
+        hash: "0x123",
+        to: "0xTokenContract",
+        logs: [
+          {
+            address: "0xTokenContract",
+            topics: [
+              "0x8c5be1e5ebec7d5bd14f714f8fcb61fefaa3c4af2a1a0b1b5b5f41e7e81c0b02",
+            ],
+            data: "0x",
+          },
+        ],
+      };
+      expect(detectApprove(tx)).toBe(true);
+    });
+
+    it("does not detect approve when no selector or event", () => {
+      const tx: SwapTransaction = {
+        hash: "0x123",
+        to: "0xTokenContract",
+        input: "0xa9059cbb", // transfer
+        logs: [
+          {
+            address: "0xTokenContract",
+            topics: [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            ],
+            data: "0x",
+          },
+        ],
+      };
+      expect(detectApprove(tx)).toBe(false);
     });
   });
 
@@ -488,6 +535,29 @@ describe("transactions utils", () => {
       };
       const category = categorizeTransactionExtended(tx, "0xuser");
       expect(category).toBe("swap");
+    });
+  });
+
+  describe("categorizeTransactionExtended with Approve", () => {
+    it("categorizes approve transactions before swap", () => {
+      const tx = {
+        hash: "0x123",
+        from: "0xuser",
+        to: "0xTokenContract",
+        input: "0x095ea7b3", // approve
+      };
+      const category = categorizeTransactionExtended(tx, "0xuser");
+      expect(category).toBe("approve");
+    });
+
+    it("fallbacks to send/receive when not approve", () => {
+      const tx = {
+        hash: "0x123",
+        from: "0xuser",
+        to: "0xrecipient",
+      };
+      const category = categorizeTransactionExtended(tx, "0xuser");
+      expect(category).toBe("send");
     });
   });
 });
