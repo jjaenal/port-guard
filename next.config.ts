@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  // Komentar (ID): Gunakan distDir alternatif agar lockfile tidak bentrok
+  distDir: ".next-alt",
   images: {
     remotePatterns: [
       {

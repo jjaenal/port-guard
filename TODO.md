@@ -393,6 +393,7 @@
 - [ ] Implement infinite scroll
 - [ ] Add date filtering
 - [ ] Calculate gas spent
+- [x] Calculate gas spent
 - [ ] Show gas analytics
 
 ---
@@ -496,6 +497,8 @@
 - [ ] Create API documentation page
 - [ ] Implement API rate limiting
 - [ ] Add CSV export functionality
+  - [x] Export transactions to CSV (opsi scope + biaya)
+  - [ ] Export portfolio to CSV
   ```typescript
   // Export portfolio to CSV
   // Export transactions to CSV

@@ -45,6 +45,38 @@ async function rpcFetch<T>(
   return json.result as T as T;
 }
 
+/**
+ * Batch RPC sederhana untuk mengurangi roundtrip saat mengambil receipts/tx.
+ * Komentar (ID): Menggunakan id berbasis index agar mudah menyelaraskan hasil.
+ */
+async function rpcBatch(
+  url: string,
+  calls: Array<{ method: string; params?: unknown[] }>,
+): Promise<Array<JsonRpcResponse<unknown>>> {
+  const payload = calls.map((c, i) => ({ jsonrpc: "2.0", id: i + 1, ...c }));
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Alchemy RPC batch failed: ${res.status}`);
+  const json = (await res.json()) as Array<JsonRpcResponse<unknown>>;
+  return json;
+}
+
+// Helper konversi hex ke number, fallback undefined jika gagal
+// Komentar (ID): Hindari BigInt literal agar kompatibel dengan target ES < 2020
+function hexToNumber(hex?: string | null): number | undefined {
+  try {
+    if (!hex) return undefined;
+    const normalized = hex.startsWith("0x") ? hex.slice(2) : hex;
+    const n = parseInt(normalized, 16);
+    return Number.isNaN(n) ? undefined : n;
+  } catch {
+    return undefined;
+  }
+}
+
 function resolveApiKey(chain: ChainKey): string | null {
   if (chain === "ethereum") {
     return (
@@ -122,13 +154,75 @@ export async function GET(request: Request) {
       ],
     });
 
-    const data: Array<TransferEvent & { category: TransactionCategory }> = (
-      transfers?.transfers || []
-    ).map((t) => {
+    // Siapkan batch pengambilan receipts dan detail transaksi untuk hitung biaya
+    const list = transfers?.transfers || [];
+    const hashes = list.map((t) => t.hash).filter(Boolean);
+
+    // Batch receipts
+    const receiptCalls = hashes.map((h) => ({
+      method: "eth_getTransactionReceipt",
+      params: [h],
+    }));
+    // Batch tx detail
+    const txCalls = hashes.map((h) => ({
+      method: "eth_getTransactionByHash",
+      params: [h],
+    }));
+
+    // Komentar (ID): Jalankan batch paralel; kurangi latensi
+    const [receiptBatch, txBatch] = await Promise.all([
+      rpcBatch(endpoint, receiptCalls),
+      rpcBatch(endpoint, txCalls),
+    ]);
+
+    // Susun map hasil berdasarkan urutan hashes
+    const receiptsMap = new Map<string, unknown>();
+    const txMap = new Map<string, unknown>();
+    receiptBatch.forEach((r) => {
+      const idx = (typeof r.id === "number" ? r.id : 1) - 1;
+      const h = hashes[idx];
+      if (h) receiptsMap.set(h, r.result);
+    });
+    txBatch.forEach((r) => {
+      const idx = (typeof r.id === "number" ? r.id : 1) - 1;
+      const h = hashes[idx];
+      if (h) txMap.set(h, r.result);
+    });
+
+    const WEI_NUM = 1e18; // unit untuk konversi ke native (Number)
+
+    const data: Array<
+      TransferEvent & { category: TransactionCategory } & {
+        gasUsed?: number;
+        nonce?: number;
+        fee?: number;
+      }
+    > = list.map((t) => {
       const ts = t?.metadata?.blockTimestamp
         ? Math.floor(new Date(t.metadata.blockTimestamp).getTime() / 1000)
         : undefined;
       const cat = categorizeTransaction({ from: t.from, to: t.to }, address);
+
+      // Ambil receipt/tx terkait jika tersedia
+      const receipt = receiptsMap.get(t.hash) as
+        | { gasUsed?: string; effectiveGasPrice?: string }
+        | undefined;
+      const tx = txMap.get(t.hash) as
+        | { nonce?: string; gasPrice?: string }
+        | undefined;
+
+      const gasUsed = receipt?.gasUsed ? hexToNumber(receipt.gasUsed) : undefined;
+      const nonce = tx?.nonce ? hexToNumber(tx.nonce) : undefined;
+      const priceNum =
+        hexToNumber(receipt?.effectiveGasPrice) ??
+        hexToNumber(tx?.gasPrice);
+      let fee: number | undefined = undefined;
+      if (typeof gasUsed === "number" && typeof priceNum === "number") {
+        // Komentar (ID): Hitung biaya dalam native coin (ETH/MATIC) dengan Number
+        // Catatan: Presisi cukup untuk rentang gasUsed dan gasPrice umum
+        fee = (gasUsed * priceNum) / WEI_NUM;
+      }
+
       return {
         hash: t.hash,
         from: t.from,
@@ -137,6 +231,9 @@ export async function GET(request: Request) {
         asset: t.asset,
         timestamp: ts,
         category: cat,
+        gasUsed,
+        nonce,
+        fee,
       };
     });
 
