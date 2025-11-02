@@ -28,46 +28,50 @@ export default function AnalyticsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   // Initialize state with URL params or localStorage fallback
+  // Inisialisasi state dari URL saja untuk mencegah hydration mismatch
+  // Hindari membaca localStorage pada fase SSR; prefer set setelah mount
   const [rangeDays, setRangeDays] = useState(() => {
     const urlRange = Number(searchParams.get("range"));
-    if (urlRange && [7, 30, 90].includes(urlRange)) return urlRange;
-
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("analytics-range");
-      return saved ? parseInt(saved, 10) : 30;
-    }
-    return 30;
+    return urlRange && [7, 30, 90].includes(urlRange) ? urlRange : 30;
   });
 
+  // State filter chain dengan dukungan lengkap (Ethereum, Polygon, Arbitrum, Optimism, Base)
+  // Catatan: kita validasi nilai dari URL dan localStorage agar konsisten dan mencegah mismatch
   const [chainFilter, setChainFilter] = useState<
-    "all" | "ethereum" | "polygon" | "arbitrum"
+    "all" | "ethereum" | "polygon" | "arbitrum" | "optimism" | "base"
   >(() => {
     const urlChain = searchParams.get("chain") as
       | "all"
       | "ethereum"
       | "polygon"
-      | "arbitrum";
-    // Validasi nilai chain dari URL, dukung 'arbitrum'
+      | "arbitrum"
+      | "optimism"
+      | "base";
+    // Validasi nilai chain dari URL termasuk 'optimism' dan 'base'
     if (
       urlChain &&
-      ["all", "ethereum", "polygon", "arbitrum"].includes(urlChain)
+      ["all", "ethereum", "polygon", "arbitrum", "optimism", "base"].includes(urlChain)
     )
       return urlChain;
 
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("analytics-chain");
-      return (saved as "all" | "ethereum" | "polygon" | "arbitrum") || "all";
+      return (
+        (saved as
+          | "all"
+          | "ethereum"
+          | "polygon"
+          | "arbitrum"
+          | "optimism"
+          | "base") || "all"
+      );
     }
     return "all";
   });
 
   const [hideTiny, setHideTiny] = useState(() => {
-    if (searchParams.has("hideTiny"))
+    if (searchParams.has("hideTiny")) {
       return searchParams.get("hideTiny") === "1";
-
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("analytics-hideTiny");
-      return saved === "true";
     }
     return false;
   });
@@ -97,6 +101,52 @@ export default function AnalyticsPage() {
       localStorage.setItem("analytics-hideTiny", String(hideTiny));
     }
   }, [hideTiny]);
+
+  // Setelah mount, jika URL tidak menentukan nilai, terapkan preferensi dari localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Range
+    const hasRangeParam = searchParams.has("range");
+    if (!hasRangeParam) {
+      const savedRange = localStorage.getItem("analytics-range");
+      const parsed = savedRange ? parseInt(savedRange, 10) : null;
+      if (parsed && [7, 30, 90].includes(parsed) && parsed !== rangeDays) {
+        setRangeDays(parsed);
+        updateParam("range", String(parsed));
+      }
+    }
+    // Chain
+    const hasChainParam = searchParams.has("chain");
+    if (!hasChainParam) {
+      const savedChain = localStorage.getItem("analytics-chain") as
+        | "all"
+        | "ethereum"
+        | "polygon"
+        | "arbitrum"
+        | "optimism"
+        | "base"
+        | null;
+      if (
+        savedChain &&
+        ["all", "ethereum", "polygon", "arbitrum", "optimism", "base"].includes(savedChain) &&
+        savedChain !== chainFilter
+      ) {
+        setChainFilter(savedChain);
+        updateParam("chain", savedChain);
+      }
+    }
+    // Hide tiny
+    const hasHideParam = searchParams.has("hideTiny");
+    if (!hasHideParam) {
+      const savedHide = localStorage.getItem("analytics-hideTiny");
+      const parsedHide = savedHide === "true";
+      if (savedHide !== null && parsedHide !== hideTiny) {
+        setHideTiny(parsedHide);
+        updateParam("hideTiny", parsedHide ? "1" : "0");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const ethAmount = useMemo(
     () => (eth ? Number(formatUnits(eth.value, eth.decimals)) : 0),
@@ -144,6 +194,45 @@ export default function AnalyticsPage() {
     }
   }, [isTokensError, tokensError]);
 
+  // Hindari hydration mismatch: render placeholder stabil sampai client mounted
+  // SSR dan first client render akan identik (mounted === false)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Render placeholder saat belum mounted agar markup SSR == client initial
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold">Analytics</h1>
+          <p className="text-sm text-muted-foreground">
+            Portfolio value and allocation over time.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Value</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartSkeleton />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Allocation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AllocationSkeleton />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
@@ -165,7 +254,8 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm text-muted-foreground">Filters</div>
               <div className="flex flex-wrap gap-2 items-center">
-                {["all", "ethereum", "polygon", "arbitrum"].map((c) => (
+                {/* Tombol filter chain untuk bagian Portfolio Value (selaraskan dengan Allocation) */}
+                {["all", "ethereum", "polygon", "arbitrum", "optimism", "base"].map((c) => (
                   <button
                     key={c}
                     className={`px-2 py-1 rounded border text-xs ${chainFilter === c ? "bg-muted" : ""}`}
@@ -177,7 +267,15 @@ export default function AnalyticsPage() {
                   >
                     {c === "all"
                       ? "All Chains"
-                      : c.charAt(0).toUpperCase() + c.slice(1)}
+                      : c === "ethereum"
+                        ? "Ethereum"
+                        : c === "polygon"
+                          ? "Polygon"
+                          : c === "arbitrum"
+                            ? "Arbitrum"
+                            : c === "optimism"
+                              ? "Optimism"
+                              : "Base"}
                   </button>
                 ))}
                 <div className="w-px h-4 bg-border mx-1" />

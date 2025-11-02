@@ -102,10 +102,20 @@ export default function TransactionsPage() {
                         ? "text-green-600"
                         : tx.category === "swap"
                           ? "text-blue-600"
-                          : "text-gray-600"
+                          : tx.category === "lp_add"
+                            ? "text-purple-600"
+                            : tx.category === "lp_remove"
+                              ? "text-orange-600"
+                              : "text-gray-600"
                   }
                 >
-                  {tx.category === "swap" ? "🔄 SWAP" : tx.category.toUpperCase()}
+                  {tx.category === "swap" 
+                    ? "🔄 SWAP" 
+                    : tx.category === "lp_add"
+                      ? "➕ LP ADD"
+                      : tx.category === "lp_remove"
+                        ? "➖ LP REMOVE"
+                        : tx.category.toUpperCase()}
                 </span>
                 <span className="text-xs text-gray-500">
                   {formatTimestamp(tx.timestamp)}

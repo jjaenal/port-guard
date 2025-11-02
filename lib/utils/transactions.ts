@@ -1,4 +1,4 @@
-export type TransactionCategory = "send" | "receive" | "swap" | "unknown";
+export type TransactionCategory = "send" | "receive" | "swap" | "lp_add" | "lp_remove" | "unknown";
 
 export type TransferEvent = {
   hash: string;
@@ -53,6 +53,26 @@ const SWAP_FUNCTION_SELECTORS = new Set([
 
 // Transfer event topic (ERC-20 Transfer event signature)
 const TRANSFER_EVENT_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+// Event topics untuk Liquidity Provision detection
+const MINT_EVENT_TOPIC = "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f"; // Mint(address,uint256,uint256)
+const BURN_EVENT_TOPIC = "0xdccd412f0b1252819cb1fd330b93224ca42612892bb3f4f789976e6d81936496"; // Burn(address,uint256,uint256,address)
+
+// Note: LP factory addresses bisa ditambahkan nanti untuk heuristik tambahan
+// const KNOWN_LP_FACTORIES untuk validasi alamat pool jika diperlukan
+
+// Function selectors untuk LP operations
+const LP_FUNCTION_SELECTORS = new Set([
+  "0xe8e33700", // addLiquidity
+  "0xf305d719", // addLiquidityETH
+  "0xbaa2abde", // removeLiquidity
+  "0x02751cec", // removeLiquidityETH
+  "0xaf2979eb", // removeLiquidityETHSupportingFeeOnTransferTokens
+  "0xded9382a", // removeLiquidityETHWithPermit
+  "0x2195995c", // removeLiquidityWithPermit
+  "0x219f5d17", // increaseLiquidity (Uniswap V3)
+  "0x0c49ccbe", // decreaseLiquidity (Uniswap V3)
+]);
 
 /**
  * Categorize a transfer relative to a wallet address.
@@ -137,17 +157,90 @@ export function detectSwap(tx: SwapTransaction): boolean {
 }
 
 /**
- * Kategorisasi transaksi yang diperluas dengan deteksi swap.
+ * Deteksi apakah transaksi adalah Liquidity Add (LP Add).
+ * 
+ * Menggunakan 3 heuristik:
+ * 1. Function selector untuk add liquidity operations
+ * 2. Mint event dalam logs (menandakan LP token baru dibuat)
+ * 3. Pola transfer: user mengirim 2+ token, menerima LP token
+ * 
+ * @param tx - Data transaksi dengan input dan logs
+ * @returns true jika terdeteksi sebagai LP Add
+ */
+export function detectLPAdd(tx: SwapTransaction): boolean {
+  if (!tx.to) return false;
+
+  // Heuristik 1: Function selector untuk add liquidity
+  const hasAddLPSelector = tx.input && LP_FUNCTION_SELECTORS.has(tx.input.slice(0, 10).toLowerCase());
+  
+  // Heuristik 2: Ada Mint event (LP token dibuat)
+  const hasMintEvent = tx.logs?.some(log => 
+    log.topics[0]?.toLowerCase() === MINT_EVENT_TOPIC.toLowerCase()
+  ) || false;
+  
+  // Heuristik 3: Pola transfer - user mengirim multiple tokens, menerima LP token
+  // Cari Transfer events dari user ke pool/router dan dari pool ke user
+  const transferEvents = tx.logs?.filter(log => 
+    log.topics[0]?.toLowerCase() === TRANSFER_EVENT_TOPIC.toLowerCase()
+  ) || [];
+  
+  // Minimal ada 2 transfer (2 token masuk ke pool) + 1 LP token keluar
+  const hasLPPattern = transferEvents.length >= 2;
+  
+  // LP Add jika memenuhi minimal 2 dari 3 heuristik
+  const heuristicCount = [hasAddLPSelector, hasMintEvent, hasLPPattern].filter(Boolean).length;
+  
+  return heuristicCount >= 2;
+}
+
+/**
+ * Deteksi apakah transaksi adalah Liquidity Remove (LP Remove).
+ * 
+ * Menggunakan 3 heuristik:
+ * 1. Function selector untuk remove liquidity operations
+ * 2. Burn event dalam logs (menandakan LP token dibakar)
+ * 3. Pola transfer: user mengirim LP token, menerima 2+ token
+ * 
+ * @param tx - Data transaksi dengan input dan logs
+ * @returns true jika terdeteksi sebagai LP Remove
+ */
+export function detectLPRemove(tx: SwapTransaction): boolean {
+  if (!tx.to) return false;
+
+  // Heuristik 1: Function selector untuk remove liquidity
+  const hasRemoveLPSelector = tx.input && LP_FUNCTION_SELECTORS.has(tx.input.slice(0, 10).toLowerCase());
+  
+  // Heuristik 2: Ada Burn event (LP token dibakar)
+  const hasBurnEvent = tx.logs?.some(log => 
+    log.topics[0]?.toLowerCase() === BURN_EVENT_TOPIC.toLowerCase()
+  ) || false;
+  
+  // Heuristik 3: Pola transfer - LP token masuk ke pool, multiple tokens keluar ke user
+  const transferEvents = tx.logs?.filter(log => 
+    log.topics[0]?.toLowerCase() === TRANSFER_EVENT_TOPIC.toLowerCase()
+  ) || [];
+  
+  // Minimal ada 2+ transfer (LP token masuk + 2 token keluar)
+  const hasLPPattern = transferEvents.length >= 2;
+  
+  // LP Remove jika memenuhi minimal 2 dari 3 heuristik
+  const heuristicCount = [hasRemoveLPSelector, hasBurnEvent, hasLPPattern].filter(Boolean).length;
+  
+  return heuristicCount >= 2;
+}
+
+/**
+ * Kategorisasi transaksi yang diperluas dengan deteksi swap dan LP.
  * 
  * @param tx - Data transaksi dengan informasi transfer dan swap
  * @param address - Alamat wallet untuk kategorisasi
- * @returns Kategori transaksi termasuk "swap" jika terdeteksi
+ * @returns Kategori transaksi termasuk "swap", "lp_add", "lp_remove" jika terdeteksi
  */
 export function categorizeTransactionExtended(
   tx: TransferEvent & Partial<SwapTransaction>,
   address: string,
 ): TransactionCategory {
-  // Cek dulu apakah ini swap
+  // Cek apakah ada data untuk deteksi lanjutan
   if (tx.to && (tx.input || tx.logs)) {
     const swapTx: SwapTransaction = {
       hash: tx.hash,
@@ -155,6 +248,16 @@ export function categorizeTransactionExtended(
       input: tx.input,
       logs: tx.logs,
     };
+    
+    // Prioritas deteksi: LP Add/Remove dulu, baru Swap
+    // Karena LP operations juga bisa mengandung swap patterns
+    if (detectLPAdd(swapTx)) {
+      return "lp_add";
+    }
+    
+    if (detectLPRemove(swapTx)) {
+      return "lp_remove";
+    }
     
     if (detectSwap(swapTx)) {
       return "swap";
