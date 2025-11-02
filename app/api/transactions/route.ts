@@ -14,7 +14,7 @@ import type {
   TransactionCategory,
   TransferEvent,
 } from "@/lib/utils/transactions";
-import { categorizeTransaction } from "@/lib/utils/transactions";
+import { categorizeTransactionExtended } from "@/lib/utils/transactions";
 
 type ChainKey = "ethereum" | "polygon";
 
@@ -201,14 +201,17 @@ export async function GET(request: Request) {
       const ts = t?.metadata?.blockTimestamp
         ? Math.floor(new Date(t.metadata.blockTimestamp).getTime() / 1000)
         : undefined;
-      const cat = categorizeTransaction({ from: t.from, to: t.to }, address);
 
       // Ambil receipt/tx terkait jika tersedia
       const receipt = receiptsMap.get(t.hash) as
-        | { gasUsed?: string; effectiveGasPrice?: string }
+        | {
+            gasUsed?: string;
+            effectiveGasPrice?: string;
+            logs?: Array<{ address: string; topics: string[]; data: string }>;
+          }
         | undefined;
       const tx = txMap.get(t.hash) as
-        | { nonce?: string; gasPrice?: string }
+        | { nonce?: string; gasPrice?: string; input?: string; to?: string }
         | undefined;
 
       const gasUsed = receipt?.gasUsed ? hexToNumber(receipt.gasUsed) : undefined;
@@ -222,6 +225,19 @@ export async function GET(request: Request) {
         // Catatan: Presisi cukup untuk rentang gasUsed dan gasPrice umum
         fee = (gasUsed * priceNum) / WEI_NUM;
       }
+
+      // Komentar (ID): Gunakan kategorisasi extended dengan data tx (input/to) dan logs
+      // Ini memungkinkan deteksi swap dan LP add/remove.
+      const cat = categorizeTransactionExtended(
+        {
+          hash: t.hash,
+          from: t.from,
+          to: tx?.to || t.to,
+          input: tx?.input,
+          logs: receipt?.logs,
+        },
+        address,
+      );
 
       return {
         hash: t.hash,

@@ -376,7 +376,7 @@
 - [x] Aggregate total across all chains - Portfolio totals include both chains
 - [x] Add Arbitrum support - Implemented (balances API, analytics filters, validator)
 - [x] Add Optimism support - Implemented (wagmi config, balances API, analytics filter)
-- [ ] Add Base support - Not yet implemented
+- [x] Add Base support - Implemented (wagmi config, balances API)
 
 ### Day 39-42: Transaction History
 
@@ -384,7 +384,7 @@
 - [x] Parse transaction data (basic)
 - [x] Categorize transactions
   - [x] Send/Receive
-  - [ ] Swap
+  - [x] Swap
   - [ ] Approve
   - [ ] Contract interaction
 - [x] Create transaction list UI
