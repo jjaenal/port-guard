@@ -282,15 +282,20 @@ export function Header() {
               <span className="sr-only">Toggle theme</span>
             </Button>
 
-            {/* Komentar (ID): Tampilkan tombol Sign In jika belum terautentikasi */}
-            {!session && (
+            {/* Komentar (ID): Link ke halaman Profile jika sudah terautentikasi */}
+            {session ? (
+              <Link href="/profile" className="text-sm text-blue-600 hover:underline">
+                Profile
+              </Link>
+            ) : (
+              // Komentar (ID): Tampilkan tombol Sign In jika belum terautentikasi
               <Link href="/auth/signin">
                 <Button variant="outline" size="sm">
                   Sign In
                 </Button>
               </Link>
             )}
-            
+
             <ConnectButton />
           </div>
         </div>
