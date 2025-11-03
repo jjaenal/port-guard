@@ -97,6 +97,180 @@ function resolveApiKey(chain: ChainKey): string | null {
   return null;
 }
 
+// Helper: konversi number ke hex (0x...)
+function numberToHex(n: number): string {
+  if (n <= 0) return "0x0";
+  return "0x" + Math.floor(n).toString(16);
+}
+
+// Ambil block terbaru untuk estimasi range block dari tanggal
+async function getLatestBlockNumber(endpoint: string): Promise<number> {
+  // Komentar (ID): gunakan eth_blockNumber untuk mendapatkan block tertinggi saat ini
+  const hex = await rpcFetch<string>(endpoint, { method: "eth_blockNumber" });
+  return hexToNumber(hex) ?? 0;
+}
+
+// Helper: ambil timestamp sebuah blok (detik Unix) berdasarkan nomor blok
+// Menggunakan panggilan standar `eth_getBlockByNumber` dengan argumen kedua `false`
+// agar tidak mengembalikan daftar transaksi (mengurangi payload).
+async function getBlockTimestamp(
+  endpoint: string,
+  blockNumber: number,
+): Promise<number | undefined> {
+  try {
+    const blockHex = numberToHex(blockNumber);
+    const block = await rpcFetch<{
+      timestamp?: string;
+    }>(endpoint, {
+      method: "eth_getBlockByNumber",
+      params: [blockHex, false],
+    });
+    const tsHex = (block as unknown as { timestamp?: string })?.timestamp;
+    const ts = hexToNumber(tsHex);
+    return typeof ts === "number" ? ts : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Cache ringan untuk timestamp blok agar binary search lebih efisien
+// Kunci: `${chain}:blk:${blockNumber}` dengan TTL yang sama 15 menit
+const blockTimestampCache: Record<
+  string,
+  { savedAtMs: number; timestampSec: number }
+> = {};
+const BLOCK_TS_TTL = 15 * 60 * 1000; // 15 menit
+
+async function getBlockTimestampCached(
+  endpoint: string,
+  chain: ChainKey,
+  blockNumber: number,
+): Promise<number | undefined> {
+  const key = `${chain}:blk:${blockNumber}`;
+  const now = Date.now();
+  const hit = blockTimestampCache[key];
+  if (hit && now - hit.savedAtMs < BLOCK_TS_TTL) {
+    return hit.timestampSec;
+  }
+  const ts = await getBlockTimestamp(endpoint, blockNumber);
+  if (typeof ts === "number") {
+    blockTimestampCache[key] = { savedAtMs: now, timestampSec: ts };
+  }
+  return ts;
+}
+
+// Cache ringan untuk pemetaan tanggal (hari) → nomor blok.
+// Kunci: `${chain}:${dateKey}:${bound}`; bound: "lower" | "upper".
+const dateBlockCache: Record<
+  string,
+  { timestamp: number; blockNumber: number }
+> = {};
+const DATE_BLOCK_TTL = 15 * 60 * 1000; // 15 menit
+
+// Cache agregat untuk hasil pencarian range blok (mengurangi binary search berulang)
+// Kunci: `${chain}:range:${startSec}-${endSec}`
+const rangeBlockCache: Record<
+  string,
+  { timestamp: number; fromBlock: string; toBlock: string }
+> = {};
+const RANGE_BLOCK_TTL = 15 * 60 * 1000; // 15 menit
+
+/**
+ * Utilitas untuk keperluan test: membersihkan cache blok dan mapping tanggal.
+ * Komentar (ID): Jangan dipakai di produksi; hanya untuk isolasi unit test.
+ */
+function __clearBlockCachesForTest(): void {
+  for (const k in blockTimestampCache) {
+    delete blockTimestampCache[k];
+  }
+  for (const k in dateBlockCache) {
+    delete dateBlockCache[k];
+  }
+  for (const k in rangeBlockCache) {
+    delete rangeBlockCache[k];
+  }
+}
+
+// Komentar (ID): Daftarkan helper pembersih cache ke global saat environment test
+if (process.env.NODE_ENV === "test") {
+  (globalThis as unknown as { __clearBlockCachesForTest?: () => void }).__clearBlockCachesForTest = __clearBlockCachesForTest;
+}
+
+// Binary search untuk mencari blok pertama dengan timestamp >= target (lower bound)
+async function findLowerBoundBlock(
+  latest: number,
+  targetTsSec: number,
+  cacheKey: string,
+  tsFetcher: (blockNumber: number) => Promise<number | undefined>,
+): Promise<number> {
+  const now = Date.now();
+  const cached = dateBlockCache[cacheKey];
+  if (cached && now - cached.timestamp < DATE_BLOCK_TTL) {
+    return cached.blockNumber;
+  }
+
+  let lo = 0;
+  let hi = latest;
+  let ans = 0;
+
+  // Komentar (ID): Binary search klasik untuk mencari batas bawah berdasarkan timestamp blok.
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const ts = await tsFetcher(mid);
+    if (typeof ts !== "number") {
+      // Jika gagal dapat timestamp, geser agar loop terus jalan.
+      hi = mid - 1;
+      continue;
+    }
+    if (ts >= targetTsSec) {
+      ans = mid;
+      hi = mid - 1;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  dateBlockCache[cacheKey] = { timestamp: now, blockNumber: ans };
+  return ans;
+}
+
+// Binary search untuk mendapatkan blok terakhir dengan timestamp <= target (upper bound)
+async function findUpperBoundBlock(
+  latest: number,
+  targetTsSec: number,
+  cacheKey: string,
+  tsFetcher: (blockNumber: number) => Promise<number | undefined>,
+): Promise<number> {
+  const now = Date.now();
+  const cached = dateBlockCache[cacheKey];
+  if (cached && now - cached.timestamp < DATE_BLOCK_TTL) {
+    return cached.blockNumber;
+  }
+
+  let lo = 0;
+  let hi = latest;
+  let ans = latest;
+
+  // Komentar (ID): Cari blok terakhir yang tidak melewati timestamp target.
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const ts = await tsFetcher(mid);
+    if (typeof ts !== "number") {
+      lo = mid + 1;
+      continue;
+    }
+    if (ts <= targetTsSec) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  dateBlockCache[cacheKey] = { timestamp: now, blockNumber: ans };
+  return ans;
+}
+
 export async function GET(request: Request) {
   try {
     // Rate limit per client + address
@@ -129,8 +303,99 @@ export async function GET(request: Request) {
     }
 
     const endpoint = ALCHEMY_ENDPOINTS[chain](apiKey);
+    // Parsing filter tanggal dari query (opsional)
+    const startDateStr = url.searchParams.get("dateStart") || undefined;
+    const endDateStr = url.searchParams.get("dateEnd") || undefined;
+    // Komentar (ID): normalisasi rentang tanggal menjadi blok akurat via binary search (server-side)
+    let fromBlockHex: string | undefined = undefined;
+    let toBlockHex: string | undefined = undefined;
+    if (startDateStr || endDateStr) {
+      // Dapatkan block terbaru untuk batas atas binary search
+      const latest = await getLatestBlockNumber(endpoint);
+      // Komentar (ID): Siapkan tsFetcher yang memakai cache timestamp blok untuk efisiensi
+      const tsFetcher = (bn: number) => getBlockTimestampCached(endpoint, chain, bn);
+      // Normalisasi tanggal menjadi detik Unix
+      const startMs = startDateStr ? new Date(startDateStr).getTime() : undefined;
+      const endMsBase = endDateStr ? new Date(endDateStr).getTime() : undefined;
+      const endMs = typeof endMsBase === "number" && !Number.isNaN(endMsBase)
+        ? endMsBase + 86_399_999 // inklusif akhir hari
+        : undefined;
+
+      // Validasi dan jalankan binary search; paralel jika keduanya tersedia
+      const hasStart = typeof startMs === "number" && !Number.isNaN(startMs);
+      const hasEnd = typeof endMs === "number" && !Number.isNaN(endMs);
+
+      if (hasStart && hasEnd) {
+        // Komentar (ID): Jalankan pencarian lower & upper secara paralel untuk memangkas latensi total
+        const startSec = Math.floor((startMs as number) / 1000);
+        const endSec = Math.floor((endMs as number) / 1000);
+        
+        // Komentar (ID): Cek cache agregat range terlebih dahulu
+        const rangeKey = `${chain}:range:${startSec}-${endSec}`;
+        const now = Date.now();
+        const cachedRange = rangeBlockCache[rangeKey];
+        
+        if (cachedRange && now - cachedRange.timestamp < RANGE_BLOCK_TTL) {
+          // Komentar (ID): Gunakan hasil cache range jika tersedia
+          fromBlockHex = cachedRange.fromBlock;
+          toBlockHex = cachedRange.toBlock;
+        } else {
+          // Komentar (ID): Gunakan kunci cache berbasis detik target agar akurat
+          // Menghindari granularitas per-jam yang bisa menyebabkan off-by-one untuk menit/detik berbeda.
+          const lowerKey = `${chain}:${startSec}:lower`;
+          const upperKey = `${chain}:${endSec}:upper`;
+
+          const [lower, upper] = await Promise.all([
+            findLowerBoundBlock(latest, startSec, lowerKey, tsFetcher),
+            findUpperBoundBlock(latest, endSec, upperKey, tsFetcher),
+          ]);
+          fromBlockHex = numberToHex(Math.max(0, lower));
+          toBlockHex = numberToHex(Math.min(latest, upper));
+          
+          // Komentar (ID): Simpan hasil ke cache agregat range
+          rangeBlockCache[rangeKey] = {
+            timestamp: now,
+            fromBlock: fromBlockHex,
+            toBlock: toBlockHex
+          };
+        }
+      } else if (hasStart) {
+        const startSec = Math.floor((startMs as number) / 1000);
+        // Komentar (ID): Kunci cache langsung pakai detik target agar hasil presisi
+        const lowerKey = `${chain}:${startSec}:lower`;
+        const lower = await findLowerBoundBlock(latest, startSec, lowerKey, tsFetcher);
+        fromBlockHex = numberToHex(Math.max(0, lower));
+      } else if (hasEnd) {
+        const endSec = Math.floor((endMs as number) / 1000);
+        // Komentar (ID): Kunci cache langsung pakai detik target agar hasil presisi
+        const upperKey = `${chain}:${endSec}:upper`;
+        const upper = await findUpperBoundBlock(latest, endSec, upperKey, tsFetcher);
+        toBlockHex = numberToHex(Math.min(latest, upper));
+      }
+
+      // Jika hanya satu sisi yang tersedia, isi sisi lainnya agar tetap valid
+      if (fromBlockHex && !toBlockHex) {
+        toBlockHex = numberToHex(latest);
+      }
+      if (!fromBlockHex && toBlockHex) {
+        fromBlockHex = "0x0";
+      }
+
+      // Pastikan from <= to
+      if (fromBlockHex && toBlockHex) {
+        const fromNum = hexToNumber(fromBlockHex) ?? 0;
+        const toNum = hexToNumber(toBlockHex) ?? 0;
+        if (fromNum > toNum) {
+          const tmp = fromBlockHex;
+          fromBlockHex = toBlockHex;
+          toBlockHex = tmp;
+        }
+      }
+    }
     // Use asset transfers API for recent transfers
     // Reference: https://docs.alchemy.com/reference/alchemy_getassettransfers
+    // Mendukung pagination via pageKey dari Alchemy
+    const pageKeyParam = url.searchParams.get("pageKey") || undefined;
     const transfers = await rpcFetch<{
       transfers: Array<{
         hash: string;
@@ -140,6 +405,7 @@ export async function GET(request: Request) {
         asset?: string;
         metadata?: { blockTimestamp?: string };
       }>;
+      pageKey?: string;
     }>(endpoint, {
       method: "alchemy_getAssetTransfers",
       params: [
@@ -150,6 +416,11 @@ export async function GET(request: Request) {
           withMetadata: true,
           maxCount: "0x32", // 50
           order: "desc",
+          // Komentar (ID): Jika pageKey disediakan, gunakan untuk mengambil halaman berikutnya
+          pageKey: pageKeyParam,
+          // Komentar (ID): Filter server-side berdasarkan estimasi blok dari rentang tanggal
+          fromBlock: fromBlockHex,
+          toBlock: toBlockHex,
         },
       ],
     });
@@ -253,7 +524,10 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ data }, { headers: { "X-Cache": "MISS" } });
+    return NextResponse.json(
+      { data, nextPageKey: transfers?.pageKey || null },
+      { headers: { "X-Cache": "MISS" } },
+    );
   } catch (error) {
     return handleUnknownError(error);
   }
