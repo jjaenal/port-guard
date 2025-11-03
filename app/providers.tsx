@@ -4,6 +4,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionProvider } from "next-auth/react";
 import { wagmiConfig } from "../config/wagmi";
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -26,12 +27,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [pathname, searchParams]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={wagmiConfig}>
-        <RainbowKitProvider>{children}</RainbowKitProvider>
-        <SwRegister />
-        <NetworkStatusToast />
-      </WagmiProvider>
-    </QueryClientProvider>
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={wagmiConfig}>
+          <RainbowKitProvider>{children}</RainbowKitProvider>
+          <SwRegister />
+          <NetworkStatusToast />
+        </WagmiProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   );
 }

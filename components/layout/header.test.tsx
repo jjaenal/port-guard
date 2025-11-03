@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionProvider } from "next-auth/react";
 import { Header } from "./header";
 
 function renderWithClient(ui: React.ReactElement) {
@@ -9,7 +10,9 @@ function renderWithClient(ui: React.ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+    <SessionProvider session={null}>
+      <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+    </SessionProvider>,
   );
 }
 

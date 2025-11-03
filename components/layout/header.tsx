@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const { address } = useAccount();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   // Ref untuk mendeteksi klik di luar dropdown
   const dropdownRootRef = useRef<HTMLDivElement | null>(null);
@@ -280,6 +282,15 @@ export function Header() {
               <span className="sr-only">Toggle theme</span>
             </Button>
 
+            {/* Komentar (ID): Tampilkan tombol Sign In jika belum terautentikasi */}
+            {!session && (
+              <Link href="/auth/signin">
+                <Button variant="outline" size="sm">
+                  Sign In
+                </Button>
+              </Link>
+            )}
+            
             <ConnectButton />
           </div>
         </div>

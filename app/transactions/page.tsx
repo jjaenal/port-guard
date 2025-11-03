@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { formatTimestamp, type TransactionCategory } from "@/lib/utils/transactions";
 import { toCsv } from "@/lib/utils/transactions-export";
@@ -23,6 +23,9 @@ const ADDRESS_STORAGE_KEY = "tx_address";
 const CHAIN_STORAGE_KEY = "tx_chain";
 const FILTERS_STORAGE_KEY = "tx_filters";
 const PRESET_STORAGE_KEY = "tx_preset"; // Tambah key untuk preset
+const DATE_START_STORAGE_KEY = "tx_date_start"; // Tanggal mulai filter
+const DATE_END_STORAGE_KEY = "tx_date_end"; // Tanggal akhir filter
+const DATE_PRESET_STORAGE_KEY = "tx_date_preset"; // Preset tanggal aktif
 
 export default function TransactionsPage() {
   const { address: connected } = useAccount();
@@ -33,6 +36,7 @@ export default function TransactionsPage() {
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
+  const [nextPageKey, setNextPageKey] = useState<string | null>(null); // cursor pagination dari API
   // Opsi ekspor: hasil terfilter atau semua hasil
   const [exportScope, setExportScope] = useState<"filtered" | "all">("filtered");
   // Flag untuk menghindari hydration mismatch: render badge hanya setelah mount
@@ -51,11 +55,25 @@ export default function TransactionsPage() {
   });
   // State untuk preset aktif
   const [activePreset, setActivePreset] = useState<string>("ALL");
+  // State untuk preset tanggal aktif (ALL, TODAY, 7D, 30D, YTD, 1Y, CUSTOM)
+  const [activeDatePreset, setActiveDatePreset] = useState<string>("ALL");
   // State untuk modal konfirmasi reset
   const [showResetModal, setShowResetModal] = useState(false);
   // State untuk ekspansi detail setiap transaksi (hash -> expanded)
   // Komentar (ID): Gunakan objek map sederhana untuk toggling per item tanpa nested structure
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // State filter tanggal
+  const [dateStart, setDateStart] = useState<string>("");
+  const [dateEnd, setDateEnd] = useState<string>("");
+  // State untuk infinite scroll jumlah item tampil
+  const [visibleCount, setVisibleCount] = useState<number>(20);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Helper: normalisasi timestamp ke milidetik
+  const getTsMs = (ts?: number) => {
+    if (typeof ts !== "number") return undefined;
+    return ts < 1_000_000_000_000 ? ts * 1000 : ts;
+  };
 
   // Toggle panel detail untuk hash tertentu
   function toggleDetails(hash: string) {
@@ -87,6 +105,16 @@ export default function TransactionsPage() {
       const savedPreset = window.localStorage.getItem(PRESET_STORAGE_KEY);
       if (savedPreset) {
         setActivePreset(savedPreset);
+      }
+      // Load date range tersimpan
+      const savedStart = window.localStorage.getItem(DATE_START_STORAGE_KEY);
+      const savedEnd = window.localStorage.getItem(DATE_END_STORAGE_KEY);
+      if (savedStart) setDateStart(savedStart);
+      if (savedEnd) setDateEnd(savedEnd);
+      // Load date preset tersimpan
+      const savedDatePreset = window.localStorage.getItem(DATE_PRESET_STORAGE_KEY);
+      if (savedDatePreset) {
+        setActiveDatePreset(savedDatePreset);
       }
     } catch {
       // Abaikan error parsing storage
@@ -219,11 +247,86 @@ export default function TransactionsPage() {
     }
   }
 
+  // Preset tanggal untuk seleksi cepat
+  // Komentar (ID): gunakan preset umum agar UX cepat tanpa input manual
+  function applyDatePreset(preset: "ALL" | "TODAY" | "7D" | "30D" | "YTD" | "1Y") {
+    setActiveDatePreset(preset);
+    const today = new Date();
+    // Helper: format YYYY-MM-DD untuk input date
+    const fmt = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    // Normalisasi ke awal hari untuk start, akhir hari untuk end (disimpan sebagai date string)
+    switch (preset) {
+      case "ALL":
+        setDateStart("");
+        setDateEnd("");
+        return;
+      case "TODAY": {
+        const start = new Date(today);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+        setDateStart(fmt(start));
+        setDateEnd(fmt(end));
+        return;
+      }
+      case "7D": {
+        const end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end);
+        // 7 hari terakhir inklusif (hari ini dan 6 hari ke belakang)
+        start.setDate(start.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+        setDateStart(fmt(start));
+        setDateEnd(fmt(end));
+        return;
+      }
+      case "30D": {
+        const end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setDate(start.getDate() - 29);
+        start.setHours(0, 0, 0, 0);
+        setDateStart(fmt(start));
+        setDateEnd(fmt(end));
+        return;
+      }
+      case "YTD": {
+        const end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end.getFullYear(), 0, 1);
+        start.setHours(0, 0, 0, 0);
+        setDateStart(fmt(start));
+        setDateEnd(fmt(end));
+        return;
+      }
+      case "1Y": {
+        const end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setDate(start.getDate() - 364);
+        start.setHours(0, 0, 0, 0);
+        setDateStart(fmt(start));
+        setDateEnd(fmt(end));
+        return;
+      }
+      default:
+        return;
+    }
+  }
+
   async function fetchTx() {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ address, chain });
+      // Komentar (ID): Kirim rentang tanggal ke server agar filter dilakukan di sisi API
+      if (dateStart) params.set("dateStart", dateStart);
+      if (dateEnd) params.set("dateEnd", dateEnd);
       const res = await fetch(`/api/transactions?${params.toString()}`);
       if (!res.ok) {
         const text = await res.text();
@@ -238,6 +341,8 @@ export default function TransactionsPage() {
       }
       const json = await res.json();
       setItems((json?.data || []) as TxItem[]);
+      setNextPageKey(json?.nextPageKey ?? null);
+      setVisibleCount(20); // reset tampilan awal
     } catch (e) {
       const err = e as Error;
       setError(err.message || "Failed to fetch transactions");
@@ -246,11 +351,131 @@ export default function TransactionsPage() {
     }
   }
 
+  // Fetch halaman berikutnya menggunakan cursor dari API (pageKey)
+  const fetchTxMore = useCallback(async () => {
+    if (!nextPageKey || isLoading) return;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ address, chain, pageKey: nextPageKey });
+      if (dateStart) params.set("dateStart", dateStart);
+      if (dateEnd) params.set("dateEnd", dateEnd);
+      const res = await fetch(`/api/transactions?${params.toString()}`);
+      if (!res.ok) {
+        const text = await res.text();
+        try {
+          const j = JSON.parse(text);
+          throw new Error(j?.error?.message || `Transactions API error: ${res.status}`);
+        } catch {
+          throw new Error(`Transactions API error: ${res.status} ${text}`);
+        }
+      }
+      const json = await res.json();
+      const more = (json?.data || []) as TxItem[];
+      setItems((prev) => [...prev, ...more]);
+      setNextPageKey(json?.nextPageKey ?? null);
+      setVisibleCount((prev) => prev + 20);
+    } catch (e) {
+      const err = e as Error;
+      setError(err.message || "Failed to fetch more transactions");
+    } finally {
+      setLoading(false);
+    }
+  }, [nextPageKey, isLoading, address, chain, dateStart, dateEnd]);
+
   // Hitung header dengan jumlah hasil setelah filter diterapkan
   // Catatan (ID): gunakan useMemo untuk menghindari komputasi ulang berlebih
   const filteredItems = useMemo(() => {
-    return items.filter((tx) => filters[tx.category]);
-  }, [items, filters]);
+    return items.filter((tx) => {
+      if (!filters[tx.category]) return false;
+      const tsMs = getTsMs(tx.timestamp);
+      // Jika tidak ada timestamp, lolos saja agar tidak kehilangan data
+      if (tsMs === undefined) return true;
+      const startMs = dateStart ? new Date(dateStart).getTime() : undefined;
+      const endMs = dateEnd ? new Date(dateEnd).getTime() + 86_399_999 : undefined;
+      if (typeof startMs === "number" && tsMs < startMs) return false;
+      if (typeof endMs === "number" && tsMs > endMs) return false;
+      return true;
+    });
+  }, [items, filters, dateStart, dateEnd]);
+
+  // Ringkasan analitik gas untuk item terfilter
+  const gasSummary = useMemo(() => {
+    const fees = filteredItems.map((i) => (typeof i.fee === "number" ? i.fee : 0));
+    const total = fees.reduce((acc, v) => acc + v, 0);
+    const avg = fees.length ? total / fees.length : 0;
+    return { total, avg };
+  }, [filteredItems]);
+
+  // Ringkasan gas per kategori (total & rata-rata)
+  // Komentar (ID): Mengelompokkan biaya gas berdasarkan kategori untuk analitik yang lebih kaya
+  const gasByCategory = useMemo(() => {
+    const result: Record<TransactionCategory, { total: number; count: number; avg: number }> = {
+      send: { total: 0, count: 0, avg: 0 },
+      receive: { total: 0, count: 0, avg: 0 },
+      swap: { total: 0, count: 0, avg: 0 },
+      approve: { total: 0, count: 0, avg: 0 },
+      lp_add: { total: 0, count: 0, avg: 0 },
+      lp_remove: { total: 0, count: 0, avg: 0 },
+      contract_interaction: { total: 0, count: 0, avg: 0 },
+      unknown: { total: 0, count: 0, avg: 0 },
+    };
+    for (const tx of filteredItems) {
+      const fee = typeof tx.fee === "number" ? tx.fee : 0;
+      const bucket = result[tx.category];
+      bucket.total += fee;
+      bucket.count += 1;
+    }
+    for (const key of Object.keys(result) as TransactionCategory[]) {
+      const r = result[key];
+      r.avg = r.count ? r.total / r.count : 0;
+    }
+    return result;
+  }, [filteredItems]);
+
+  // Reset jumlah terlihat saat filter/preset/tanggal berubah
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [filters, activePreset, dateStart, dateEnd]);
+
+  // Persist date range ke storage
+  useEffect(() => {
+    if (!mounted) return;
+    if (dateStart) window.localStorage.setItem(DATE_START_STORAGE_KEY, dateStart);
+    else window.localStorage.removeItem(DATE_START_STORAGE_KEY);
+    if (dateEnd) window.localStorage.setItem(DATE_END_STORAGE_KEY, dateEnd);
+    else window.localStorage.removeItem(DATE_END_STORAGE_KEY);
+  }, [dateStart, dateEnd, mounted]);
+
+  // Persist preset tanggal ke storage
+  useEffect(() => {
+    if (!mounted) return;
+    window.localStorage.setItem(DATE_PRESET_STORAGE_KEY, activeDatePreset);
+  }, [activeDatePreset, mounted]);
+
+  // Infinite scroll via IntersectionObserver pada sentinel di akhir list
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry.isIntersecting) {
+        // Jika masih ada item terfilter yang belum ditampilkan, tambah visibleCount
+        if (visibleCount < filteredItems.length) {
+          setVisibleCount((prev) => {
+            const next = prev + 20;
+            return next > filteredItems.length ? filteredItems.length : next;
+          });
+        } else if (nextPageKey) {
+          // Jika semua item sudah terlihat dan ada page berikutnya, fetch dari server
+          void fetchTxMore();
+        }
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [filteredItems.length, visibleCount, nextPageKey, fetchTxMore]);
+
+  const visibleItems = useMemo(() => filteredItems.slice(0, visibleCount), [filteredItems, visibleCount]);
 
   // Hitung jumlah per kategori untuk badge di tombol filter
   const categoryCounts = useMemo(() => {
@@ -455,9 +680,9 @@ export default function TransactionsPage() {
         </div>
         {error && <div className="text-red-600 text-sm">{error}</div>}
 
-        {/* Kontrol filter kategori transaksi */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm text-gray-600">Filter:</span>
+      {/* Kontrol filter kategori transaksi */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-sm text-gray-600">Filter:</span>
           <button
             type="button"
             className={filterButtonClass("send")}
@@ -602,6 +827,145 @@ export default function TransactionsPage() {
           >
             NONE
           </button>
+          {/* Filter tanggal: rentang start/end */}
+          <span className="mx-2 text-sm text-gray-400">|</span>
+          <label className="text-xs text-gray-600">Start:</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1 text-xs"
+            value={dateStart}
+            onChange={(e) => {
+              // Komentar (ID): perubahan manual akan menandai preset sebagai CUSTOM
+              setDateStart(e.target.value);
+              setActiveDatePreset("CUSTOM");
+            }}
+          />
+          <label className="text-xs text-gray-600">End:</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1 text-xs"
+            value={dateEnd}
+            onChange={(e) => {
+              setDateEnd(e.target.value);
+              setActiveDatePreset("CUSTOM");
+            }}
+          />
+          <button
+            type="button"
+            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+            onClick={() => { setDateStart(""); setDateEnd(""); }}
+          >
+            Clear Dates
+          </button>
+          {/* Quick date chips untuk seleksi cepat */}
+          <span className="mx-2 text-sm text-gray-400">|</span>
+          <div className="flex gap-1 items-center">
+            {/* Komentar (ID): Gunakan style active agar user memahami preset terpilih */}
+            <button
+              type="button"
+              className={`px-2 py-1 text-xs border rounded hover:bg-gray-50 ${
+                activeDatePreset === "TODAY" ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700"
+              }`}
+              onClick={() => applyDatePreset("TODAY")}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 text-xs border rounded hover:bg-gray-50 ${
+                activeDatePreset === "7D" ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700"
+              }`}
+              onClick={() => applyDatePreset("7D")}
+            >
+              7D
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 text-xs border rounded hover:bg-gray-50 ${
+                activeDatePreset === "30D" ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700"
+              }`}
+              onClick={() => applyDatePreset("30D")}
+            >
+              30D
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 text-xs border rounded hover:bg-gray-50 ${
+                activeDatePreset === "YTD" ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700"
+              }`}
+              onClick={() => applyDatePreset("YTD")}
+            >
+              YTD
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 text-xs border rounded hover:bg-gray-50 ${
+                activeDatePreset === "1Y" ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700"
+              }`}
+              onClick={() => applyDatePreset("1Y")}
+            >
+              1Y
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 text-xs border rounded hover:bg-gray-50 ${
+                activeDatePreset === "ALL" ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700"
+              }`}
+              onClick={() => applyDatePreset("ALL")}
+            >
+              ALL
+            </button>
+          </div>
+      </div>
+      </div>
+
+      {/* Ringkasan analitik gas untuk hasil terfilter */}
+      <div className="rounded border mb-3">
+        <div className="px-3 py-2 text-sm text-gray-700 flex gap-4">
+          <span>Total Gas: {parseFloat(gasSummary.total.toFixed(6))} {chain === "polygon" ? "MATIC" : "ETH"}</span>
+          <span>Avg Gas: {parseFloat(gasSummary.avg.toFixed(6))} {chain === "polygon" ? "MATIC" : "ETH"}</span>
+        </div>
+      </div>
+
+      {/* Ringkasan gas per kategori */}
+      <div className="rounded border mb-3">
+        <div className="px-3 py-2">
+          <div className="text-sm text-gray-700 mb-2">Gas per Kategori</div>
+          {/* Komentar (ID): Tampilkan grid sederhana agar mudah dipindai */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {(
+              [
+                { key: "send", label: "SEND" },
+                { key: "receive", label: "RECEIVE" },
+                { key: "swap", label: "SWAP" },
+                { key: "approve", label: "APPROVE" },
+                { key: "lp_add", label: "LP ADD" },
+                { key: "lp_remove", label: "LP REMOVE" },
+                { key: "contract_interaction", label: "CONTRACT" },
+                { key: "unknown", label: "UNKNOWN" },
+              ] as Array<{ key: TransactionCategory; label: string }>
+            ).map(({ key, label }) => (
+              <div key={key} className="border rounded px-2 py-2 text-xs text-gray-700">
+                <div className="font-medium mb-1">{label}</div>
+                <div className="flex justify-between">
+                  <span>Total:</span>
+                  <span className="font-mono">
+                    {parseFloat(gasByCategory[key].total.toFixed(6))} {chain === "polygon" ? "MATIC" : "ETH"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Avg:</span>
+                  <span className="font-mono">
+                    {parseFloat(gasByCategory[key].avg.toFixed(6))} {chain === "polygon" ? "MATIC" : "ETH"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Count:</span>
+                  <span className="font-mono">{gasByCategory[key].count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -609,7 +973,7 @@ export default function TransactionsPage() {
         <div className="px-3 py-2 border-b text-sm text-gray-600">{header}</div>
         <div>
           {/* Tampilkan transaksi yang lolos filter */}
-          {filteredItems.map((tx) => (
+          {visibleItems.map((tx) => (
             <div
               key={tx.hash}
               className="px-3 py-3 border-b flex flex-col gap-1"
@@ -727,6 +1091,8 @@ export default function TransactionsPage() {
               </div>
             </div>
           ))}
+          {/* Sentinel untuk memicu loading lebih saat discroll */}
+          <div ref={sentinelRef} className="h-6" />
           {items.length === 0 && (
             <div className="px-3 py-6 text-center text-sm text-gray-500">
               No transactions fetched yet
