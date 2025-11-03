@@ -7,7 +7,8 @@ import {
   detectLPRemove,
   detectApprove,
   categorizeTransactionExtended,
-  type SwapTransaction 
+  type SwapTransaction,
+  type TransferEvent,
 } from "./transactions";
 
 describe("transactions utils", () => {
@@ -557,6 +558,40 @@ describe("transactions utils", () => {
         to: "0xrecipient",
       };
       const category = categorizeTransactionExtended(tx, "0xuser");
+      expect(category).toBe("send");
+    });
+  });
+
+  describe("categorizeTransactionExtended with Contract Interaction", () => {
+    it("categorizes contract_interaction when not send/receive and detectors fail", () => {
+      const tx = {
+        hash: "0xabc",
+        from: "0xsender",
+        to: "0xcontract",
+        input: "0x12345678", // unknown selector
+        logs: [
+          {
+            address: "0xcontract",
+            topics: ["0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"],
+            data: "0x",
+          },
+        ],
+      };
+      // Komentar (ID): Gunakan tipe aman sesuai signature fungsi
+      const category = categorizeTransactionExtended(tx as TransferEvent & Partial<SwapTransaction>, "0xuser");
+      expect(category).toBe("contract_interaction");
+    });
+
+    it("falls back to send when user is sender even with input/logs", () => {
+      const tx = {
+        hash: "0xabc",
+        from: "0xuser",
+        to: "0xcontract",
+        input: "0x12345678", // unknown selector
+        logs: [],
+      };
+      // Komentar (ID): Pastikan tidak menggunakan any agar lolos ESLint strict
+      const category = categorizeTransactionExtended(tx as TransferEvent & Partial<SwapTransaction>, "0xuser");
       expect(category).toBe("send");
     });
   });

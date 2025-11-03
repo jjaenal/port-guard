@@ -389,12 +389,19 @@
   - [ ] Contract interaction
 - [x] Create transaction list UI
 - [ ] Add transaction detail view
-- [ ] Link to Etherscan
+- [x] Link to Etherscan (Explorer link per chain)
 - [ ] Implement infinite scroll
 - [ ] Add date filtering
 - [ ] Calculate gas spent
 - [x] Calculate gas spent
 - [ ] Show gas analytics
+
+  
+  
+**Progress additions (recent):**
+- [x] Contract interaction filter & badge in UI (⚙️ CONTRACT)
+- [x] Gas badge per transaction (formatted, max 6 desimal, no trailing zero)
+- [x] Explorer link with icon (🔗) to Etherscan/Polygonscan
 
 ---
 

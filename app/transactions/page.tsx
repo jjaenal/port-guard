@@ -43,8 +43,10 @@ export default function TransactionsPage() {
     send: true,
     receive: true,
     swap: true,
+    approve: true,
     lp_add: true,
     lp_remove: true,
+    contract_interaction: true,
     unknown: true,
   });
   // State untuk preset aktif
@@ -65,8 +67,10 @@ export default function TransactionsPage() {
         send: parsed.send ?? true,
         receive: parsed.receive ?? true,
         swap: parsed.swap ?? true,
+        approve: parsed.approve ?? true,
         lp_add: parsed.lp_add ?? true,
         lp_remove: parsed.lp_remove ?? true,
+        contract_interaction: parsed.contract_interaction ?? true,
         unknown: parsed.unknown ?? true,
       };
       setFilters(next);
@@ -182,25 +186,25 @@ export default function TransactionsPage() {
     setActivePreset(preset); // Update preset aktif
     switch (preset) {
       case "ALL":
-        setFilters({ send: true, receive: true, swap: true, lp_add: true, lp_remove: true, unknown: true });
+        setFilters({ send: true, receive: true, swap: true, approve: true, lp_add: true, lp_remove: true, contract_interaction: true, unknown: true });
         return;
       case "TRANSFERS":
-        setFilters({ send: true, receive: true, swap: false, lp_add: false, lp_remove: false, unknown: false });
+        setFilters({ send: true, receive: true, swap: false, approve: false, lp_add: false, lp_remove: false, contract_interaction: false, unknown: false });
         return;
       case "DEFI":
-        setFilters({ send: false, receive: false, swap: true, lp_add: true, lp_remove: true, unknown: false });
+        setFilters({ send: false, receive: false, swap: true, approve: true, lp_add: true, lp_remove: true, contract_interaction: true, unknown: false });
         return;
       case "STAKING":
-        setFilters({ send: false, receive: false, swap: false, lp_add: true, lp_remove: true, unknown: false });
+        setFilters({ send: false, receive: false, swap: false, approve: false, lp_add: true, lp_remove: true, contract_interaction: false, unknown: false });
         return;
       case "INBOUND":
-        setFilters({ send: false, receive: true, swap: false, lp_add: false, lp_remove: false, unknown: false });
+        setFilters({ send: false, receive: true, swap: false, approve: false, lp_add: false, lp_remove: false, contract_interaction: false, unknown: false });
         return;
       case "OUTBOUND":
-        setFilters({ send: true, receive: false, swap: false, lp_add: false, lp_remove: false, unknown: false });
+        setFilters({ send: true, receive: false, swap: false, approve: true, lp_add: false, lp_remove: false, contract_interaction: true, unknown: false });
         return;
       case "NONE":
-        setFilters({ send: false, receive: false, swap: false, lp_add: false, lp_remove: false, unknown: false });
+        setFilters({ send: false, receive: false, swap: false, approve: false, lp_add: false, lp_remove: false, contract_interaction: false, unknown: false });
         return;
       default:
         return;
@@ -246,8 +250,10 @@ export default function TransactionsPage() {
       send: 0,
       receive: 0,
       swap: 0,
+      approve: 0,
       lp_add: 0,
       lp_remove: 0,
+      contract_interaction: 0,
       unknown: 0,
     };
     for (const tx of items) {
@@ -264,10 +270,12 @@ export default function TransactionsPage() {
   const header = useMemo(() => {
     const total = items.length;
     const shown = filteredItems.length;
-    const filterInfo = activeFiltersCount === 6 ? "" : ` • Active filters: ${activeFiltersCount}/6`;
+    // Komentar (ID): Gunakan jumlah kategori dinamis agar tidak hardcode saat kategori baru ditambah
+    const totalCats = Object.keys(filters).length;
+    const filterInfo = activeFiltersCount === totalCats ? "" : ` • Active filters: ${activeFiltersCount}/${totalCats}`;
     if (total === 0) return `No transactions${filterInfo}`;
     return shown === total ? `${total} transactions${filterInfo}` : `${shown} of ${total} transactions${filterInfo}`;
-  }, [items.length, filteredItems.length, activeFiltersCount]);
+  }, [items.length, filteredItems.length, activeFiltersCount, filters]);
 
   // Utility kecil untuk style tombol filter berdasarkan kategori dan aktif/tidak
   function filterButtonClass(cat: TransactionCategory): string {
@@ -282,10 +290,14 @@ export default function TransactionsPage() {
         return `${base} bg-green-50 border-green-300 text-green-700`;
       case "swap":
         return `${base} bg-blue-50 border-blue-300 text-blue-700`;
+      case "approve":
+        return `${base} bg-indigo-50 border-indigo-300 text-indigo-700`;
       case "lp_add":
         return `${base} bg-purple-50 border-purple-300 text-purple-700`;
       case "lp_remove":
         return `${base} bg-orange-50 border-orange-300 text-orange-700`;
+      case "contract_interaction":
+        return `${base} bg-yellow-50 border-yellow-300 text-yellow-700`;
       default:
         return `${base} bg-gray-50 border-gray-300 text-gray-700`;
     }
@@ -307,7 +319,7 @@ export default function TransactionsPage() {
     // Komentar (ID): Reset state ke default yang konsisten
     setAddress(connected || "");
     setChain("ethereum");
-    setFilters({ send: true, receive: true, swap: true, lp_add: true, lp_remove: true, unknown: true });
+    setFilters({ send: true, receive: true, swap: true, approve: true, lp_add: true, lp_remove: true, contract_interaction: true, unknown: true });
     setActivePreset("ALL");
     setError(null);
     setShowResetModal(false);
@@ -464,24 +476,40 @@ export default function TransactionsPage() {
         </button>
           <button
             type="button"
+            className={filterButtonClass("approve")}
+            onClick={() => toggleFilter("approve")}
+          aria-pressed={filters.approve}
+        >
+          ✅ APPROVE{mounted ? ` (${categoryCounts.approve})` : ""}
+        </button>
+          <button
+            type="button"
             className={filterButtonClass("lp_add")}
             onClick={() => toggleFilter("lp_add")}
           aria-pressed={filters.lp_add}
         >
           ➕ LP ADD{mounted ? ` (${categoryCounts.lp_add})` : ""}
         </button>
-          <button
-            type="button"
-            className={filterButtonClass("lp_remove")}
-            onClick={() => toggleFilter("lp_remove")}
+        <button
+          type="button"
+          className={filterButtonClass("lp_remove")}
+          onClick={() => toggleFilter("lp_remove")}
           aria-pressed={filters.lp_remove}
         >
           ➖ LP REMOVE{mounted ? ` (${categoryCounts.lp_remove})` : ""}
         </button>
-          <button
-            type="button"
-            className={filterButtonClass("unknown")}
-            onClick={() => toggleFilter("unknown")}
+        <button
+          type="button"
+          className={filterButtonClass("contract_interaction")}
+          onClick={() => toggleFilter("contract_interaction")}
+          aria-pressed={filters.contract_interaction}
+        >
+          ⚙️ CONTRACT{mounted ? ` (${categoryCounts.contract_interaction})` : ""}
+        </button>
+        <button
+          type="button"
+          className={filterButtonClass("unknown")}
+          onClick={() => toggleFilter("unknown")}
           aria-pressed={filters.unknown}
         >
           UNKNOWN{mounted ? ` (${categoryCounts.unknown})` : ""}
@@ -587,19 +615,27 @@ export default function TransactionsPage() {
                         ? "text-green-600"
                         : tx.category === "swap"
                           ? "text-blue-600"
+                          : tx.category === "approve"
+                            ? "text-indigo-600"
                           : tx.category === "lp_add"
                             ? "text-purple-600"
-                            : tx.category === "lp_remove"
-                              ? "text-orange-600"
-                              : "text-gray-600"
+                          : tx.category === "lp_remove"
+                            ? "text-orange-600"
+                          : tx.category === "contract_interaction"
+                            ? "text-yellow-600"
+                            : "text-gray-600"
                   }
                 >
                   {tx.category === "swap" 
                     ? "🔄 SWAP" 
+                    : tx.category === "approve"
+                      ? "✅ APPROVE"
                     : tx.category === "lp_add"
                       ? "➕ LP ADD"
                       : tx.category === "lp_remove"
                         ? "➖ LP REMOVE"
+                        : tx.category === "contract_interaction"
+                          ? "⚙️ CONTRACT"
                         : tx.category.toUpperCase()}
                 </span>
                 <span className="text-xs text-gray-500">
@@ -622,6 +658,24 @@ export default function TransactionsPage() {
                       {tx.asset || (chain === "polygon" ? "MATIC" : "ETH")}
                     </span>
                   )}
+                </div>
+                {/* Badge biaya gas + tautan explorer */}
+                <div className="text-xs text-gray-600 mt-1 flex items-center gap-2">
+                  {/* Komentar (ID): Tampilkan biaya gas dengan format rapi (max 6 desimal, tanpa trailing zero) */}
+                  {typeof tx.fee === "number" && (
+                    <span className="px-1.5 py-0.5 border rounded bg-gray-50">
+                      Gas: {parseFloat(tx.fee.toFixed(6))} {chain === "polygon" ? "MATIC" : "ETH"}
+                    </span>
+                  )}
+                  {/* Komentar (ID): Tautan ke block explorer dengan icon untuk kemudahan identifikasi */}
+                  <a
+                    href={`${chain === "polygon" ? "https://polygonscan.com/tx/" : "https://etherscan.io/tx/"}${tx.hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  >
+                    🔗 View on Explorer
+                  </a>
                 </div>
               </div>
             </div>

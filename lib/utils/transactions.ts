@@ -1,4 +1,4 @@
-export type TransactionCategory = "send" | "receive" | "swap" | "approve" | "lp_add" | "lp_remove" | "unknown";
+export type TransactionCategory = "send" | "receive" | "swap" | "approve" | "lp_add" | "lp_remove" | "contract_interaction" | "unknown";
 
 export type TransferEvent = {
   hash: string;
@@ -273,6 +273,14 @@ export function categorizeTransactionExtended(
     if (detectSwap(swapTx)) {
       return "swap";
     }
+
+    // Komentar (ID): Jika punya input/logs tapi tidak cocok LP/Approve/Swap,
+    // gunakan fallback 'contract_interaction' bila bukan send/receive.
+    const base = categorizeTransaction(tx, address);
+    if (base === "unknown") {
+      return "contract_interaction";
+    }
+    return base;
   }
   
   // Fallback ke kategorisasi standar
