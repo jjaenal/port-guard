@@ -386,7 +386,7 @@
   - [x] Send/Receive
   - [x] Swap
   - [x] Approve
-  - [ ] Contract interaction
+  - [x] Contract interaction
 - [x] Create transaction list UI
 - [ ] Add transaction detail view
 - [x] Link to Etherscan (Explorer link per chain)
