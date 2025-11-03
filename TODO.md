@@ -388,7 +388,7 @@
   - [x] Approve
   - [x] Contract interaction
 - [x] Create transaction list UI
-- [ ] Add transaction detail view
+ - [x] Add transaction detail view
 - [x] Link to Etherscan (Explorer link per chain)
 - [ ] Implement infinite scroll
 - [ ] Add date filtering

@@ -53,6 +53,14 @@ export default function TransactionsPage() {
   const [activePreset, setActivePreset] = useState<string>("ALL");
   // State untuk modal konfirmasi reset
   const [showResetModal, setShowResetModal] = useState(false);
+  // State untuk ekspansi detail setiap transaksi (hash -> expanded)
+  // Komentar (ID): Gunakan objek map sederhana untuk toggling per item tanpa nested structure
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Toggle panel detail untuk hash tertentu
+  function toggleDetails(hash: string) {
+    setExpanded((prev) => ({ ...prev, [hash]: !prev[hash] }));
+  }
 
   // Muat filter tersimpan saat komponen mount
   useEffect(() => {
@@ -641,6 +649,16 @@ export default function TransactionsPage() {
                 <span className="text-xs text-gray-500">
                   {formatTimestamp(tx.timestamp)}
                 </span>
+                {/* Tombol untuk menampilkan/menyembunyikan detail transaksi */}
+                <button
+                  type="button"
+                  className="ml-auto text-xs px-2 py-0.5 border rounded hover:bg-gray-50"
+                  onClick={() => toggleDetails(tx.hash)}
+                  aria-expanded={!!expanded[tx.hash]}
+                  aria-controls={`tx-details-${tx.hash}`}
+                >
+                  {expanded[tx.hash] ? "Hide Details" : "Details"}
+                </button>
               </div>
               <div className="text-sm break-all">
                 <div>
@@ -677,6 +695,35 @@ export default function TransactionsPage() {
                     🔗 View on Explorer
                   </a>
                 </div>
+
+                {/* Panel detail transaksi (expandable) */}
+                {expanded[tx.hash] && (
+                  <div
+                    id={`tx-details-${tx.hash}`}
+                    className="mt-2 text-xs bg-gray-50 border rounded p-2 grid grid-cols-1 md:grid-cols-2 gap-2"
+                  >
+                    {/* Komentar (ID): Berikan ringkasan metrik penting untuk analisis cepat */}
+                    <div>
+                      <span className="text-gray-500">Nonce:</span>{" "}
+                      <span className="font-mono">{typeof tx.nonce === "number" ? tx.nonce : "-"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Gas Used:</span>{" "}
+                      <span className="font-mono">{typeof tx.gasUsed === "number" ? tx.gasUsed : "-"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Fee:</span>{" "}
+                      <span className="font-mono">{typeof tx.fee === "number" ? parseFloat(tx.fee.toFixed(6)) : "-"}</span>{" "}
+                      <span>{chain === "polygon" ? "MATIC" : "ETH"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Value:</span>{" "}
+                      <span className="font-mono">{typeof tx.value === "number" ? tx.value : "-"}</span>{" "}
+                      <span>{tx.asset || (chain === "polygon" ? "MATIC" : "ETH")}</span>
+                    </div>
+                    {/* Komentar (ID): Detail input/logs tidak tersedia di payload saat ini; dapat ditambahkan dari API bila diperlukan */}
+                  </div>
+                )}
               </div>
             </div>
           ))}
